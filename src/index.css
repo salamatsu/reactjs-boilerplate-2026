@@ -1,0 +1,52 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --color-primary-color: #1E3A71;
+  --color-primaryColor: #1E3A71;
+  --color-text-color: #565656;
+}
+
+* {
+  font-family: "Poppins";
+}
+
+.nav-link {
+  cursor: pointer;
+  position: relative;
+}
+
+.nav-link::after {
+  content: "";
+  position: absolute;
+  height: 2px;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  background: #1E3A71;
+  transition: width 0.2s;
+}
+
+.nav-link:hover::after {
+  width: 100%;
+}
+
+.up {
+  top: -7rem;
+  transition: 0.3s;
+}
+
+.down {
+  top: 0;
+  transition: 0.3s;
+}
+
+/* Payment Proof Upload - Preview inside dragger */
+.payment-proof-upload.ant-upload-wrapper .ant-upload-drag {
+  border: 2px dashed #d9d9d9;
+  transition: border-color 0.3s;
+}
+
+.payment-proof-upload.ant-upload-wrapper .ant-upload-drag:hover {
+  border-color: #1890ff;
+}
