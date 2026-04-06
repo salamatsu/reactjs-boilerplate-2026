@@ -31,8 +31,16 @@ import {
   Zap,
   Gift,
   Loader2,
+  RotateCcw,
+  AlertTriangle,
+  HelpCircle,
+  QrCode,
+  Star,
+  Trophy,
+  ScanLine,
 } from "lucide-react";
 import { APP_BASE_URL, UPCOMING_EVENTS } from "../../lib/constants";
+import { formatDateTime, DATE_FORMATS } from "../../utils/formatDate";
 import {
   useGetCampaignByEventTag,
   useGenerateRaffleQr,
@@ -182,8 +190,8 @@ const CampaignHeader = ({ campaign }) => (
       <div className="flex items-center gap-2 text-[#8892A4] text-sm">
         <Calendar size={14} className="text-[#F5A623]" />
         <span>
-          {new Date(campaign.startDate).toLocaleDateString()} –{" "}
-          {new Date(campaign.endDate).toLocaleDateString()}
+          {formatDateTime(campaign.startDate, DATE_FORMATS.DATE)} –{" "}
+          {formatDateTime(campaign.endDate, DATE_FORMATS.DATE)}
         </span>
       </div>
       <div className="flex items-center gap-2 text-[#8892A4] text-sm">
@@ -833,11 +841,32 @@ const VisitorApp = () => {
   const [modal, setModal] = useState(null); // { type: "error"|"success"|"goal", ... }
   const [showScanner, setShowScanner] = useState(false);
   const [activeTab, setActiveTab] = useState("home");
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const urlScanProcessed = useRef(false);
+  const GUIDE_SEEN_KEY = "scan2win_guide_seen";
 
   // ── Derived ──
   const scannedCodes = entry?.scannedCodes ?? [];
   const currentPoints = entry?.currentPoints ?? 0;
+
+  // ── Reset progress ──
+  const handleReset = () => {
+    localStorage.removeItem(ENTRY_KEY);
+    const freshEntry = {
+      participantCode: uuidv4(),
+      eventTag: campaign.eventTag,
+      campaignId: campaign.id,
+      thresholdPoints: campaign.thresholdPoints,
+      scannedCodes: [],
+      currentPoints: 0,
+      encryptedQr: null,
+      raffleQrId: null,
+    };
+    saveEntry(freshEntry);
+    setEntry(freshEntry);
+    setShowResetConfirm(false);
+  };
 
   // ── Init / sync entry with event on load ──
   useEffect(() => {
@@ -859,6 +888,10 @@ const VisitorApp = () => {
       };
       saveEntry(newEntry);
       setEntry(newEntry);
+      // Show guide automatically on first visit
+      if (!localStorage.getItem(GUIDE_SEEN_KEY)) {
+        setShowGuide(true);
+      }
     }
   }, [campaign]);
 
@@ -1085,9 +1118,27 @@ const VisitorApp = () => {
             <Zap size={18} className="text-[#E94560]" />
             <span className="text-sm font-black tracking-wide">SCAN2WIN</span>
           </div>
-          <span className="text-xs text-[#8892A4] font-medium uppercase tracking-widest">
-            {eventTag}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-[#8892A4] font-medium uppercase tracking-widest">
+              {eventTag}
+            </span>
+            <button
+              onClick={() => setShowGuide(true)}
+              className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors"
+              style={{ background: "#16213E" }}
+              aria-label="How to play"
+            >
+              <HelpCircle size={14} className="text-[#8892A4]" />
+            </button>
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors"
+              style={{ background: "#16213E" }}
+              aria-label="Reset progress"
+            >
+              <RotateCcw size={13} className="text-[#8892A4]" />
+            </button>
+          </div>
         </div>
 
         <div className="relative">{renderTab()}</div>
@@ -1122,6 +1173,182 @@ const VisitorApp = () => {
             onScan={handleCameraScan}
             onClose={() => setShowScanner(false)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Reset confirm bottom sheet */}
+      <AnimatePresence>
+        {showResetConfirm && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-end"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/60"
+              onClick={() => setShowResetConfirm(false)}
+            />
+            {/* Sheet */}
+            <motion.div
+              className="relative w-full rounded-t-3xl p-6 space-y-5"
+              style={{ background: "#16213E" }}
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+            >
+              <div className="flex flex-col items-center text-center gap-3">
+                <div
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                  style={{ background: "#E9456020" }}
+                >
+                  <AlertTriangle size={22} className="text-[#E94560]" />
+                </div>
+                <div>
+                  <p className="text-white font-black text-base">Reset Progress?</p>
+                  <p className="text-[#8892A4] text-sm mt-1 leading-relaxed">
+                    All scanned booths, points, and your raffle QR will be
+                    cleared. This cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleReset}
+                className="w-full py-3.5 rounded-2xl font-black text-sm text-white"
+                style={{ background: "#E94560" }}
+              >
+                Yes, Reset Everything
+              </button>
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="w-full py-3.5 rounded-2xl font-bold text-sm"
+                style={{ background: "#0F1629", color: "#8892A4" }}
+              >
+                Cancel
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* How to Play guide */}
+      <AnimatePresence>
+        {showGuide && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-end"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div
+              className="absolute inset-0 bg-black/60"
+              onClick={() => {
+                localStorage.setItem(GUIDE_SEEN_KEY, "1");
+                setShowGuide(false);
+              }}
+            />
+            <motion.div
+              className="relative w-full rounded-t-3xl overflow-hidden"
+              style={{ background: "#16213E", maxHeight: "85vh" }}
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+            >
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-[#8892A430]" />
+              </div>
+
+              {/* Header */}
+              <div className="px-6 pt-2 pb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-white font-black text-lg leading-tight">How to Play</p>
+                  <p className="text-[#8892A4] text-xs mt-0.5">Scan2Win mechanics</p>
+                </div>
+                <button
+                  onClick={() => {
+                    localStorage.setItem(GUIDE_SEEN_KEY, "1");
+                    setShowGuide(false);
+                  }}
+                  className="w-8 h-8 flex items-center justify-center rounded-xl"
+                  style={{ background: "#0F1629" }}
+                >
+                  <X size={15} className="text-[#8892A4]" />
+                </button>
+              </div>
+
+              {/* Steps */}
+              <div className="overflow-y-auto px-6 pb-8 space-y-0"
+                   style={{ maxHeight: "calc(85vh - 110px)" }}>
+                {[
+                  {
+                    icon: <ScanLine size={18} />,
+                    color: "#4096ff",
+                    title: "Scan Booth QR Codes",
+                    desc: `Visit each booth and scan their QR code to earn points.${campaign?.firstScanBonus > 0 ? ` Your very first scan gives you a +${campaign.firstScanBonus} pts welcome bonus!` : ""}`,
+                  },
+                  {
+                    icon: <Star size={18} />,
+                    color: "#7360F2",
+                    title: "Collect Points",
+                    desc: `Each booth awards different points. Reach ${thresholdPoints} pts to unlock your raffle entry.`,
+                  },
+                  {
+                    icon: <QrCode size={18} />,
+                    color: "#00D68F",
+                    title: "Generate Your Raffle QR",
+                    desc: "Once you hit the points goal, tap \"Generate Raffle QR\" to get your unique encrypted raffle code.",
+                  },
+                  {
+                    icon: <CheckCircle size={18} />,
+                    color: "#F5A623",
+                    title: "Present to Event Staff",
+                    desc: "Show your raffle QR to a staff member at the redemption booth. They'll scan and verify it.",
+                  },
+                  {
+                    icon: <Trophy size={18} />,
+                    color: "#E94560",
+                    title: "Spin the Wheel & Win!",
+                    desc: `Spin the prize wheel for a chance to win exciting prizes!${campaign?.maxSpinsPerParticipant > 1 ? ` You get up to ${campaign.maxSpinsPerParticipant} spins.` : ""}`,
+                  },
+                ].map((step, i, arr) => (
+                  <div key={i} className="flex gap-3">
+                    {/* Connector */}
+                    <div className="flex flex-col items-center">
+                      <div
+                        className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+                        style={{ background: `${step.color}20`, color: step.color }}
+                      >
+                        {step.icon}
+                      </div>
+                      {i < arr.length - 1 && (
+                        <div className="w-0.5 flex-1 my-1" style={{ background: "#0F162960" }} />
+                      )}
+                    </div>
+                    {/* Text */}
+                    <div className="pb-5 pt-1 flex-1">
+                      <p className="font-bold text-sm text-white leading-tight">{step.title}</p>
+                      <p className="text-[#8892A4] text-xs mt-1 leading-relaxed">{step.desc}</p>
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  onClick={() => {
+                    localStorage.setItem(GUIDE_SEEN_KEY, "1");
+                    setShowGuide(false);
+                  }}
+                  className="w-full py-3.5 rounded-2xl font-black text-sm text-white mt-2"
+                  style={{ background: "linear-gradient(135deg, #E94560, #F5A623)" }}
+                >
+                  Got it, Let's Play!
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 

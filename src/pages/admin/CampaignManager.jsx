@@ -9,6 +9,7 @@ import {
   Button,
   DatePicker,
   Descriptions,
+  Divider,
   Drawer,
   Empty,
   Form,
@@ -76,7 +77,7 @@ const STATUS_ACCENT = {
   cancelled: "#F5A623",
 };
 
-const fmtDate = (iso) => (iso ? dayjs(iso).format("MMM D, YYYY") : "—");
+const fmtDate = (iso) => (iso ? dayjs(iso).format("MMM DD, YYYY") : "—");
 const boothQrUrl = (eventTag, boothCode, points) =>
   `${window.location.origin}/${eventTag}?i=${boothCode}&p=${points}`;
 
@@ -460,6 +461,34 @@ const CampaignFormModal = ({ open, onClose, initialValues }) => {
             }))}
           />
         </Form.Item>
+
+        <Divider
+          orientation="left"
+          style={{ borderColor: "#16213E", margin: "4px 0 12px" }}
+        >
+          <span className="text-xs font-semibold" style={{ color: "#8892A4" }}>
+            Scan2Win Mechanics
+          </span>
+        </Divider>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+          <Form.Item
+            label="1st Scan Bonus (pts)"
+            name="firstScanBonus"
+            initialValue={0}
+            tooltip="Extra points awarded on the participant's very first booth scan in this campaign"
+          >
+            <InputNumber min={0} className="w-full" placeholder="0 = disabled" />
+          </Form.Item>
+          <Form.Item
+            label="Max Spins Per Participant"
+            name="maxSpinsPerParticipant"
+            initialValue={1}
+            tooltip="How many times one participant can spin the prize wheel"
+          >
+            <InputNumber min={1} className="w-full" />
+          </Form.Item>
+        </div>
       </Form>
     </Modal>
   );
@@ -787,6 +816,132 @@ const PrizeStatsTab = ({ campaignId }) => {
   );
 };
 
+// ─── Mechanics Tab ────────────────────────────────────────────────────────────
+
+const STEPS = [
+  {
+    n: 1,
+    title: "Scan Booth QR",
+    color: "#4096ff",
+    detail: (c) => (
+      <>
+        Each booth awards its configured pts.
+        {c.firstScanBonus > 0 && (
+          <span
+            className="ml-1 font-bold"
+            style={{ color: "#F5A623" }}
+          >
+            +{c.firstScanBonus} pts 1st-scan bonus on first ever booth scan.
+          </span>
+        )}
+      </>
+    ),
+  },
+  {
+    n: 2,
+    title: "Collect Points",
+    color: "#7360F2",
+    detail: (c) => (
+      <>
+        Participant accumulates points across all booths. Reach{" "}
+        <span className="font-black" style={{ color: "#E94560" }}>
+          {c.thresholdPoints} pts
+        </span>{" "}
+        to unlock the raffle.
+      </>
+    ),
+  },
+  {
+    n: 3,
+    title: "Generate Raffle QR",
+    color: "#00D68F",
+    detail: () =>
+      "Once threshold is met, participant generates an encrypted raffle QR from the visitor app.",
+  },
+  {
+    n: 4,
+    title: "Staff Validates QR",
+    color: "#F5A623",
+    detail: () =>
+      "Event staff scans the raffle QR at the redemption booth to create a verified raffle entry.",
+  },
+  {
+    n: 5,
+    title: "Spin the Wheel",
+    color: "#E94560",
+    detail: (c) => (
+      <>
+        Participant spins the prize wheel.{" "}
+        <span className="font-bold" style={{ color: "#fff" }}>
+          Max {c.maxSpinsPerParticipant ?? 1} spin
+          {(c.maxSpinsPerParticipant ?? 1) !== 1 ? "s" : ""} per participant.
+        </span>
+      </>
+    ),
+  },
+];
+
+const MechanicsTab = ({ campaign }) => (
+  <div className="space-y-3">
+    {/* Summary chips */}
+    <div className="flex flex-wrap gap-2 mb-4">
+      {[
+        { label: "Threshold", value: `${campaign.thresholdPoints} pts`, color: "#E94560" },
+        {
+          label: "1st Scan Bonus",
+          value: campaign.firstScanBonus > 0 ? `+${campaign.firstScanBonus} pts` : "Off",
+          color: campaign.firstScanBonus > 0 ? "#F5A623" : "#8892A4",
+        },
+        {
+          label: "Max Spins",
+          value: campaign.maxSpinsPerParticipant ?? 1,
+          color: "#7360F2",
+        },
+      ].map(({ label, value, color }) => (
+        <div
+          key={label}
+          className="flex items-center gap-2 rounded-xl px-3 py-2"
+          style={{ background: "#0F1629", border: `1px solid ${color}30` }}
+        >
+          <span className="text-xs" style={{ color: "#8892A4" }}>{label}</span>
+          <span className="font-black text-sm" style={{ color }}>{value}</span>
+        </div>
+      ))}
+    </div>
+
+    {/* Steps */}
+    {STEPS.map((step, i) => (
+      <div key={step.n} className="flex gap-3">
+        {/* Connector column */}
+        <div className="flex flex-col items-center">
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-black text-sm"
+            style={{ background: `${step.color}20`, color: step.color, border: `2px solid ${step.color}40` }}
+          >
+            {step.n}
+          </div>
+          {i < STEPS.length - 1 && (
+            <div className="w-0.5 flex-1 mt-1" style={{ background: "#16213E" }} />
+          )}
+        </div>
+
+        {/* Content */}
+        <div
+          className="flex-1 rounded-xl px-4 py-3 mb-3"
+          style={{ background: "#16213E", borderLeft: `3px solid ${step.color}` }}
+        >
+          <p className="font-bold text-sm mb-1" style={{ color: "#fff" }}>
+            {step.title}
+          </p>
+          <p className="text-xs leading-relaxed" style={{ color: "#8892A4" }}>
+            {step.detail(campaign)}
+          </p>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
 const CampaignDetailDrawer = ({ campaign, open, onClose }) => {
   if (!campaign) return null;
   const { color, label } = STATUS_META[campaign.status] ?? {
@@ -856,6 +1011,11 @@ const CampaignDetailDrawer = ({ campaign, open, onClose }) => {
             label: "Prize Stats",
             children: <PrizeStatsTab campaignId={campaign.id} />,
           },
+          {
+            key: "mechanics",
+            label: "Mechanics",
+            children: <MechanicsTab campaign={campaign} />,
+          },
         ]}
       />
     </Drawer>
@@ -915,6 +1075,19 @@ const CampaignCard = ({ campaign, onView, onEdit, onDelete, deleting }) => {
             </span>
           </div>
         </div>
+
+        {/* 1st scan bonus badge */}
+        {campaign.firstScanBonus > 0 && (
+          <div
+            className="flex items-center gap-1.5 self-start rounded-full px-2.5 py-1"
+            style={{ background: "#F5A62318", border: "1px solid #F5A62340" }}
+          >
+            <Zap size={10} color="#F5A623" />
+            <span className="text-xs font-bold" style={{ color: "#F5A623" }}>
+              +{campaign.firstScanBonus} pts 1st scan bonus
+            </span>
+          </div>
+        )}
 
         {/* Description */}
         {campaign.description && (
