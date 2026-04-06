@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "campaign-reward-api-v3",
+    "_postman_id": "campaign-reward-api-v4",
     "name": "Campaign Reward API",
-    "description": "Campaign management (CRUD) + client-side booth scanning + raffle QR + spin wheel + claim flow.\n\n**Participant happy path:**\n1. `GET /campaigns/event/:eventTag` — load active campaign + active booth list\n2. Client scans booths locally (no API call per scan) → accumulates points\n3. `POST /campaigns/:campaignId/generate-raffle-qr` — submit scanned booth codes + optional participant info → receive encrypted QR\n4. Client presents QR at raffle station\n5. `POST /campaigns/:campaignId/validate-raffle` — station scans QR → creates participant record + scan logs + raffle entry atomically → returns `raffleEntryId`\n6. Wheel spins **client-side** → client sends outcome to server\n7. `POST /campaigns/:campaignId/spin-wheel` — record prize result\n\n**Note:** `GET /campaigns/:campaignId/prizes` is an **admin/stats** endpoint — it shows claim history, not a prize catalog.\n\n**Seeded campaign ID:** `1`\n**Seeded event tag:** `WORLDBEX2026`\n**Active booth codes:** BOOTH-MAIN-01 (100pts), BOOTH-TECH-01 (75pts), BOOTH-FOOD-01 (50pts), BOOTH-INNO-01 (75pts), BOOTH-SPON-01 (50pts)\n**Threshold:** 300 pts — scanning all 5 active booths gives 350 pts",
+    "description": "**Two surfaces:**\n\n**Admin** (`/api/v1/raffles/admin/...`) — requires `Authorization: Bearer <token>`. Log in first via `POST /auth/login` to get a token.\n\n**Participant** (`/api/v1/raffles/campaigns/...`) — public, no auth required.\n\n---\n\n**Admin happy path:**\n1. `POST /auth/login` → save token\n2. `POST /admin/campaigns` → create campaign\n3. `POST /admin/campaigns/:campaignId/booths` → add booths\n4. `PATCH /admin/campaigns/:campaignId` → set status to active\n\n**Participant happy path:**\n1. `GET /campaigns/event/:eventTag` — load campaign + booth list\n2. Client scans booths locally (no API call per scan)\n3. `POST /campaigns/:campaignId/generate-raffle-qr` — submit booth codes → get encrypted QR\n4. Staff station: `POST /campaigns/:campaignId/validate-raffle` → get `raffleEntryId`\n5. Wheel spins client-side → `POST /campaigns/:campaignId/spin-wheel` → record result\n\n---\n\n**Seeded campaign ID:** `1` | **Event tag:** `WORLDBEX2026` | **Threshold:** 300 pts",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -10,6 +10,12 @@
       "key": "base_url",
       "value": "http://localhost:3000/api/v1/raffles",
       "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string",
+      "description": "Auto-filled from Admin Login"
     },
     {
       "key": "campaignId",
@@ -21,6 +27,12 @@
       "key": "eventTag",
       "value": "WORLDBEX2026",
       "type": "string"
+    },
+    {
+      "key": "boothId",
+      "value": "20260001",
+      "type": "string",
+      "description": "Auto-filled from Create Booth or set manually"
     },
     {
       "key": "participantId",
@@ -43,7 +55,114 @@
   ],
   "item": [
     {
-      "name": "0. Campaign Management",
+      "name": "A. Auth",
+      "description": "Admin authentication. Call Login first to get a JWT token — it is auto-saved to the `admin_token` variable and sent automatically on all Admin requests.",
+      "item": [
+        {
+          "name": "Admin Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Token returned', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.accessToken).to.be.a('string').and.not.empty;",
+                  "  pm.collectionVariables.set('admin_token', json.data.accessToken);",
+                  "  console.log('Token saved. Expires:', json.data.expiresAt);",
+                  "  console.log('Admin:', json.data.admin.username);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"your_password_here\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Rate-limited. Returns a JWT Bearer token valid for 24h. Token is auto-saved to `admin_token`."
+          },
+          "response": [
+            {
+              "name": "200 - Login Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Login successful\",\n  \"data\": {\n    \"admin\": {\n      \"adminId\": \"uuid-here\",\n      \"username\": \"admin\",\n      \"email\": \"admin@example.com\",\n      \"fullName\": \"Admin User\"\n    },\n    \"accessToken\": \"eyJ...\",\n    \"tokenType\": \"Bearer\",\n    \"expiresIn\": \"24h\",\n    \"expiresAt\": \"2026-04-07T08:00:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "401 - Invalid Credentials",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid credentials\"\n}"
+            },
+            {
+              "name": "403 - Account Inactive",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Account is inactive\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Current Admin (me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Admin info returned', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.admin).to.be.an('object');",
+                  "  console.log('Logged in as:', json.data.admin.username);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Verify your token is valid and see the authenticated admin's profile."
+          },
+          "response": [
+            {
+              "name": "200 - Admin Profile",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Admin retrieved\",\n  \"data\": {\n    \"admin\": {\n      \"adminId\": \"uuid-here\",\n      \"username\": \"admin\",\n      \"email\": \"admin@example.com\",\n      \"fullName\": \"Admin User\",\n      \"isActive\": 1,\n      \"lastLoginAt\": \"2026-04-06T08:00:00.000Z\",\n      \"dateCreated\": \"2026-04-01T00:00:00.000Z\"\n    }\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "B. Admin — Campaign Management",
+      "description": "Campaign CRUD. All requests require `Authorization: Bearer {{admin_token}}`.\n\nBase path: `{{base_url}}/admin/campaigns`",
       "item": [
         {
           "name": "List All Campaigns",
@@ -66,11 +185,13 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
             "url": {
-              "raw": "{{base_url}}/campaigns",
+              "raw": "{{base_url}}/admin/campaigns",
               "host": ["{{base_url}}"],
-              "path": ["campaigns"]
+              "path": ["admin", "campaigns"]
             }
           },
           "response": []
@@ -95,11 +216,13 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
             "url": {
-              "raw": "{{base_url}}/campaigns/{{campaignId}}",
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}",
               "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}"]
+              "path": ["admin", "campaigns", "{{campaignId}}"]
             }
           },
           "response": []
@@ -125,16 +248,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"campaignCode\": \"RFFL-2026-TEST\",\n  \"campaignName\": \"Test Raffle Campaign\",\n  \"eventTag\": \"TESTFEST2026\",\n  \"description\": \"A test campaign.\",\n  \"thresholdPoints\": 100,\n  \"startDate\": \"2026-04-01\",\n  \"endDate\": \"2026-04-30\",\n  \"status\": \"draft\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/campaigns",
+              "raw": "{{base_url}}/admin/campaigns",
               "host": ["{{base_url}}"],
-              "path": ["campaigns"]
-            }
+              "path": ["admin", "campaigns"]
+            },
+            "description": "`campaignId` is auto-saved."
           },
           "response": []
         },
@@ -157,15 +284,18 @@
           ],
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"status\": \"active\",\n  \"description\": \"Updated description.\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/campaigns/{{campaignId}}",
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}",
               "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}"]
+              "path": ["admin", "campaigns", "{{campaignId}}"]
             }
           },
           "response": []
@@ -188,11 +318,13 @@
           ],
           "request": {
             "method": "DELETE",
-            "header": [],
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
             "url": {
-              "raw": "{{base_url}}/campaigns/{{campaignId}}",
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}",
               "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}"]
+              "path": ["admin", "campaigns", "{{campaignId}}"]
             },
             "description": "Only campaigns with status=draft can be deleted."
           },
@@ -201,11 +333,322 @@
       ]
     },
     {
-      "name": "1. Get Campaign by Event Tag",
-      "description": "STEP 1 — Client entry point. Returns active campaign details and active booth list. Client uses the booth list to display scannable QR codes. campaignId is auto-saved for subsequent requests.",
+      "name": "C. Admin — Booth Management",
+      "description": "Booth CRUD. All requests require `Authorization: Bearer {{admin_token}}`.\n\nBase path: `{{base_url}}/admin/campaigns/:campaignId/booths`\n\n`boothId` is auto-saved from Create Booth. Default `20260001` matches the seeded first booth.",
       "item": [
         {
-          "name": "Get Campaign by Event Tag",
+          "name": "List All Booths",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Booths array returned', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.booths).to.be.an('array');",
+                  "  console.log('Total booths (incl. inactive):', json.data.total);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/booths",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "campaigns", "{{campaignId}}", "booths"]
+            },
+            "description": "Returns ALL booths (active and inactive). Ordered by sortOrder ASC."
+          },
+          "response": [
+            {
+              "name": "200 - Booth List",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Booths retrieved\",\n  \"data\": {\n    \"total\": 6,\n    \"booths\": [\n      { \"id\": 20260001, \"boothCode\": \"BOOTH-MAIN-01\", \"boothName\": \"Main Stage\",  \"qrValue\": \"BOOTH-MAIN-01\", \"points\": 100, \"maxScanPerUser\": 1, \"sortOrder\": 1, \"isActive\": true },\n      { \"id\": 20260006, \"boothCode\": \"BOOTH-PHOT-01\", \"boothName\": \"Photo Booth\", \"qrValue\": \"BOOTH-PHOT-01\", \"points\": 25,  \"maxScanPerUser\": 1, \"sortOrder\": 6, \"isActive\": false }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Single Booth",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Booth returned', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.booth).to.be.an('object');",
+                  "  console.log('boothCode:', json.data.booth.boothCode);",
+                  "  console.log('points:', json.data.booth.points);",
+                  "  console.log('isActive:', json.data.booth.isActive);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/booths/{{boothId}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "campaigns", "{{campaignId}}", "booths", "{{boothId}}"]
+            }
+          },
+          "response": [
+            {
+              "name": "200 - Booth Found",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Booth retrieved\",\n  \"data\": {\n    \"booth\": {\n      \"id\": 20260001,\n      \"boothCode\": \"BOOTH-MAIN-01\",\n      \"boothName\": \"Main Stage\",\n      \"qrValue\": \"BOOTH-MAIN-01\",\n      \"points\": 100,\n      \"maxScanPerUser\": 1,\n      \"sortOrder\": 1,\n      \"isActive\": true,\n      \"metadata\": null\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Booth",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Booth created', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.collectionVariables.set('boothId', String(json.data.booth.id));",
+                  "  console.log('Created booth ID:', json.data.booth.id);",
+                  "  console.log('boothCode:', json.data.booth.boothCode);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"boothCode\": \"BOOTH-NEW-01\",\n  \"boothName\": \"New Booth\",\n  \"points\": 50,\n  \"maxScanPerUser\": 1,\n  \"sortOrder\": 10,\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/booths",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "campaigns", "{{campaignId}}", "booths"]
+            },
+            "description": "`qrValue` defaults to `boothCode` if omitted. `boothId` is auto-saved."
+          },
+          "response": [
+            {
+              "name": "201 - Booth Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Booth created successfully\",\n  \"data\": {\n    \"booth\": {\n      \"id\": 20260007,\n      \"boothCode\": \"BOOTH-NEW-01\",\n      \"boothName\": \"New Booth\",\n      \"qrValue\": \"BOOTH-NEW-01\",\n      \"points\": 50,\n      \"maxScanPerUser\": 1,\n      \"sortOrder\": 10,\n      \"isActive\": true,\n      \"metadata\": null\n    }\n  }\n}"
+            },
+            {
+              "name": "409 - Duplicate boothCode",
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"boothCode \\\"BOOTH-NEW-01\\\" already exists in this campaign\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Booth",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Booth updated', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  console.log('Updated:', json.data.booth.boothCode, '| points:', json.data.booth.points, '| active:', json.data.booth.isActive);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"boothName\": \"Updated Booth Name\",\n  \"points\": 75,\n  \"isActive\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/booths/{{boothId}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "campaigns", "{{campaignId}}", "booths", "{{boothId}}"]
+            },
+            "description": "Partial update — send only the fields to change. At least one field required."
+          },
+          "response": [
+            {
+              "name": "200 - Booth Updated",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Booth updated successfully\",\n  \"data\": {\n    \"booth\": {\n      \"id\": 20260007,\n      \"boothCode\": \"BOOTH-NEW-01\",\n      \"boothName\": \"Updated Booth Name\",\n      \"qrValue\": \"BOOTH-NEW-01\",\n      \"points\": 75,\n      \"maxScanPerUser\": 1,\n      \"sortOrder\": 10,\n      \"isActive\": false,\n      \"metadata\": null\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Booth",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 409', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 409]);",
+                  "});",
+                  "console.log(pm.response.json().message);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/booths/{{boothId}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "campaigns", "{{campaignId}}", "booths", "{{boothId}}"]
+            },
+            "description": "Blocked if any scan logs reference this booth. Use `PATCH { isActive: false }` instead."
+          },
+          "response": [
+            {
+              "name": "200 - Deleted",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Booth deleted successfully\"\n}"
+            },
+            {
+              "name": "409 - Scan Logs Exist",
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Cannot delete booth \\\"BOOTH-NEW-01\\\" — it has existing scan records. Deactivate it instead (isActive: false).\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "D. Admin — Stats",
+      "description": "Admin read-only views. All requests require `Authorization: Bearer {{admin_token}}`.",
+      "item": [
+        {
+          "name": "Get Campaign Prize Statistics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Prize stats returned', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.summary).to.be.an('array');",
+                  "  pm.expect(json.data.recentClaims).to.be.an('array');",
+                  "  console.log('Prizes awarded:', json.data.summary.length);",
+                  "  console.log('Recent claims:', json.data.recentClaims.length);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/prizes",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "campaigns", "{{campaignId}}", "prizes"]
+            },
+            "description": "Returns claim history grouped by prize name + 50 most recent claims. Not a prize catalog."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Participant Progress",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Progress data returned', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.participant).to.be.an('object');",
+                  "  pm.expect(json.data.points).to.be.an('object');",
+                  "  pm.expect(json.data.scans).to.be.an('array');",
+                  "  console.log('Recomputed points:', json.data.points.recomputed);",
+                  "  console.log('Scan count:', json.data.scans.length);",
+                  "  console.log('Claims:', json.data.claims.length);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/participant/{{participantId}}/progress",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "campaigns", "{{campaignId}}", "participant", "{{participantId}}", "progress"]
+            },
+            "description": "Full participant view: points (recomputed from scan logs), scans, raffle QR status, claim history. `participantId` is auto-filled from Validate Raffle."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "1. Get Campaign by Event Tag",
+      "description": "STEP 1 — Public. Client entry point. Returns active campaign details and active booth list. `campaignId` is auto-saved for subsequent requests.",
+      "item": [
+        {
+          "name": "Get Campaign by Event Tag ✓",
           "event": [
             {
               "listen": "test",
@@ -265,7 +708,7 @@
     },
     {
       "name": "2. Generate Raffle QR",
-      "description": "STEP 2 — Client submits the booth codes scanned locally + optional participant info. Server validates booth codes, computes total points, and returns an encrypted QR. No participant record is created yet.\n\n`participantInfo.participantCode` is a client-generated identifier (e.g. device ID or UUID) stored as the participant's unique code. All participantInfo fields are optional.",
+      "description": "STEP 3 — Public. Client submits the booth codes scanned locally + optional participant info. Server validates codes, creates participant + scan logs + raffle QR atomically, and returns an encrypted QR.\n\n`encryptedQr` is auto-saved for the next step.",
       "item": [
         {
           "name": "Generate Raffle QR — All 5 Booths (350pts) ✓",
@@ -281,8 +724,9 @@
                   "  pm.expect(json.data.encryptedQr).to.be.a('string').and.not.empty;",
                   "  pm.collectionVariables.set('encryptedQr', json.data.encryptedQr);",
                   "  console.log('raffleQrId:', json.data.raffleQrId);",
+                  "  console.log('participantId:', json.data.participantId);",
+                  "  console.log('participantCode:', json.data.participantCode);",
                   "  console.log('totalPoints:', json.data.totalPoints);",
-                  "  console.log('boothCount:', json.data.boothCount);",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -301,7 +745,7 @@
               "host": ["{{base_url}}"],
               "path": ["campaigns", "{{campaignId}}", "generate-raffle-qr"]
             },
-            "description": "All 5 active booths = 350pts. Threshold is 300. encryptedQr is auto-saved for the next step."
+            "description": "All 5 active booths = 350pts ≥ threshold 300. `encryptedQr` is auto-saved."
           },
           "response": [
             {
@@ -314,7 +758,7 @@
           ]
         },
         {
-          "name": "Generate Raffle QR — No participantInfo",
+          "name": "Generate Raffle QR — No participantInfo ✓",
           "event": [
             {
               "listen": "test",
@@ -343,12 +787,12 @@
               "host": ["{{base_url}}"],
               "path": ["campaigns", "{{campaignId}}", "generate-raffle-qr"]
             },
-            "description": "participantInfo is fully optional. QR is still generated."
+            "description": "participantInfo is fully optional. A generated code (PART-N) is assigned."
           },
           "response": []
         },
         {
-          "name": "Generate Raffle QR — Below Threshold (125pts) ✗",
+          "name": "Generate Raffle QR — Below Threshold ✗",
           "event": [
             {
               "listen": "test",
@@ -415,17 +859,16 @@
           "response": []
         },
         {
-          "name": "Generate Raffle QR — Inactive Booth ✗",
+          "name": "Generate Raffle QR — Duplicate Participant ✗",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
-                  "pm.test('Inactive booth error', () => {",
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Duplicate error', () => {",
                   "  const json = pm.response.json();",
                   "  pm.expect(json.success).to.be.false;",
-                  "  pm.expect(json.message).to.include('Inactive booth');",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -437,14 +880,14 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"boothCodes\": [\n    \"BOOTH-MAIN-01\",\n    \"BOOTH-TECH-01\",\n    \"BOOTH-FOOD-01\",\n    \"BOOTH-INNO-01\",\n    \"BOOTH-SPON-01\",\n    \"BOOTH-PHOT-01\"\n  ],\n  \"participantInfo\": {\n    \"participantCode\": \"CLIENT-DEVICE-TEST02\"\n  }\n}"
+              "raw": "{\n  \"boothCodes\": [\n    \"BOOTH-MAIN-01\",\n    \"BOOTH-TECH-01\",\n    \"BOOTH-FOOD-01\",\n    \"BOOTH-INNO-01\",\n    \"BOOTH-SPON-01\"\n  ],\n  \"participantInfo\": {\n    \"participantCode\": \"CLIENT-DEVICE-ABC123\"\n  }\n}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/generate-raffle-qr",
               "host": ["{{base_url}}"],
               "path": ["campaigns", "{{campaignId}}", "generate-raffle-qr"]
             },
-            "description": "BOOTH-PHOT-01 is inactive (isActive=0). Should fail."
+            "description": "Re-submit the same participantCode — should return 409."
           },
           "response": []
         }
@@ -452,7 +895,7 @@
     },
     {
       "name": "3. Validate Raffle",
-      "description": "STEP 3 — Raffle station scans the client's QR. Decrypts and validates it, then creates the raffle entry. Participant record and scan logs were already created at generate-raffle-qr time. Returns raffleEntryId used for the spin.",
+      "description": "STEP 5 — Public (raffle station). Decrypts and validates the QR, creates the raffle entry, marks QR as used. Returns `raffleEntryId` for the spin.\n\n`raffleEntryId` and `participantId` are auto-saved.",
       "item": [
         {
           "name": "Validate Raffle QR ✓",
@@ -462,16 +905,16 @@
               "script": {
                 "exec": [
                   "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Participant + entry created', () => {",
+                  "pm.test('Raffle entry created', () => {",
                   "  const json = pm.response.json();",
                   "  pm.expect(json.success).to.be.true;",
                   "  pm.expect(json.data.raffleEntryId).to.be.a('number');",
                   "  pm.expect(json.data.participantId).to.be.a('number');",
                   "  pm.collectionVariables.set('raffleEntryId', String(json.data.raffleEntryId));",
                   "  pm.collectionVariables.set('participantId', String(json.data.participantId));",
+                  "  console.log('raffleEntryId:', json.data.raffleEntryId);",
                   "  console.log('participantId:', json.data.participantId);",
                   "  console.log('participantCode:', json.data.participantCode);",
-                  "  console.log('raffleEntryId:', json.data.raffleEntryId);",
                   "  console.log('totalPoints:', json.data.totalPoints);",
                   "});"
                 ],
@@ -491,7 +934,7 @@
               "host": ["{{base_url}}"],
               "path": ["campaigns", "{{campaignId}}", "validate-raffle"]
             },
-            "description": "Uses encryptedQr saved from Step 2. Creates participant + scan logs + raffle entry in one transaction. raffleEntryId and participantId are auto-saved."
+            "description": "Uses `encryptedQr` saved from Step 2. `raffleEntryId` and `participantId` are auto-saved."
           },
           "response": [
             {
@@ -506,14 +949,14 @@
               "status": "Conflict",
               "code": 409,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": false,\n  \"message\": \"Raffle QR has already been used\"\n}"
+              "body": "{\n  \"success\": false,\n  \"message\": \"Raffle entry already exists for this QR\"\n}"
             },
             {
-              "name": "409 - Duplicate Participant",
-              "status": "Conflict",
-              "code": 409,
+              "name": "400 - Tampered QR",
+              "status": "Bad Request",
+              "code": 400,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": false,\n  \"message\": \"This participant has already joined this campaign\"\n}"
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid or tampered QR code\"\n}"
             }
           ]
         },
@@ -586,7 +1029,7 @@
     },
     {
       "name": "4. Spin Wheel",
-      "description": "STEP 4 — The wheel spins client-side. The client sends the outcome to the server. Server records the result, creates a claim on win, and marks the raffle entry accordingly.\n\nSend `prizeName: 'No Prize'` for a losing spin.",
+      "description": "STEP 7 — Public (raffle station). The wheel spins client-side. Send the outcome here. Uses `raffleEntryId` auto-saved from Validate Raffle.\n\nSend `prizeName: 'No Prize'` for a losing spin.",
       "item": [
         {
           "name": "Spin Wheel — Win Prize ✓",
@@ -621,7 +1064,7 @@
               "host": ["{{base_url}}"],
               "path": ["campaigns", "{{campaignId}}", "spin-wheel"]
             },
-            "description": "Wheel landed on a prize. Server creates a campaign_claims record and marks entry as 'won'."
+            "description": "Server creates a campaign_claims record and marks the entry as 'won'."
           },
           "response": [
             {
@@ -664,7 +1107,7 @@
               "host": ["{{base_url}}"],
               "path": ["campaigns", "{{campaignId}}", "spin-wheel"]
             },
-            "description": "Wheel landed on 'No Prize'. No claim record is created. Entry marked as 'lost'."
+            "description": "No claim record is created. Entry marked as 'lost'."
           },
           "response": [
             {
@@ -713,113 +1156,8 @@
       ]
     },
     {
-      "name": "5. Admin / Stats",
-      "description": "Admin and lookup endpoints. Not part of the participant journey.",
-      "item": [
-        {
-          "name": "Get Participant Progress",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Progress data returned', () => {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json.success).to.be.true;",
-                  "  pm.expect(json.data.participant).to.be.an('object');",
-                  "  pm.expect(json.data.points).to.be.an('object');",
-                  "  pm.expect(json.data.scans).to.be.an('array');",
-                  "  console.log('Recomputed points:', json.data.points.recomputed);",
-                  "  console.log('Scan count:', json.data.scans.length);",
-                  "  console.log('Claims:', json.data.claims.length);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/campaigns/{{campaignId}}/participant/{{participantId}}/progress",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "participant", "{{participantId}}", "progress"]
-            },
-            "description": "Full participant view: points (recomputed from scan logs), scans, raffle QR status, claim history. participantId is auto-filled from Validate Raffle."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Campaign Booths (all incl. inactive)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Booths returned', () => {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json.success).to.be.true;",
-                  "  pm.expect(json.data.booths).to.be.an('array');",
-                  "  console.log('Total booths (all incl. inactive):', json.data.total);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/campaigns/{{campaignId}}/booths",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "booths"]
-            },
-            "description": "Returns ALL booths including inactive ones. For active-only, use GET /campaigns/event/:eventTag."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Campaign Prize Statistics",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Prize stats returned', () => {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json.success).to.be.true;",
-                  "  pm.expect(json.data.summary).to.be.an('array');",
-                  "  pm.expect(json.data.recentClaims).to.be.an('array');",
-                  "  console.log('Prizes awarded:', json.data.summary.length);",
-                  "  console.log('Recent claims:', json.data.recentClaims.length);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/campaigns/{{campaignId}}/prizes",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "prizes"]
-            },
-            "description": "Admin stats only — returns claim history grouped by prize name + 50 most recent claims. This is NOT a prize catalog for the wheel."
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "6. Validation Errors",
-      "description": "Key Zod validation failure cases.",
+      "name": "5. Validation Errors",
+      "description": "Key Zod validation failure cases (no auth required — all public endpoints).",
       "item": [
         {
           "name": "Generate QR — Missing boothCodes ✗",
@@ -934,6 +1272,32 @@
               "host": ["{{base_url}}"],
               "path": ["campaigns", "{{campaignId}}", "spin-wheel"]
             }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin — No Token ✗",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+                  "console.log(pm.response.json().message);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "campaigns"]
+            },
+            "description": "Hit an admin endpoint without a token — should return 401."
           },
           "response": []
         },

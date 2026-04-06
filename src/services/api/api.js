@@ -236,6 +236,89 @@ export const spinWheelApi = async ({
 };
 
 // ============================================
+// CAMPAIGN MANAGEMENT — Admin CMS
+// Base: /api/v1/raffles/campaigns
+//
+// GET    /campaigns              → list all
+// GET    /campaigns/:id          → get by id
+// POST   /campaigns              → create
+// PATCH  /campaigns/:id          → update
+// DELETE /campaigns/:id          → delete (draft only)
+// GET    /campaigns/:id/booths   → all booths incl. inactive
+// GET    /campaigns/:id/prizes   → prize claim stats
+// ============================================
+
+export const listCampaignsApi = async () => {
+  try {
+    const response = await axios.get(`${RAFFLE_BASE}/campaigns`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const getCampaignByIdApi = async (campaignId) => {
+  try {
+    const response = await axios.get(`${RAFFLE_BASE}/campaigns/${campaignId}`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const createCampaignApi = async (data) => {
+  try {
+    const response = await axios.post(`${RAFFLE_BASE}/campaigns`, data);
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const updateCampaignApi = async ({ id, ...data }) => {
+  try {
+    const response = await axios.patch(`${RAFFLE_BASE}/campaigns/${id}`, data);
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const deleteCampaignApi = async (id) => {
+  try {
+    const response = await axios.delete(`${RAFFLE_BASE}/campaigns/${id}`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const getCampaignBoothsApi = async (campaignId) => {
+  try {
+    const response = await axios.get(`${RAFFLE_BASE}/campaigns/${campaignId}/booths`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const getCampaignPrizesApi = async (campaignId) => {
+  try {
+    const response = await axios.get(`${RAFFLE_BASE}/campaigns/${campaignId}/prizes`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+// ============================================
 // FILE UPLOAD — CMS prize images
 // POST /api/upload → multipart form data
 // ============================================

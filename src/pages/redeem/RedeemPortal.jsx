@@ -5,8 +5,8 @@
 // Route: /redeem
 // Actor: Event staff at the raffle station
 //
-// Campaign Raffle API flow:
-//   Setup   → Enter eventTag to load campaign (persisted in localStorage)
+// Event Raffle API flow:
+//   Setup   → Enter eventTag to load event (persisted in localStorage)
 //   Step 5  POST /campaigns/:campaignId/validate-raffle  → validate visitor QR
 //   Step 6  Wheel spin (client-side)
 //   Step 7  POST /campaigns/:campaignId/spin-wheel       → record outcome
@@ -14,7 +14,14 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ScanLine, X, CheckCircle, RotateCcw, Loader2, Settings } from "lucide-react";
+import {
+  ScanLine,
+  X,
+  CheckCircle,
+  RotateCcw,
+  Loader2,
+  Settings,
+} from "lucide-react";
 import {
   useGetCampaignByEventTag,
   useGetPrizes,
@@ -53,7 +60,7 @@ const pickWinner = (prizes) => {
   return pool[Math.floor(Math.random() * pool.length)];
 };
 
-// ─── Campaign Setup Screen ────────────────────────────────────────────────────
+// ─── Event Setup Screen ────────────────────────────────────────────────────
 
 const SetupScreen = ({ onSetup }) => {
   const [eventTag, setEventTag] = useState("");
@@ -69,7 +76,12 @@ const SetupScreen = ({ onSetup }) => {
   useEffect(() => {
     if (campaignData?.data?.campaign && submittedTag) {
       const campaign = campaignData.data.campaign;
-      const station = { eventTag: submittedTag, campaignId: campaign.id, campaignName: campaign.campaignName, staffName };
+      const station = {
+        eventTag: submittedTag,
+        campaignId: campaign.id,
+        campaignName: campaign.campaignName,
+        staffName,
+      };
       saveStation(station);
       onSetup(station);
     }
@@ -83,9 +95,11 @@ const SetupScreen = ({ onSetup }) => {
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-md mx-auto px-6 py-12">
       <Settings size={48} className="text-[#E94560]" />
-      <h2 className="text-2xl font-black text-white text-center">Station Setup</h2>
+      <h2 className="text-2xl font-black text-white text-center">
+        Station Setup
+      </h2>
       <p className="text-[#8892A4] text-sm text-center">
-        Enter the event tag to load the active campaign for this raffle station.
+        Enter the event tag to load the active event for this raffle station.
       </p>
 
       <div className="w-full space-y-3">
@@ -108,7 +122,8 @@ const SetupScreen = ({ onSetup }) => {
 
       {isError && (
         <p className="text-[#E94560] text-sm text-center">
-          Campaign not found for <strong>{submittedTag}</strong>. Check the event tag and try again.
+          Event not found for <strong>{submittedTag}</strong>. Check the event
+          tag and try again.
         </p>
       )}
 
@@ -116,7 +131,7 @@ const SetupScreen = ({ onSetup }) => {
         onClick={handleSubmit}
         disabled={!eventTag.trim() || isLoading}
         className="w-full bg-[#E94560] text-white rounded-xl py-3 font-bold flex items-center justify-center gap-2 disabled:opacity-40"
-        aria-label="Load campaign"
+        aria-label="Load event"
       >
         {isLoading ? (
           <>
@@ -124,7 +139,7 @@ const SetupScreen = ({ onSetup }) => {
             Loading…
           </>
         ) : (
-          "Load Campaign"
+          "Load Event"
         )}
       </button>
     </div>
@@ -183,7 +198,7 @@ const ScanStep = ({ station, onNext }) => {
         // error displayed via `error` state
       }
     },
-    [validateRaffle, resetMutation, station.campaignId, onNext]
+    [validateRaffle, resetMutation, station.campaignId, onNext],
   );
 
   const handleInputKeyDown = (e) => {
@@ -329,8 +344,11 @@ const SpinStep = ({ participant, station, prizes, onNext }) => {
   const [winner, setWinner] = useState(null);
   const [rotation, setRotation] = useState(0);
 
-  const { mutateAsync: recordSpin, isPending: recording, error: spinError } =
-    useSpinWheel();
+  const {
+    mutateAsync: recordSpin,
+    isPending: recording,
+    error: spinError,
+  } = useSpinWheel();
 
   const drawWheel = useCallback(
     (currentRotation = 0) => {
@@ -350,8 +368,12 @@ const SpinStep = ({ participant, station, prizes, onNext }) => {
         const endAngle = startAngle + sliceAngle;
         const isPool = prize.isPool === 1;
         const fill = isPool
-          ? i % 2 === 0 ? "#E94560" : "#F5A623"
-          : i % 2 === 0 ? "#16213E" : "#1A1A2E";
+          ? i % 2 === 0
+            ? "#E94560"
+            : "#F5A623"
+          : i % 2 === 0
+            ? "#16213E"
+            : "#1A1A2E";
 
         ctx.beginPath();
         ctx.moveTo(cx, cy);
@@ -372,7 +394,7 @@ const SpinStep = ({ participant, station, prizes, onNext }) => {
         ctx.fillText(
           prize.name.length > 14 ? prize.name.slice(0, 13) + "…" : prize.name,
           radius - 10,
-          5
+          5,
         );
         ctx.restore();
       });
@@ -393,7 +415,7 @@ const SpinStep = ({ participant, station, prizes, onNext }) => {
       ctx.fillStyle = "#E94560";
       ctx.fill();
     },
-    [prizes]
+    [prizes],
   );
 
   useEffect(() => {
@@ -447,7 +469,12 @@ const SpinStep = ({ participant, station, prizes, onNext }) => {
         wheelResult: winner.name,
         claimedBy: station.staffName || undefined,
       });
-      onNext({ outcome: res.data.outcome, prize: res.data.prize, prizeName, winner });
+      onNext({
+        outcome: res.data.outcome,
+        prize: res.data.prize,
+        prizeName,
+        winner,
+      });
     } catch {
       // error shown via spinError
     }
@@ -462,11 +489,15 @@ const SpinStep = ({ participant, station, prizes, onNext }) => {
         <div className="w-full bg-[#16213E] rounded-2xl px-4 py-3 text-center">
           <p className="text-[#8892A4] text-xs">Participant</p>
           <p className="text-white font-bold">{participant.fullName}</p>
-          <p className="text-[#F5A623] text-xs mt-0.5">{participant.totalPoints} pts</p>
+          <p className="text-[#F5A623] text-xs mt-0.5">
+            {participant.totalPoints} pts
+          </p>
         </div>
       )}
 
-      <h2 className="text-2xl font-black text-white text-center">Spin to Win!</h2>
+      <h2 className="text-2xl font-black text-white text-center">
+        Spin to Win!
+      </h2>
 
       <canvas
         ref={canvasRef}
@@ -580,8 +611,8 @@ const StepIndicator = ({ currentStep }) => {
               i < currentIndex
                 ? "bg-[#00D68F] text-white"
                 : i === currentIndex
-                ? "bg-[#E94560] text-white"
-                : "bg-[#16213E] text-[#8892A4]"
+                  ? "bg-[#E94560] text-white"
+                  : "bg-[#16213E] text-[#8892A4]"
             }`}
           >
             {i < currentIndex ? <CheckCircle size={14} /> : i + 1}
@@ -630,7 +661,9 @@ const RedeemPortal = () => {
     return (
       <div className="min-h-screen bg-[#1A1A2E] text-white">
         <div className="bg-[#16213E] border-b border-[#E94560]/10 px-6 py-4">
-          <h1 className="font-black text-lg tracking-wide">SCAN2WIN — Raffle Station</h1>
+          <h1 className="font-black text-lg tracking-wide">
+            SCAN2WIN — Raffle Station
+          </h1>
         </div>
         <SetupScreen onSetup={setStation} />
       </div>
@@ -642,7 +675,9 @@ const RedeemPortal = () => {
       {/* Header */}
       <div className="bg-[#16213E] border-b border-[#E94560]/10 px-6 py-4 flex items-center justify-between">
         <div>
-          <h1 className="font-black text-lg tracking-wide">SCAN2WIN — Raffle</h1>
+          <h1 className="font-black text-lg tracking-wide">
+            SCAN2WIN — Raffle
+          </h1>
           <p className="text-[#8892A4] text-xs mt-0.5">
             {station.campaignName} · {station.eventTag}
           </p>
@@ -660,7 +695,7 @@ const RedeemPortal = () => {
           <button
             onClick={handleChangeStation}
             className="text-[#8892A4] text-xs flex items-center gap-1"
-            aria-label="Change campaign"
+            aria-label="Change event"
           >
             <Settings size={14} />
           </button>
@@ -678,9 +713,7 @@ const RedeemPortal = () => {
           exit={{ x: -40, opacity: 0 }}
           transition={{ duration: 0.25 }}
         >
-          {step === "scan" && (
-            <ScanStep station={station} onNext={advance} />
-          )}
+          {step === "scan" && <ScanStep station={station} onNext={advance} />}
 
           {step === "spin" && prizes.length > 0 && (
             <SpinStep

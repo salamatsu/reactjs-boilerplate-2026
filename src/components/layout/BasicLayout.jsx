@@ -27,7 +27,9 @@ const { Header, Content } = Layout;
 // Wraps all admin pages with header + sidebar.
 // ============================================
 
-const BasicLayout = ({ navigations = [], store }) => {
+const noopStore = () => ({ userData: null, reset: () => {} });
+
+const BasicLayout = ({ navigations = [], store = noopStore }) => {
   const { userData, reset } = store();
   const [collapsed, setCollapsed] = useState(false);
   const [userOpen, setUserOpen] = useState(false);

@@ -5,15 +5,15 @@
 // Route: /:eventTag  (e.g. /mias)
 // Target: Mobile & tablet only
 //
-// Campaign Raffle API flow:
-//   Step 1  Load campaign + booth list (GET /campaigns/event/:eventTag)
+// Event Raffle API flow:
+//   Step 1  Load event + booth list (GET /campaigns/event/:eventTag)
 //   Step 2  Client scans booth QRs locally (no API call per scan)
 //   Step 3  Generate raffle QR when threshold reached (POST /campaigns/:id/generate-raffle-qr)
 //   Step 4  Visitor presents QR at raffle station
 // ============================================
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
 import confetti from "canvas-confetti";
@@ -63,7 +63,8 @@ const DesktopGuard = () => (
       <Zap className="mx-auto mb-4 text-[#E94560]" size={56} />
       <h1 className="text-2xl font-bold mb-2">Mobile Only</h1>
       <p className="text-[#8892A4]">
-        Please open this page on your mobile device to participate in Scan to Win.
+        Please open this page on your mobile device to participate in Scan to
+        Win.
       </p>
     </div>
   </div>
@@ -112,7 +113,8 @@ const GoalProgress = ({ points, threshold }) => {
         </div>
       </div>
       <p className="mt-2 text-sm text-[#8892A4]">
-        <span className="text-[#F5A623] font-semibold">{points}</span> / {threshold} pts
+        <span className="text-[#F5A623] font-semibold">{points}</span> /{" "}
+        {threshold} pts
       </p>
       <div className="w-full mt-3 bg-[#16213E] rounded-full h-2">
         <motion.div
@@ -170,7 +172,7 @@ const BoothList = ({ booths, scannedCodes }) => (
   </div>
 );
 
-/** Event/campaign details card */
+/** Event details card */
 const CampaignHeader = ({ campaign }) => (
   <div className="rounded-2xl bg-gradient-to-br from-[#16213E] to-[#1A1A2E] border border-[#E94560]/20 p-5 mb-4">
     <h1 className="text-lg font-bold text-white leading-tight">
@@ -205,6 +207,7 @@ const CameraScanner = ({ onScan, onClose }) => {
   const rafRef = useRef(null);
   const [error, setError] = useState(null);
   const [scanning, setScanning] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   const stopCamera = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -217,10 +220,27 @@ const CameraScanner = ({ onScan, onClose }) => {
     let mounted = true;
 
     const startCamera = async () => {
+      // getUserMedia requires HTTPS or localhost
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setError(
+          "Camera not available. Make sure this page is opened over HTTPS or on localhost.",
+        );
+        return;
+      }
+
+      const tryGetStream = async () => {
+        // First try rear camera; fall back to any camera if constraint fails
+        try {
+          return await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: "environment" } },
+          });
+        } catch {
+          return await navigator.mediaDevices.getUserMedia({ video: true });
+        }
+      };
+
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-        });
+        const stream = await tryGetStream();
         if (!mounted) {
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -231,10 +251,19 @@ const CameraScanner = ({ onScan, onClose }) => {
           videoRef.current.play();
           setScanning(true);
         }
-      } catch {
-        setError(
-          "Camera access denied. Please allow camera permissions and try again."
-        );
+      } catch (err) {
+        const name = err?.name ?? "";
+        if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+          setError("Camera permission denied. Please allow camera access in your browser settings and try again.");
+        } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+          setError("No camera found on this device.");
+        } else if (name === "NotReadableError" || name === "TrackStartError") {
+          setError("Camera is already in use by another app. Close it and try again.");
+        } else if (name === "OverconstrainedError") {
+          setError("No suitable camera found. Please try on a device with a camera.");
+        } else {
+          setError(`Camera error: ${err?.message || "Unknown error"}. Try reloading the page.`);
+        }
       }
     };
 
@@ -243,7 +272,7 @@ const CameraScanner = ({ onScan, onClose }) => {
       mounted = false;
       stopCamera();
     };
-  }, [stopCamera]);
+  }, [stopCamera, retryKey]);
 
   useEffect(() => {
     if (!scanning) return;
@@ -298,8 +327,18 @@ const CameraScanner = ({ onScan, onClose }) => {
       </div>
 
       {error ? (
-        <div className="flex-1 flex items-center justify-center px-8 text-center">
-          <p className="text-[#E94560] text-sm">{error}</p>
+        <div className="flex-1 flex flex-col items-center justify-center px-8 text-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-[#E94560]/10 flex items-center justify-center">
+            <Camera size={26} className="text-[#E94560]" />
+          </div>
+          <p className="text-white text-sm font-semibold">Camera Unavailable</p>
+          <p className="text-[#8892A4] text-xs leading-relaxed max-w-xs">{error}</p>
+          <button
+            onClick={() => { setError(null); setScanning(false); setRetryKey((k) => k + 1); }}
+            className="mt-1 px-5 py-2.5 bg-[#E94560] text-white text-sm font-bold rounded-xl active:scale-95 transition-transform"
+          >
+            Try Again
+          </button>
         </div>
       ) : (
         <div className="flex-1 relative overflow-hidden">
@@ -454,7 +493,10 @@ const SharePanel = ({ eventTag }) => {
               aria-label={`Share on ${s.label}`}
             >
               <span className="shrink-0">{s.icon}</span>
-              <span className="text-sm font-semibold leading-tight" style={{ color: "white" }}>
+              <span
+                className="text-sm font-semibold leading-tight"
+                style={{ color: "white" }}
+              >
                 {s.label}
               </span>
             </a>
@@ -513,7 +555,11 @@ const UpcomingEvents = () => (
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 w-full rounded-xl py-3 text-sm font-bold active:scale-95 transition-transform"
-                style={{ backgroundColor: accent, color: "white", textDecoration: "none" }}
+                style={{
+                  backgroundColor: accent,
+                  color: "white",
+                  textDecoration: "none",
+                }}
                 aria-label={`Register for ${ev.name}`}
               >
                 Register Now
@@ -587,9 +633,19 @@ const SuccessModal = ({ points, totalPoints, threshold, onClose }) => (
  *   "form"  → collect optional participant info + call generate-raffle-qr API
  *   "qr"    → display server-returned encryptedQr
  */
-const GoalModal = ({ entry, campaignId, boothCodes, onClose, onQrGenerated }) => {
+const GoalModal = ({
+  entry,
+  campaignId,
+  boothCodes,
+  onClose,
+  onQrGenerated,
+}) => {
   const [phase, setPhase] = useState(entry.encryptedQr ? "qr" : "form");
-  const [form, setForm] = useState({ fullName: "", mobileNumber: "", email: "" });
+  const [form, setForm] = useState({
+    fullName: "",
+    mobileNumber: "",
+    email: "",
+  });
   const [encryptedQr, setEncryptedQr] = useState(entry.encryptedQr ?? null);
   const { mutateAsync: generateQr, isPending, error } = useGenerateRaffleQr();
 
@@ -608,7 +664,9 @@ const GoalModal = ({ entry, campaignId, boothCodes, onClose, onQrGenerated }) =>
     const participantInfo = {
       participantCode: entry.participantCode,
       ...(form.fullName.trim() && { fullName: form.fullName.trim() }),
-      ...(form.mobileNumber.trim() && { mobileNumber: form.mobileNumber.trim() }),
+      ...(form.mobileNumber.trim() && {
+        mobileNumber: form.mobileNumber.trim(),
+      }),
       ...(form.email.trim() && { email: form.email.trim() }),
     };
 
@@ -650,20 +708,26 @@ const GoalModal = ({ entry, campaignId, boothCodes, onClose, onQrGenerated }) =>
           <div className="space-y-3 mb-4">
             <input
               value={form.fullName}
-              onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, fullName: e.target.value }))
+              }
               placeholder="Full name (optional)"
               className="w-full bg-[#1A1A2E] border border-[#E94560]/20 rounded-xl px-4 py-3 text-white text-sm placeholder-[#8892A4] outline-none focus:border-[#E94560]"
             />
             <input
               value={form.mobileNumber}
-              onChange={(e) => setForm((f) => ({ ...f, mobileNumber: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, mobileNumber: e.target.value }))
+              }
               placeholder="Mobile number (optional)"
               type="tel"
               className="w-full bg-[#1A1A2E] border border-[#E94560]/20 rounded-xl px-4 py-3 text-white text-sm placeholder-[#8892A4] outline-none focus:border-[#E94560]"
             />
             <input
               value={form.email}
-              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, email: e.target.value }))
+              }
               placeholder="Email address (optional)"
               type="email"
               className="w-full bg-[#1A1A2E] border border-[#E94560]/20 rounded-xl px-4 py-3 text-white text-sm placeholder-[#8892A4] outline-none focus:border-[#E94560]"
@@ -751,8 +815,9 @@ const GoalModal = ({ entry, campaignId, boothCodes, onClose, onQrGenerated }) =>
 
 const VisitorApp = () => {
   const { eventTag } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // ── Campaign data ──
+  // ── Event data ──
   const {
     data: campaignData,
     isLoading: campaignLoading,
@@ -768,12 +833,13 @@ const VisitorApp = () => {
   const [modal, setModal] = useState(null); // { type: "error"|"success"|"goal", ... }
   const [showScanner, setShowScanner] = useState(false);
   const [activeTab, setActiveTab] = useState("home");
+  const urlScanProcessed = useRef(false);
 
   // ── Derived ──
   const scannedCodes = entry?.scannedCodes ?? [];
   const currentPoints = entry?.currentPoints ?? 0;
 
-  // ── Init / sync entry with campaign on load ──
+  // ── Init / sync entry with event on load ──
   useEffect(() => {
     if (!campaign) return;
 
@@ -802,18 +868,30 @@ const VisitorApp = () => {
       const booth = currentBooths.find((b) => b.boothCode === boothCode);
 
       if (!booth) {
-        setModal({ type: "error", message: "Invalid QR code. This booth is not part of the event." });
+        setModal({
+          type: "error",
+          message: "Invalid QR code. This booth is not part of the event.",
+        });
         return;
       }
 
       if (currentEntry.scannedCodes.includes(boothCode)) {
-        setModal({ type: "error", message: "You have already scanned this booth." });
+        setModal({
+          type: "error",
+          message: "You have already scanned this booth.",
+        });
         return;
       }
 
-      if (booth.maxScanPerUser > 0 &&
-          currentEntry.scannedCodes.filter((c) => c === boothCode).length >= booth.maxScanPerUser) {
-        setModal({ type: "error", message: "Maximum scans reached for this booth." });
+      if (
+        booth.maxScanPerUser > 0 &&
+        currentEntry.scannedCodes.filter((c) => c === boothCode).length >=
+          booth.maxScanPerUser
+      ) {
+        setModal({
+          type: "error",
+          message: "Maximum scans reached for this booth.",
+        });
         return;
       }
 
@@ -830,11 +908,32 @@ const VisitorApp = () => {
       if (updatedPoints >= currentThreshold) {
         setModal({ type: "goal" });
       } else {
-        setModal({ type: "success", points: booth.points, totalPoints: updatedPoints });
+        setModal({
+          type: "success",
+          points: booth.points,
+          totalPoints: updatedPoints,
+        });
       }
     },
-    []
+    [],
   );
+
+  // ── URL param scan (e.g. /mias?i=BOOTH-HONDA-01&p=100) ──
+  useEffect(() => {
+    const boothCode = searchParams.get("i");
+    if (!boothCode || !entry || !booths.length || urlScanProcessed.current)
+      return;
+    urlScanProcessed.current = true;
+    setSearchParams({}, { replace: true });
+    processScan(boothCode, entry, booths, thresholdPoints);
+  }, [
+    searchParams,
+    entry,
+    booths,
+    thresholdPoints,
+    processScan,
+    setSearchParams,
+  ]);
 
   // ── Camera scan handler ──
   const handleCameraScan = useCallback(
@@ -842,11 +941,19 @@ const VisitorApp = () => {
       setShowScanner(false);
       if (!entry || !booths.length) return;
 
-      // The booth QR contains the raw boothCode string
-      const boothCode = decoded.trim();
+      // Parse URL format: {baseUrl}/{eventTag}?i={boothCode}&p={points}
+      let boothCode = decoded.trim();
+      try {
+        const parsed = new URL(decoded.trim());
+        const iParam = parsed.searchParams.get("i");
+        if (iParam) boothCode = iParam;
+      } catch {
+        // not a URL — use raw value as boothCode
+      }
+
       processScan(boothCode, entry, booths, thresholdPoints);
     },
-    [entry, booths, thresholdPoints, processScan]
+    [entry, booths, thresholdPoints, processScan],
   );
 
   // ── QR generated callback ──
@@ -856,7 +963,7 @@ const VisitorApp = () => {
       saveEntry(updatedEntry);
       setEntry(updatedEntry);
     },
-    [entry]
+    [entry],
   );
 
   // ── Loading / error screens ──
@@ -878,7 +985,8 @@ const VisitorApp = () => {
         <X size={40} className="text-[#E94560] mb-4" />
         <h2 className="text-white font-bold text-lg mb-2">Event Not Found</h2>
         <p className="text-[#8892A4] text-sm">
-          No active campaign found for <span className="text-white font-semibold">{eventTag}</span>.
+          No active event found for{" "}
+          <span className="text-white font-semibold">{eventTag}</span>.
         </p>
       </div>
     );
@@ -901,7 +1009,9 @@ const VisitorApp = () => {
                 aria-label="Generate raffle QR"
               >
                 <Gift size={22} />
-                {entry?.encryptedQr ? "Show My Raffle QR" : "Generate Raffle QR"}
+                {entry?.encryptedQr
+                  ? "Show My Raffle QR"
+                  : "Generate Raffle QR"}
               </button>
             ) : (
               <button

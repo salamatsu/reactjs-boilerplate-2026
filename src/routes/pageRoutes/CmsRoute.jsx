@@ -11,30 +11,29 @@
 //         STAFF role can access Prizes only.
 // ============================================
 
-import { Trophy, Layers } from "lucide-react";
+import { Trophy, Layers, Megaphone } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import BasicLayout from "../../components/layout/BasicLayout";
 import { ComponentLoader } from "../../components/LoadingFallback";
-import { useAdminAuthStore } from "../../store/useAdminAuthStore";
-import { Auth, UnAuth } from "../ValidateAuth";
 
-const Login            = lazy(() => import("../../pages/admin/Login"));
 const RouletteprizesCMS = lazy(() => import("../../pages/admin/RouletteprizesCMS"));
-const PrizePoolConfig  = lazy(() => import("../../pages/admin/PrizePoolConfig"));
+const PrizePoolConfig   = lazy(() => import("../../pages/admin/PrizePoolConfig"));
+const CampaignManager   = lazy(() => import("../../pages/admin/CampaignManager"));
 
 const CmsRoute = () => {
-  const { userData } = useAdminAuthStore();
-  const userType = userData?.userType;
-
-  // ADMIN sees all CMS pages; STAFF sees Prizes only
-  const canAccess = (pageName) => {
-    if (userType === "ADMIN") return true;
-    if (userType === "STAFF") return pageName === "prizes";
-    return false;
-  };
-
   const navigations = [
+    {
+      route: "/campaigns",
+      name: "campaigns",
+      label: "Events",
+      icon: <Megaphone className="h-5 w-5" />,
+      component: (
+        <Suspense fallback={<ComponentLoader />}>
+          <CampaignManager />
+        </Suspense>
+      ),
+    },
     {
       route: "/prizes",
       name: "prizes",
@@ -57,68 +56,31 @@ const CmsRoute = () => {
         </Suspense>
       ),
     },
-  ].map((page) => ({
-    ...page,
-    route: "/admin" + page.route,
-    isShow: canAccess(page.name),
-  }));
+  ].map((page) => ({ ...page, route: "/admin" + page.route }));
 
   return (
     <Routes>
-      {/* Login — redirect to prizes dashboard if already authenticated */}
+      {/* Redirect /admin root to first page */}
       <Route
-        element={
-          <UnAuth store={useAdminAuthStore} redirect="/admin/prizes" />
-        }
-      >
+        path="/"
+        index
+        element={<Navigate to={navigations[0]?.route || "/admin/campaigns"} replace />}
+      />
+
+      {/* CMS pages — no auth required */}
+      <Route element={<BasicLayout navigations={navigations} />}>
+        {navigations.map((page) => {
+          const routePath = page.route.replace("/admin/", "");
+          return (
+            <Route key={page.route} path={routePath} element={page.component} />
+          );
+        })}
+
+        {/* Catch-all → first page */}
         <Route
-          path="/"
-          index
-          element={
-            <Suspense fallback={<ComponentLoader />}>
-              <Login />
-            </Suspense>
-          }
+          path="*"
+          element={<Navigate to={navigations[0]?.route || "/admin/campaigns"} replace />}
         />
-      </Route>
-
-      {/* Protected CMS Routes */}
-      <Route element={<Auth store={useAdminAuthStore} redirect="/admin" />}>
-        <Route
-          element={
-            <BasicLayout
-              navigations={navigations.filter((p) => p.isShow)}
-              store={useAdminAuthStore}
-            />
-          }
-        >
-          {navigations
-            .filter((p) => p.isShow)
-            .map((page) => {
-              const routePath = page.route.replace("/admin/", "");
-              return (
-                <Route
-                  key={page.route}
-                  path={routePath}
-                  element={page.component}
-                />
-              );
-            })}
-
-          {/* Redirect /admin/* to first accessible page */}
-          <Route
-            path="*"
-            element={
-              <Navigate
-                to={
-                  navigations.filter((p) => p.isShow)[0]?.route ||
-                  "/admin/prizes"
-                }
-                replace
-              />
-            }
-          />
-        </Route>
       </Route>
     </Routes>
   );

@@ -22,6 +22,13 @@ import {
   generateRaffleQrApi,
   validateRaffleApi,
   spinWheelApi,
+  listCampaignsApi,
+  getCampaignByIdApi,
+  createCampaignApi,
+  updateCampaignApi,
+  deleteCampaignApi,
+  getCampaignBoothsApi,
+  getCampaignPrizesApi,
 } from "../api/api";
 
 // ============================================
@@ -143,5 +150,70 @@ export const useValidateRaffle = () => {
 export const useSpinWheel = () => {
   return useMutation({
     mutationFn: spinWheelApi,
+  });
+};
+
+// ============================================
+// CAMPAIGN MANAGEMENT — Admin CMS
+// ============================================
+
+export const useListCampaigns = () => {
+  return useQuery({
+    queryKey: ["campaigns"],
+    queryFn: listCampaignsApi,
+  });
+};
+
+export const useGetCampaignById = (campaignId) => {
+  return useQuery({
+    queryKey: ["campaign-detail", campaignId],
+    queryFn: () => getCampaignByIdApi(campaignId),
+    enabled: !!campaignId,
+  });
+};
+
+export const useCreateCampaign = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createCampaignApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+    },
+  });
+};
+
+export const useUpdateCampaign = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateCampaignApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+    },
+  });
+};
+
+export const useDeleteCampaign = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteCampaignApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+    },
+  });
+};
+
+export const useGetCampaignBooths = (campaignId) => {
+  return useQuery({
+    queryKey: ["campaign-booths", campaignId],
+    queryFn: () => getCampaignBoothsApi(campaignId),
+    enabled: !!campaignId,
+  });
+};
+
+export const useGetCampaignPrizes = (campaignId) => {
+  return useQuery({
+    queryKey: ["campaign-prizes", campaignId],
+    queryFn: () => getCampaignPrizesApi(campaignId),
+    enabled: !!campaignId,
   });
 };
