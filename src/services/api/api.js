@@ -179,6 +179,18 @@ export const redeemApi = async (payload) => {
 // Step 7  POST /campaigns/:campaignId/spin-wheel         → record spin outcome
 // ============================================
 
+export const getCampaignImagesPublicApi = async (campaignId) => {
+  try {
+    const response = await axiosInstance.get(
+      `${RAFFLE_BASE}/campaigns/${campaignId}/images`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
 export const getCampaignByEventTagApi = async (eventTag) => {
   try {
     const response = await axiosInstance.get(
@@ -374,11 +386,13 @@ export const deleteBoothApi = async ({ campaignId, boothId }) => {
 };
 
 // ============================================
-// ADMIN STATS
-// GET /admin/campaigns/:campaignId/prizes
-//   → prize claim history (summary + recentClaims)
-// GET /admin/campaigns/:campaignId/participant/:participantId/progress
-//   → full participant view: points, scans, claims
+// PRIZE MANAGEMENT — Admin CMS
+// Base: /api/v1/raffles/admin/campaigns/:campaignId/prizes
+//
+// GET    /prizes           → list all (active + inactive), sorted by sortOrder
+// POST   /prizes           → create prize
+// PATCH  /prizes/:prizeId  → partial update
+// DELETE /prizes/:prizeId  → delete (blocked if claims exist)
 // ============================================
 
 export const getCampaignPrizesApi = async (campaignId) => {
@@ -393,10 +407,128 @@ export const getCampaignPrizesApi = async (campaignId) => {
   }
 };
 
+export const createCampaignPrizeApi = async ({ campaignId, ...data }) => {
+  try {
+    const response = await axios.post(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/prizes`,
+      data,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const updateCampaignPrizeApi = async ({ campaignId, prizeId, ...data }) => {
+  try {
+    const response = await axios.patch(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/prizes/${prizeId}`,
+      data,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const deleteCampaignPrizeApi = async ({ campaignId, prizeId }) => {
+  try {
+    const response = await axios.delete(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/prizes/${prizeId}`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+// ============================================
+// ADMIN STATS
+// GET /admin/campaigns/:campaignId/participant/:participantId/progress
+//   → full participant view: points, scans, claims
+// ============================================
+
 export const getParticipantProgressApi = async ({ campaignId, participantId }) => {
   try {
     const response = await axios.get(
       `${RAFFLE_BASE}/admin/campaigns/${campaignId}/participant/${participantId}/progress`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+// ============================================
+// IMAGE MAPS — Admin CMS
+// Base: /api/v1/raffles/admin/campaigns/:campaignId/images
+//
+// GET    /images                      → list all, grouped by siteCode
+// POST   /images                      → upload new image (multipart)
+// PATCH  /images/:imageId             → update metadata (JSON)
+// POST   /images/:imageId/replace     → replace file (multipart)
+// DELETE /images/:imageId             → delete record + file
+// ============================================
+
+export const getCampaignImagesApi = async (campaignId) => {
+  try {
+    const response = await axios.get(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/images`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const uploadCampaignImageApi = async ({ campaignId, formData }) => {
+  try {
+    const response = await axiosMultipart.post(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/images`,
+      formData,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const updateCampaignImageApi = async ({ campaignId, imageId, ...data }) => {
+  try {
+    const response = await axios.patch(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/images/${imageId}`,
+      data,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const replaceCampaignImageApi = async ({ campaignId, imageId, formData }) => {
+  try {
+    const response = await axiosMultipart.post(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/images/${imageId}/replace`,
+      formData,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const deleteCampaignImageApi = async ({ campaignId, imageId }) => {
+  try {
+    const response = await axios.delete(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/images/${imageId}`,
     );
     return response.data;
   } catch (error) {

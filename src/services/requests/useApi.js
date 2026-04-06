@@ -10,6 +10,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { USE_MOCK, MOCK_DATA } from "../../lib/constants";
 import {
+  getCampaignImagesPublicApi,
   getEventApi,
   getEventsListApi,
   getPrizesApi,
@@ -34,6 +35,14 @@ import {
   updateBoothApi,
   deleteBoothApi,
   getCampaignPrizesApi,
+  createCampaignPrizeApi,
+  updateCampaignPrizeApi,
+  deleteCampaignPrizeApi,
+  getCampaignImagesApi,
+  uploadCampaignImageApi,
+  updateCampaignImageApi,
+  replaceCampaignImageApi,
+  deleteCampaignImageApi,
   getParticipantProgressApi,
 } from "../api/api";
 
@@ -135,6 +144,14 @@ export const useRedeem = () => {
 // ============================================
 // CAMPAIGN RAFFLE — Participant Flow
 // ============================================
+
+export const useGetCampaignImagesPublic = (campaignId) => {
+  return useQuery({
+    queryKey: ["campaign-images-public", campaignId],
+    queryFn: () => getCampaignImagesPublicApi(campaignId),
+    enabled: !!campaignId,
+  });
+};
 
 export const useGetCampaignByEventTag = (eventTag) => {
   return useQuery({
@@ -266,6 +283,84 @@ export const useGetCampaignPrizes = (campaignId) => {
     queryKey: ["campaign-prizes", campaignId],
     queryFn: () => getCampaignPrizesApi(campaignId),
     enabled: !!campaignId,
+  });
+};
+
+export const useCreateCampaignPrize = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createCampaignPrizeApi,
+    onSuccess: (_, { campaignId }) => {
+      queryClient.invalidateQueries({ queryKey: ["campaign-prizes", campaignId] });
+    },
+  });
+};
+
+export const useUpdateCampaignPrize = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateCampaignPrizeApi,
+    onSuccess: (_, { campaignId }) => {
+      queryClient.invalidateQueries({ queryKey: ["campaign-prizes", campaignId] });
+    },
+  });
+};
+
+export const useDeleteCampaignPrize = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteCampaignPrizeApi,
+    onSuccess: (_, { campaignId }) => {
+      queryClient.invalidateQueries({ queryKey: ["campaign-prizes", campaignId] });
+    },
+  });
+};
+
+export const useGetCampaignImages = (campaignId) => {
+  return useQuery({
+    queryKey: ["campaign-images", campaignId],
+    queryFn: () => getCampaignImagesApi(campaignId),
+    enabled: !!campaignId,
+  });
+};
+
+export const useUploadCampaignImage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: uploadCampaignImageApi,
+    onSuccess: (_, { campaignId }) => {
+      queryClient.invalidateQueries({ queryKey: ["campaign-images", campaignId] });
+    },
+  });
+};
+
+export const useUpdateCampaignImage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateCampaignImageApi,
+    onSuccess: (_, { campaignId }) => {
+      queryClient.invalidateQueries({ queryKey: ["campaign-images", campaignId] });
+    },
+  });
+};
+
+export const useReplaceCampaignImage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: replaceCampaignImageApi,
+    onSuccess: (_, { campaignId }) => {
+      queryClient.invalidateQueries({ queryKey: ["campaign-images", campaignId] });
+    },
+  });
+};
+
+export const useDeleteCampaignImage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteCampaignImageApi,
+    onSuccess: (_, { campaignId }) => {
+      queryClient.invalidateQueries({ queryKey: ["campaign-images", campaignId] });
+    },
   });
 };
 

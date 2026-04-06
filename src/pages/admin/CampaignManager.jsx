@@ -13,6 +13,7 @@ import {
   Drawer,
   Empty,
   Form,
+  Image,
   Input,
   InputNumber,
   Modal,
@@ -26,6 +27,7 @@ import {
   Tag,
   Tooltip,
   Typography,
+  Upload,
 } from "antd";
 import {
   DeleteOutlined,
@@ -36,6 +38,8 @@ import {
   PlusOutlined,
   QrcodeOutlined,
   ReloadOutlined,
+  SwapOutlined,
+  UploadOutlined,
 } from "@ant-design/icons";
 import {
   Activity,
@@ -56,6 +60,14 @@ import {
   useUpdateBooth,
   useDeleteBooth,
   useGetCampaignPrizes,
+  useCreateCampaignPrize,
+  useUpdateCampaignPrize,
+  useDeleteCampaignPrize,
+  useGetCampaignImages,
+  useUploadCampaignImage,
+  useUpdateCampaignImage,
+  useReplaceCampaignImage,
+  useDeleteCampaignImage,
 } from "../../services/requests/useApi";
 
 const { Text } = Typography;
@@ -77,9 +89,11 @@ const STATUS_ACCENT = {
   cancelled: "#F5A623",
 };
 
+const IMG_BASE = import.meta.env.VITE_BASEURL_APP ?? "";
+
 const fmtDate = (iso) => (iso ? dayjs(iso).format("MMM DD, YYYY") : "—");
 const boothQrUrl = (eventTag, boothCode, points) =>
-  `${"window.location.origin"}/${eventTag}?i=${boothCode}&p=${points}`;
+  `${window.location.origin}/${eventTag}?i=${boothCode}&p=${points}`;
 
 const copyText = (text) => {
   if (navigator.clipboard) {
@@ -127,17 +141,22 @@ const downloadBoothQR = (boothCode) => {
   const container = document.getElementById(`qr-${boothCode}`);
   const svg = container?.querySelector("svg");
   if (!svg) return;
+
   const SIZE = 1000;
+  const PADDING = 50; // padding on each side
+  const QR_SIZE = SIZE - PADDING * 2;
+
   const svgData = new XMLSerializer().serializeToString(svg);
   const canvas = document.createElement("canvas");
   canvas.width = SIZE;
   canvas.height = SIZE;
   const ctx = canvas.getContext("2d");
+
   const img = new Image();
   img.onload = () => {
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, SIZE, SIZE);
-    ctx.drawImage(img, 0, 0, SIZE, SIZE);
+    ctx.drawImage(img, PADDING, PADDING, QR_SIZE, QR_SIZE); // offset by padding
     const a = document.createElement("a");
     a.download = `${boothCode}.png`;
     a.href = canvas.toDataURL("image/png");
@@ -210,7 +229,7 @@ const BoothQrModal = ({ open, onClose, campaign, booths }) => {
                 URL:
               </span>
               <code className="text-xs truncate" style={{ color: "#F5A623" }}>
-                {"window.location.origin"}/{campaign.eventTag}
+                {window.location.origin}/{campaign.eventTag}
                 ?i=&lt;boothCode&gt;&amp;p=&lt;points&gt;
               </code>
             </div>
@@ -757,10 +776,118 @@ const BoothsTab = ({ campaign }) => {
   );
 };
 
-const PrizeStatsTab = ({ campaignId }) => {
-  const { data, isLoading } = useGetCampaignPrizes(campaignId);
-  const summary = data?.data?.summary ?? [];
-  const recentClaims = data?.data?.recentClaims ?? [];
+// ─── Prize Form Modal ──────────────────────────────────────────────────────────
+
+const PrizeFormModal = ({ open, onClose, campaignId, initialValues }) => {
+  const [form] = Form.useForm();
+  const { message } = App.useApp();
+  const { mutateAsync: createPrize, isPending: creating } = useCreateCampaignPrize();
+  const { mutateAsync: updatePrize, isPending: updating } = useUpdateCampaignPrize();
+  const isEditing = !!initialValues;
+  const saving = creating || updating;
+
+  const handleSubmit = async () => {
+    const values = await form.validateFields();
+    try {
+      if (isEditing) {
+        await updatePrize({ campaignId, prizeId: initialValues.id, ...values });
+        message.success("Prize updated.");
+      } else {
+        await createPrize({ campaignId, ...values });
+        message.success("Prize created.");
+      }
+      onClose();
+    } catch (err) {
+      message.error(err?.message || "Failed to save prize.");
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      title={isEditing ? "Edit Prize" : "New Prize"}
+      onCancel={onClose}
+      afterOpenChange={(v) => {
+        if (v) isEditing ? form.setFieldsValue(initialValues) : form.resetFields();
+      }}
+      footer={[
+        <Button key="cancel" onClick={onClose} disabled={saving}>
+          Cancel
+        </Button>,
+        <Button
+          key="save"
+          type="primary"
+          loading={saving}
+          onClick={handleSubmit}
+          style={{ background: "#E94560", borderColor: "#E94560" }}
+        >
+          {isEditing ? "Save Changes" : "Add Prize"}
+        </Button>,
+      ]}
+      width="min(480px, 95vw)"
+      destroyOnHidden
+    >
+      <Form form={form} layout="vertical" className="pt-2">
+        <Form.Item
+          label="Prize Name"
+          name="prizeName"
+          rules={[{ required: true, message: "Required" }]}
+        >
+          <Input placeholder="Samsung 65-inch TV" />
+        </Form.Item>
+        <Form.Item label="Description" name="description">
+          <Input.TextArea rows={2} placeholder="Optional description…" />
+        </Form.Item>
+        <div className="grid grid-cols-2 gap-x-4">
+          <Form.Item
+            label="Quantity"
+            name="quantity"
+            rules={[{ required: true, message: "Required" }]}
+            initialValue={1}
+          >
+            <InputNumber min={1} className="w-full" />
+          </Form.Item>
+          <Form.Item label="Sort Order" name="sortOrder" initialValue={1}>
+            <InputNumber min={1} className="w-full" />
+          </Form.Item>
+        </div>
+        <Form.Item label="Status" name="isActive" initialValue={true}>
+          <Select
+            options={[
+              { value: true, label: "Active" },
+              { value: false, label: "Inactive" },
+            ]}
+          />
+        </Form.Item>
+      </Form>
+    </Modal>
+  );
+};
+
+// ─── Prizes Tab ────────────────────────────────────────────────────────────────
+
+const PrizesTab = ({ campaign }) => {
+  const { message } = App.useApp();
+  const { data, isLoading } = useGetCampaignPrizes(campaign.id);
+  const { mutateAsync: deletePrize, isPending: deleting } = useDeleteCampaignPrize();
+  const prizes = data?.data?.prizes ?? [];
+  const [prizeModal, setPrizeModal] = useState({ open: false, record: null });
+
+  const handleDelete = async (prize) => {
+    try {
+      await deletePrize({ campaignId: campaign.id, prizeId: prize.id });
+      message.success("Prize deleted.");
+    } catch (err) {
+      if (err?.response?.status === 409) {
+        message.warning(
+          err?.response?.data?.message ||
+            "Cannot delete — claims exist. Set inactive instead.",
+        );
+      } else {
+        message.error(err?.message || "Delete failed.");
+      }
+    }
+  };
 
   if (isLoading)
     return (
@@ -770,65 +897,110 @@ const PrizeStatsTab = ({ campaignId }) => {
     );
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="font-semibold text-sm mb-2 text-gray-700">
-          Prize Summary
-        </p>
-        {summary.length ? (
-          <Table
-            dataSource={summary}
-            columns={[
-              { title: "Prize", dataIndex: "prizeName", key: "prizeName" },
-              {
-                title: "Times Won",
-                dataIndex: "count",
-                key: "count",
-                width: 110,
-              },
-            ]}
-            rowKey="prizeName"
-            size="small"
-            pagination={false}
-          />
-        ) : (
-          <Empty description="No prizes awarded yet" />
-        )}
+    <>
+      <div className="flex justify-between mb-3">
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => setPrizeModal({ open: true, record: null })}
+          style={{ background: "#E94560", borderColor: "#E94560" }}
+        >
+          Add Prize
+        </Button>
       </div>
-      <div>
-        <p className="font-semibold text-sm mb-2 text-gray-700">
-          Recent Claims
-        </p>
-        {recentClaims.length ? (
-          <Table
-            dataSource={recentClaims}
-            columns={[
-              { title: "#", dataIndex: "claimId", key: "claimId", width: 55 },
-              { title: "Prize", dataIndex: "prizeName", key: "prizeName" },
-              { title: "Claimed By", dataIndex: "claimedBy", key: "claimedBy" },
-              {
-                title: "Date",
-                dataIndex: "claimedAt",
-                key: "claimedAt",
-                render: fmtDate,
-              },
-              {
-                title: "Status",
-                dataIndex: "status",
-                key: "status",
-                width: 90,
-                render: (v) => <Tag color="success">{v}</Tag>,
-              },
-            ]}
-            rowKey="claimId"
-            size="small"
-            pagination={{ pageSize: 10, size: "small" }}
-          />
-        ) : (
-          <Empty description="No claims yet" />
-        )}
-      </div>
-    </div>
+
+      {prizes.length === 0 ? (
+        <Empty description="No prizes yet" />
+      ) : (
+        <Table
+          scroll={{ x: 480 }}
+          dataSource={prizes}
+          columns={[
+            {
+              title: "Prize Name",
+              dataIndex: "prizeName",
+              key: "prizeName",
+              render: (v) => (
+                <span className="font-semibold" style={{ color: "#fff" }}>
+                  {v}
+                </span>
+              ),
+            },
+            {
+              title: "Qty",
+              dataIndex: "quantity",
+              key: "quantity",
+              width: 65,
+              render: (v) => (
+                <span className="font-bold" style={{ color: "#E94560" }}>
+                  {v}
+                </span>
+              ),
+            },
+            {
+              title: "Order",
+              dataIndex: "sortOrder",
+              key: "sortOrder",
+              width: 70,
+            },
+            {
+              title: "Status",
+              dataIndex: "isActive",
+              key: "isActive",
+              width: 90,
+              render: (v) =>
+                v !== false && v !== 0 ? (
+                  <Tag color="success">Active</Tag>
+                ) : (
+                  <Tag>Inactive</Tag>
+                ),
+            },
+            {
+              title: "Actions",
+              key: "actions",
+              width: 90,
+              render: (_, record) => (
+                <Space size={2}>
+                  <Tooltip title="Edit">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<EditOutlined style={{ color: "#8892A4" }} />}
+                      onClick={() => setPrizeModal({ open: true, record })}
+                    />
+                  </Tooltip>
+                  <Tooltip title="Delete">
+                    <Popconfirm
+                      title="Delete this prize?"
+                      description="Blocked if claims exist. Set inactive instead."
+                      okText="Delete"
+                      okButtonProps={{ danger: true, loading: deleting }}
+                      onConfirm={() => handleDelete(record)}
+                    >
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<DeleteOutlined style={{ color: "#E94560" }} />}
+                      />
+                    </Popconfirm>
+                  </Tooltip>
+                </Space>
+              ),
+            },
+          ]}
+          rowKey="id"
+          size="small"
+          pagination={false}
+        />
+      )}
+
+      <PrizeFormModal
+        open={prizeModal.open}
+        onClose={() => setPrizeModal({ open: false, record: null })}
+        campaignId={campaign.id}
+        initialValues={prizeModal.record}
+      />
+    </>
   );
 };
 
@@ -893,6 +1065,291 @@ const STEPS = [
     ),
   },
 ];
+
+// ─── Image Maps Tab ───────────────────────────────────────────────────────────
+
+const ImageUploadModal = ({ open, onClose, campaignId, editImage }) => {
+  const [form] = Form.useForm();
+  const { message } = App.useApp();
+  const { mutateAsync: uploadImage, isPending: uploading } = useUploadCampaignImage();
+  const { mutateAsync: updateImage, isPending: updating } = useUpdateCampaignImage();
+  const { mutateAsync: replaceImage, isPending: replacing } = useReplaceCampaignImage();
+  const [fileList, setFileList] = useState([]);
+  const isEditing = !!editImage;
+  const saving = uploading || updating || replacing;
+
+  const handleOpen = () => {
+    setFileList([]);
+    if (isEditing) {
+      form.setFieldsValue({
+        siteCode: editImage.siteCode,
+        siteName: editImage.siteName,
+        altText: editImage.altText ?? "",
+        sortOrder: editImage.sortOrder,
+        isActive: editImage.isActive,
+      });
+    } else {
+      form.resetFields();
+    }
+  };
+
+  const handleSubmit = async () => {
+    const values = await form.validateFields();
+    try {
+      if (isEditing) {
+        // If a new file was chosen → replace, then patch metadata separately
+        if (fileList.length > 0) {
+          const fd = new FormData();
+          fd.append("image", fileList[0].originFileObj);
+          await replaceImage({ campaignId, imageId: editImage.id, formData: fd });
+        }
+        await updateImage({ campaignId, imageId: editImage.id, ...values });
+        message.success("Image updated.");
+      } else {
+        if (fileList.length === 0) {
+          message.error("Please select an image file.");
+          return;
+        }
+        const fd = new FormData();
+        fd.append("image", fileList[0].originFileObj);
+        fd.append("siteCode", values.siteCode);
+        fd.append("siteName", values.siteName);
+        if (values.altText) fd.append("altText", values.altText);
+        fd.append("sortOrder", String(values.sortOrder ?? 1));
+        fd.append("isActive", String(values.isActive ?? true));
+        await uploadImage({ campaignId, formData: fd });
+        message.success("Image uploaded.");
+      }
+      onClose();
+    } catch (err) {
+      message.error(err?.message || "Failed to save image.");
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      title={isEditing ? "Edit Image" : "Upload Image"}
+      onCancel={onClose}
+      afterOpenChange={(v) => { if (v) handleOpen(); }}
+      footer={[
+        <Button key="cancel" onClick={onClose} disabled={saving}>Cancel</Button>,
+        <Button
+          key="save"
+          type="primary"
+          loading={saving}
+          onClick={handleSubmit}
+          style={{ background: "#E94560", borderColor: "#E94560" }}
+        >
+          {isEditing ? "Save Changes" : "Upload"}
+        </Button>,
+      ]}
+      width="min(520px, 95vw)"
+      destroyOnHidden
+    >
+      <Form form={form} layout="vertical" className="pt-2">
+        <Form.Item label={isEditing ? "Replace File (optional)" : "Image File"}>
+          <Upload
+            accept="image/*"
+            maxCount={1}
+            fileList={fileList}
+            beforeUpload={() => false}
+            onChange={({ fileList: fl }) => setFileList(fl)}
+            listType="picture"
+          >
+            <Button icon={<UploadOutlined />}>
+              {isEditing ? "Choose new file…" : "Choose file…"}
+            </Button>
+          </Upload>
+          {isEditing && editImage?.imageUrl && fileList.length === 0 && (
+            <div className="mt-2">
+              <Image
+                src={`${IMG_BASE}/${editImage.imageUrl}`}
+                height={64}
+                style={{ borderRadius: 6, objectFit: "cover" }}
+                preview={{ mask: "Preview" }}
+              />
+            </div>
+          )}
+        </Form.Item>
+        <div className="grid grid-cols-2 gap-x-4">
+          <Form.Item
+            label="Site Code"
+            name="siteCode"
+            rules={[{ required: true, message: "Required" }]}
+          >
+            <Input placeholder="MAIN-HALL" />
+          </Form.Item>
+          <Form.Item
+            label="Site Name"
+            name="siteName"
+            rules={[{ required: true, message: "Required" }]}
+          >
+            <Input placeholder="Main Hall" />
+          </Form.Item>
+        </div>
+        <Form.Item label="Alt Text" name="altText">
+          <Input placeholder="Optional description for accessibility" />
+        </Form.Item>
+        <div className="grid grid-cols-2 gap-x-4">
+          <Form.Item label="Sort Order" name="sortOrder" initialValue={1}>
+            <InputNumber min={1} className="w-full" />
+          </Form.Item>
+          <Form.Item label="Status" name="isActive" initialValue={true}>
+            <Select
+              options={[
+                { value: true, label: "Active" },
+                { value: false, label: "Inactive" },
+              ]}
+            />
+          </Form.Item>
+        </div>
+      </Form>
+    </Modal>
+  );
+};
+
+const ImageMapsTab = ({ campaign }) => {
+  const { message } = App.useApp();
+  const { data, isLoading } = useGetCampaignImages(campaign.id);
+  const { mutateAsync: deleteImage, isPending: deleting } = useDeleteCampaignImage();
+  const sites = data?.data?.imageSites ?? [];
+  const [imgModal, setImgModal] = useState({ open: false, record: null });
+
+  const handleDelete = async (img) => {
+    try {
+      await deleteImage({ campaignId: campaign.id, imageId: img.id });
+      message.success("Image deleted.");
+    } catch (err) {
+      message.error(err?.message || "Delete failed.");
+    }
+  };
+
+  if (isLoading)
+    return <div className="flex justify-center py-10"><Spin /></div>;
+
+  return (
+    <>
+      <div className="flex justify-between mb-4">
+        <Button
+          type="primary"
+          icon={<UploadOutlined />}
+          onClick={() => setImgModal({ open: true, record: null })}
+          style={{ background: "#E94560", borderColor: "#E94560" }}
+        >
+          Upload Image
+        </Button>
+      </div>
+
+      {sites.length === 0 ? (
+        <Empty description="No images yet" />
+      ) : (
+        <div className="space-y-5">
+          {sites.map((site) => (
+            <div key={site.siteCode}>
+              {/* Site header */}
+              <div className="flex items-center gap-2 mb-2">
+                <Tag color="blue" className="font-mono font-bold">
+                  {site.siteCode}
+                </Tag>
+                <span className="text-sm font-semibold" style={{ color: "#fff" }}>
+                  {site.siteName}
+                </span>
+                <span className="text-xs" style={{ color: "#8892A4" }}>
+                  ({site.images.length} image{site.images.length !== 1 ? "s" : ""})
+                </span>
+              </div>
+
+              {/* Image cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {site.images.map((img) => (
+                  <div
+                    key={img.id}
+                    className="flex gap-3 rounded-xl p-3"
+                    style={{ background: "#0F1629", border: "1px solid #16213E" }}
+                  >
+                    {/* Thumbnail */}
+                    <div
+                      className="w-16 h-16 rounded-lg overflow-hidden shrink-0 flex items-center justify-center"
+                      style={{ background: "#16213E" }}
+                    >
+                      <Image
+                        src={`${IMG_BASE}/${img.imageUrl}`}
+                        width={64}
+                        height={64}
+                        style={{ objectFit: "cover" }}
+                        preview={{ mask: <EyeOutlined /> }}
+                        fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+                      />
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-1">
+                        <div className="min-w-0">
+                          <p className="text-xs font-mono truncate" style={{ color: "#8892A4" }}>
+                            #{img.id} · order {img.sortOrder}
+                          </p>
+                          {img.altText && (
+                            <p className="text-xs truncate mt-0.5" style={{ color: "#fff" }}>
+                              {img.altText}
+                            </p>
+                          )}
+                        </div>
+                        <Tag
+                          color={img.isActive !== false ? "success" : "default"}
+                          className="shrink-0 text-xs"
+                        >
+                          {img.isActive !== false ? "Active" : "Inactive"}
+                        </Tag>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-1 mt-2">
+                        <Tooltip title="Edit / Replace">
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<SwapOutlined style={{ color: "#8892A4" }} />}
+                            onClick={() => setImgModal({ open: true, record: img })}
+                          />
+                        </Tooltip>
+                        <Tooltip title="Delete">
+                          <Popconfirm
+                            title="Delete this image?"
+                            description="The file will be permanently removed."
+                            okText="Delete"
+                            okButtonProps={{ danger: true, loading: deleting }}
+                            onConfirm={() => handleDelete(img)}
+                          >
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<DeleteOutlined style={{ color: "#E94560" }} />}
+                            />
+                          </Popconfirm>
+                        </Tooltip>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <ImageUploadModal
+        open={imgModal.open}
+        onClose={() => setImgModal({ open: false, record: null })}
+        campaignId={campaign.id}
+        editImage={imgModal.record}
+      />
+    </>
+  );
+};
+
+// ─── Mechanics Tab ────────────────────────────────────────────────────────────
 
 const MechanicsTab = ({ campaign }) => (
   <div className="space-y-3">
@@ -1044,8 +1501,13 @@ const CampaignDetailDrawer = ({ campaign, open, onClose }) => {
           },
           {
             key: "prizes",
-            label: "Prize Stats",
-            children: <PrizeStatsTab campaignId={campaign.id} />,
+            label: "Prizes",
+            children: <PrizesTab campaign={campaign} />,
+          },
+          {
+            key: "images",
+            label: "Image Maps",
+            children: <ImageMapsTab campaign={campaign} />,
           },
           {
             key: "mechanics",
@@ -1189,7 +1651,7 @@ const CampaignCard = ({ campaign, onView, onEdit, onDelete, deleting }) => {
         <Tooltip title={`Copy link: /${campaign.eventTag}`} color="#E94560">
           <button
             onClick={() => {
-              copyText(`${"window.location.origin"}/${campaign.eventTag}`)
+              copyText(`${window.location.origin}/${campaign.eventTag}`)
                 .then(() => message.success("Link copied!"))
                 .catch(() => message.error("Copy failed."));
             }}

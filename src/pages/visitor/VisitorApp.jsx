@@ -38,11 +38,14 @@ import {
   Star,
   Trophy,
   ScanLine,
+  Download,
+  Maximize2,
 } from "lucide-react";
 import { APP_BASE_URL } from "../../lib/constants";
 import { formatDateTime, DATE_FORMATS } from "../../utils/formatDate";
 import {
   useGetCampaignByEventTag,
+  useGetCampaignImagesPublic,
   useGenerateRaffleQr,
   useGetEventsList,
 } from "../../services/requests/useApi";
@@ -263,15 +266,26 @@ const CameraScanner = ({ onScan, onClose }) => {
       } catch (err) {
         const name = err?.name ?? "";
         if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-          setError("Camera permission denied. Please allow camera access in your browser settings and try again.");
-        } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+          setError(
+            "Camera permission denied. Please allow camera access in your browser settings and try again.",
+          );
+        } else if (
+          name === "NotFoundError" ||
+          name === "DevicesNotFoundError"
+        ) {
           setError("No camera found on this device.");
         } else if (name === "NotReadableError" || name === "TrackStartError") {
-          setError("Camera is already in use by another app. Close it and try again.");
+          setError(
+            "Camera is already in use by another app. Close it and try again.",
+          );
         } else if (name === "OverconstrainedError") {
-          setError("No suitable camera found. Please try on a device with a camera.");
+          setError(
+            "No suitable camera found. Please try on a device with a camera.",
+          );
         } else {
-          setError(`Camera error: ${err?.message || "Unknown error"}. Try reloading the page.`);
+          setError(
+            `Camera error: ${err?.message || "Unknown error"}. Try reloading the page.`,
+          );
         }
       }
     };
@@ -341,9 +355,15 @@ const CameraScanner = ({ onScan, onClose }) => {
             <Camera size={26} className="text-[#E94560]" />
           </div>
           <p className="text-white text-sm font-semibold">Camera Unavailable</p>
-          <p className="text-[#8892A4] text-xs leading-relaxed max-w-xs">{error}</p>
+          <p className="text-[#8892A4] text-xs leading-relaxed max-w-xs">
+            {error}
+          </p>
           <button
-            onClick={() => { setError(null); setScanning(false); setRetryKey((k) => k + 1); }}
+            onClick={() => {
+              setError(null);
+              setScanning(false);
+              setRetryKey((k) => k + 1);
+            }}
             className="mt-1 px-5 py-2.5 bg-[#E94560] text-white text-sm font-bold rounded-xl active:scale-95 transition-transform"
           >
             Try Again
@@ -516,16 +536,238 @@ const SharePanel = ({ eventTag }) => {
   );
 };
 
-/** Upcoming Worldbex events */
+/** Venue image maps */
 const VITE_BASEURL_APP = import.meta.env.VITE_BASEURL_APP;
+
+const downloadImage = async (src, filename) => {
+  try {
+    const res = await fetch(src);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch {
+    window.open(src, "_blank");
+  }
+};
+
+const ImageMapsView = ({ campaignId }) => {
+  const { data, isLoading } = useGetCampaignImagesPublic(campaignId);
+  const sites = data?.data?.imageSites ?? [];
+  const [lightbox, setLightbox] = useState(null); // { src, alt, filename }
+
+  if (isLoading)
+    return (
+      <div className="flex justify-center py-16">
+        <Loader2 className="animate-spin text-[#E94560]" size={28} />
+      </div>
+    );
+
+  if (sites.length === 0)
+    return (
+      <div className="rounded-2xl bg-[#16213E] border border-[#E94560]/10 flex flex-col items-center justify-center py-16 px-8 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-[#E94560]/10 flex items-center justify-center mb-4">
+          <MapPin size={28} className="text-[#E94560]" />
+        </div>
+        <p className="text-white font-bold">No maps yet</p>
+        <p className="text-[#8892A4] text-xs mt-1">
+          Ask event staff for a printed venue map.
+        </p>
+      </div>
+    );
+
+  return (
+    <>
+      <div className="space-y-5">
+        {sites.map((site) => {
+          const activeImages = site.images.filter(
+            (img) => img.isActive !== false,
+          );
+          if (!activeImages.length) return null;
+          const showCode = site.siteCode !== site.siteName;
+
+          return (
+            <div key={site.siteCode}>
+              {/* Site header */}
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-6 h-6 rounded-lg bg-[#E94560]/15 flex items-center justify-center shrink-0">
+                  <MapPin size={12} className="text-[#E94560]" />
+                </div>
+                <span className="text-white font-black text-sm">
+                  {site.siteName}
+                </span>
+                {showCode && (
+                  <span className="text-[10px] font-mono text-[#8892A4] border border-[#ffffff12] rounded-md px-1.5 py-0.5 leading-none">
+                    {site.siteCode}
+                  </span>
+                )}
+              </div>
+
+              {/* Image cards */}
+              <div className="space-y-3">
+                {activeImages.map((img) => {
+                  const src = `/${img.imageUrl}`;
+                  const ext = img.imageUrl.split(".").pop() || "jpg";
+                  const filename = `${site.siteCode}.${ext}`;
+                  return (
+                    <div
+                      key={img.id}
+                      className="rounded-2xl overflow-hidden"
+                      style={{
+                        background: "#16213E",
+                        border: "1px solid rgba(255,255,255,0.05)",
+                      }}
+                    >
+                      {/* Image */}
+                      <img
+                        src={src}
+                        alt={img.altText || site.siteName}
+                        className="w-full object-contain block"
+                        onError={(e) => {
+                          e.currentTarget.closest(
+                            ".rounded-2xl",
+                          ).style.display = "none";
+                        }}
+                      />
+
+                      {/* Action bar */}
+                      <div
+                        className="flex items-center justify-between px-3 py-2.5 gap-2"
+                        style={{
+                          borderTop: "1px solid rgba(255,255,255,0.05)",
+                        }}
+                      >
+                        <p className="text-xs text-[#8892A4] truncate flex-1">
+                          {img.altText || site.siteName}
+                        </p>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() =>
+                              setLightbox({
+                                src,
+                                alt: img.altText || site.siteName,
+                                filename,
+                              })
+                            }
+                            className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold active:scale-95 transition-transform"
+                            style={{
+                              background: "rgba(255,255,255,0.07)",
+                              color: "#8892A4",
+                            }}
+                            aria-label="View fullscreen"
+                          >
+                            <Maximize2 size={11} />
+                            View
+                          </button>
+                          <button
+                            onClick={() => downloadImage(src, filename)}
+                            className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold active:scale-95 transition-transform"
+                            style={{
+                              background: "rgba(233,69,96,0.15)",
+                              color: "#E94560",
+                            }}
+                            aria-label="Save image"
+                          >
+                            <Download size={11} />
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Fullscreen lightbox */}
+      <AnimatePresence>
+        {lightbox && (
+          <motion.div
+            className="fixed inset-0 z-50 flex flex-col"
+            style={{ background: "#000" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            {/* Top bar */}
+            <div
+              className="flex items-center justify-between px-4 py-3 shrink-0"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+            >
+              <p className="text-white text-sm font-semibold truncate flex-1 mr-3">
+                {lightbox.alt}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => downloadImage(lightbox.src, lightbox.filename)}
+                  className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold active:scale-95 transition-transform"
+                  style={{ background: "#E94560", color: "#fff" }}
+                  aria-label="Save image"
+                >
+                  <Download size={13} />
+                  Save
+                </button>
+                <button
+                  onClick={() => setLightbox(null)}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center active:scale-95 transition-transform"
+                  style={{ background: "rgba(255,255,255,0.1)" }}
+                  aria-label="Close"
+                >
+                  <X size={16} className="text-white" />
+                </button>
+              </div>
+            </div>
+
+            {/* Image — supports pinch-zoom natively on mobile */}
+            <div
+              className="flex-1 flex items-center justify-center overflow-auto p-4"
+              onClick={() => setLightbox(null)}
+            >
+              <img
+                src={lightbox.src}
+                alt={lightbox.alt}
+                className="max-w-full max-h-full object-contain"
+                style={{ touchAction: "pinch-zoom" }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+};
+
+/** Upcoming Worldbex events */
 const REGISTER_URL = "https://register.worldbexevents.com/";
 
 const EventDetailModal = ({ event, onClose }) => {
-  const from = event.dateFrom ? new Date(event.dateFrom).toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" }) : null;
-  const to   = event.dateTo   ? new Date(event.dateTo).toLocaleDateString("en-PH",   { month: "long", day: "numeric", year: "numeric" }) : null;
+  const from = event.dateFrom
+    ? new Date(event.dateFrom).toLocaleDateString("en-PH", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
+  const to = event.dateTo
+    ? new Date(event.dateTo).toLocaleDateString("en-PH", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-50 flex items-end justify-center p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 bg-black/80 z-50 flex items-end justify-center p-4"
+      onClick={onClose}
+    >
       <motion.div
         initial={{ y: 140, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -535,12 +777,17 @@ const EventDetailModal = ({ event, onClose }) => {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cover image */}
-        <div className="relative bg-[#0f1729] flex items-center justify-center" style={{ height: 200 }}>
+        <div
+          className="relative bg-[#0f1729] flex items-center justify-center"
+          style={{ height: 200 }}
+        >
           <img
             src={`${VITE_BASEURL_APP}${event.imgSrc}`}
             alt={event.name}
             className="h-full w-full object-contain p-6"
-            onError={(e) => { e.currentTarget.style.display = "none"; }}
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
           />
           <button
             onClick={onClose}
@@ -555,7 +802,9 @@ const EventDetailModal = ({ event, onClose }) => {
         </div>
 
         <div className="p-5 space-y-3">
-          <h2 className="text-white font-black text-lg leading-snug">{event.name}</h2>
+          <h2 className="text-white font-black text-lg leading-snug">
+            {event.name}
+          </h2>
 
           {/* Date */}
           <div className="flex items-start gap-3 bg-[#1A1A2E] rounded-xl px-3 py-3">
@@ -563,7 +812,9 @@ const EventDetailModal = ({ event, onClose }) => {
             <div>
               <p className="text-white text-sm font-bold">{event.date}</p>
               {from && to && (
-                <p className="text-[#8892A4] text-xs mt-0.5">{from} — {to}</p>
+                <p className="text-[#8892A4] text-xs mt-0.5">
+                  {from} — {to}
+                </p>
               )}
             </div>
           </div>
@@ -572,7 +823,8 @@ const EventDetailModal = ({ event, onClose }) => {
           <div className="flex items-start gap-3 bg-[#1A1A2E] rounded-xl px-3 py-3">
             <Zap size={14} className="text-[#8892A4] shrink-0 mt-0.5" />
             <p className="text-[#8892A4] text-xs leading-relaxed">
-              Scan exhibitor booths, collect points, and qualify for the raffle draw at this event.
+              Scan exhibitor booths, collect points, and qualify for the raffle
+              draw at this event.
             </p>
           </div>
 
@@ -608,8 +860,12 @@ const UpcomingEvents = () => {
             <Star size={18} className="text-[#E94560]" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white font-black text-sm leading-tight">Register / Login</p>
-            <p className="text-[#8892A4] text-xs mt-0.5 truncate">worldbexevents.com — access all events</p>
+            <p className="text-white font-black text-sm leading-tight">
+              Register / Login
+            </p>
+            <p className="text-[#8892A4] text-xs mt-0.5 truncate">
+              worldbexevents.com — access all events
+            </p>
           </div>
           <div className="shrink-0 w-8 h-8 rounded-xl bg-[#E94560] flex items-center justify-center">
             <ChevronRight size={15} className="text-white" />
@@ -619,7 +875,9 @@ const UpcomingEvents = () => {
 
       <div className="mb-4 mt-2">
         <h2 className="text-white font-black text-xl">Upcoming Events</h2>
-        <p className="text-[#8892A4] text-sm mt-1">Scan. Collect points. Win prizes.</p>
+        <p className="text-[#8892A4] text-sm mt-1">
+          Scan. Collect points. Win prizes.
+        </p>
       </div>
 
       {isLoading ? (
@@ -640,7 +898,9 @@ const UpcomingEvents = () => {
                     src={`${VITE_BASEURL_APP}${ev.imgSrc}`}
                     alt={ev.name}
                     className="w-full h-full object-contain"
-                    onError={(e) => { e.currentTarget.style.display = "none"; }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
                   />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -657,7 +917,10 @@ const UpcomingEvents = () => {
                     <span className="text-[#8892A4] text-xs">{ev.date}</span>
                   </div>
                 </div>
-                <ChevronRight size={14} className="text-[#8892A4]/50 shrink-0" />
+                <ChevronRight
+                  size={14}
+                  className="text-[#8892A4]/50 shrink-0"
+                />
               </div>
             </button>
           ))}
@@ -732,7 +995,15 @@ const SuccessModal = ({ points, totalPoints, threshold, onClose }) => (
 );
 
 /** First-ever scan modal — shown when scannedCodes was empty before this scan */
-const FirstScanModal = ({ booth, points, bonus, totalPoints, threshold, campaignName, onClose }) => {
+const FirstScanModal = ({
+  booth,
+  points,
+  bonus,
+  totalPoints,
+  threshold,
+  campaignName,
+  onClose,
+}) => {
   useEffect(() => {
     confetti({
       particleCount: 180,
@@ -755,7 +1026,9 @@ const FirstScanModal = ({ booth, points, bonus, totalPoints, threshold, campaign
         {/* Top gradient banner */}
         <div
           className="px-6 pt-8 pb-6"
-          style={{ background: "linear-gradient(160deg, #E9456025 0%, #7360F215 100%)" }}
+          style={{
+            background: "linear-gradient(160deg, #E9456025 0%, #7360F215 100%)",
+          }}
         >
           <motion.div
             initial={{ scale: 0 }}
@@ -801,14 +1074,22 @@ const FirstScanModal = ({ booth, points, bonus, totalPoints, threshold, campaign
           >
             <div className="flex items-center justify-between">
               <span className="text-[#8892A4] text-xs">Booth points</span>
-              <span className="text-white font-bold text-sm">+{points} pts</span>
+              <span className="text-white font-bold text-sm">
+                +{points} pts
+              </span>
             </div>
             {bonus > 0 && (
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold" style={{ color: "#F5A623" }}>
+                <span
+                  className="text-xs font-semibold"
+                  style={{ color: "#F5A623" }}
+                >
                   🎁 1st scan bonus
                 </span>
-                <span className="font-bold text-sm" style={{ color: "#F5A623" }}>
+                <span
+                  className="font-bold text-sm"
+                  style={{ color: "#F5A623" }}
+                >
                   +{bonus} pts
                 </span>
               </div>
@@ -1099,7 +1380,13 @@ const VisitorApp = () => {
 
   // ── Core scan logic ──
   const processScan = useCallback(
-    (boothCode, currentEntry, currentBooths, currentThreshold, firstScanBonus = 0) => {
+    (
+      boothCode,
+      currentEntry,
+      currentBooths,
+      currentThreshold,
+      firstScanBonus = 0,
+    ) => {
       const booth = currentBooths.find((b) => b.boothCode === boothCode);
 
       if (!booth) {
@@ -1170,7 +1457,13 @@ const VisitorApp = () => {
       return;
     urlScanProcessed.current = true;
     setSearchParams({}, { replace: true });
-    processScan(boothCode, entry, booths, thresholdPoints, campaign?.firstScanBonus ?? 0);
+    processScan(
+      boothCode,
+      entry,
+      booths,
+      thresholdPoints,
+      campaign?.firstScanBonus ?? 0,
+    );
   }, [
     searchParams,
     entry,
@@ -1196,7 +1489,13 @@ const VisitorApp = () => {
         // not a URL — use raw value as boothCode
       }
 
-      processScan(boothCode, entry, booths, thresholdPoints, campaign?.firstScanBonus ?? 0);
+      processScan(
+        boothCode,
+        entry,
+        booths,
+        thresholdPoints,
+        campaign?.firstScanBonus ?? 0,
+      );
     },
     [entry, booths, thresholdPoints, processScan, campaign],
   );
@@ -1284,19 +1583,8 @@ const VisitorApp = () => {
       case "map":
         return (
           <div className="px-4 pb-24 pt-4">
-            <h2 className="text-white font-bold text-sm mb-3">Event Map</h2>
-            <div className="rounded-2xl overflow-hidden bg-[#16213E] border border-[#E94560]/10">
-              <div className="w-full aspect-square flex items-center justify-center text-[#8892A4] text-sm p-8 text-center">
-                <div>
-                  <MapPin size={40} className="mx-auto mb-3 text-[#E94560]" />
-                  <p className="font-bold text-white">Event Venue</p>
-                  <p className="mt-2 text-xs">
-                    Interactive venue map coming soon.
-                    {"\n"}Ask staff for a printed copy.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <h2 className="text-white font-bold text-sm mb-4">Venue Maps</h2>
+            <ImageMapsView campaignId={campaign?.id} />
           </div>
         );
 
@@ -1328,7 +1616,9 @@ const VisitorApp = () => {
         <div className="sticky top-0 z-30 bg-[#1A1A2E]/95 backdrop-blur border-b border-[#16213E] px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Zap size={18} className="text-[#E94560]" />
-            <span className="text-sm font-black tracking-wide">SCAN2WIN</span>
+            <span className="text-sm font-black tracking-wide">
+              Worldbex QR Quest
+            </span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-[#8892A4] font-medium uppercase tracking-widest">
@@ -1419,7 +1709,9 @@ const VisitorApp = () => {
                   <AlertTriangle size={22} className="text-[#E94560]" />
                 </div>
                 <div>
-                  <p className="text-white font-black text-base">Reset Progress?</p>
+                  <p className="text-white font-black text-base">
+                    Reset Progress?
+                  </p>
                   <p className="text-[#8892A4] text-sm mt-1 leading-relaxed">
                     All scanned booths, points, and your raffle QR will be
                     cleared. This cannot be undone.
@@ -1477,8 +1769,12 @@ const VisitorApp = () => {
               {/* Header */}
               <div className="px-6 pt-2 pb-4 flex items-center justify-between">
                 <div>
-                  <p className="text-white font-black text-lg leading-tight">How to Play</p>
-                  <p className="text-[#8892A4] text-xs mt-0.5">Scan2Win mechanics</p>
+                  <p className="text-white font-black text-lg leading-tight">
+                    How to Play
+                  </p>
+                  <p className="text-[#8892A4] text-xs mt-0.5">
+                    Scan2Win mechanics
+                  </p>
                 </div>
                 <button
                   onClick={() => {
@@ -1493,8 +1789,10 @@ const VisitorApp = () => {
               </div>
 
               {/* Steps */}
-              <div className="overflow-y-auto px-6 pb-8 space-y-0"
-                   style={{ maxHeight: "calc(85vh - 110px)" }}>
+              <div
+                className="overflow-y-auto px-6 pb-8 space-y-0"
+                style={{ maxHeight: "calc(85vh - 110px)" }}
+              >
                 {[
                   {
                     icon: <ScanLine size={18} />,
@@ -1512,7 +1810,7 @@ const VisitorApp = () => {
                     icon: <QrCode size={18} />,
                     color: "#00D68F",
                     title: "Generate Your Raffle QR",
-                    desc: "Once you hit the points goal, tap \"Generate Raffle QR\" to get your unique encrypted raffle code.",
+                    desc: 'Once you hit the points goal, tap "Generate Raffle QR" to get your unique encrypted raffle code.',
                   },
                   {
                     icon: <CheckCircle size={18} />,
@@ -1532,18 +1830,28 @@ const VisitorApp = () => {
                     <div className="flex flex-col items-center">
                       <div
                         className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-                        style={{ background: `${step.color}20`, color: step.color }}
+                        style={{
+                          background: `${step.color}20`,
+                          color: step.color,
+                        }}
                       >
                         {step.icon}
                       </div>
                       {i < arr.length - 1 && (
-                        <div className="w-0.5 flex-1 my-1" style={{ background: "#0F162960" }} />
+                        <div
+                          className="w-0.5 flex-1 my-1"
+                          style={{ background: "#0F162960" }}
+                        />
                       )}
                     </div>
                     {/* Text */}
                     <div className="pb-5 pt-1 flex-1">
-                      <p className="font-bold text-sm text-white leading-tight">{step.title}</p>
-                      <p className="text-[#8892A4] text-xs mt-1 leading-relaxed">{step.desc}</p>
+                      <p className="font-bold text-sm text-white leading-tight">
+                        {step.title}
+                      </p>
+                      <p className="text-[#8892A4] text-xs mt-1 leading-relaxed">
+                        {step.desc}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -1554,7 +1862,9 @@ const VisitorApp = () => {
                     setShowGuide(false);
                   }}
                   className="w-full py-3.5 rounded-2xl font-black text-sm text-white mt-2"
-                  style={{ background: "linear-gradient(135deg, #E94560, #F5A623)" }}
+                  style={{
+                    background: "linear-gradient(135deg, #E94560, #F5A623)",
+                  }}
                 >
                   Got it, Let's Play!
                 </button>

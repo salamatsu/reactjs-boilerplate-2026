@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "campaign-reward-api-v4",
     "name": "Campaign Reward API",
-    "description": "**Two surfaces:**\n\n**Admin** (`/api/v1/raffles/admin/...`) — requires `Authorization: Bearer <token>`. Log in first via `POST /auth/login` to get a token.\n\n**Participant** (`/api/v1/raffles/campaigns/...`) — public, no auth required.\n\n---\n\n**Admin happy path:**\n1. `POST /auth/login` → save token\n2. `POST /admin/campaigns` → create campaign\n3. `POST /admin/campaigns/:campaignId/booths` → add booths\n4. `PATCH /admin/campaigns/:campaignId` → set status to active\n\n**Participant happy path:**\n1. `GET /campaigns/event/:eventTag` — load campaign + booth list\n2. Client scans booths locally (no API call per scan)\n3. `POST /campaigns/:campaignId/generate-raffle-qr` — submit booth codes → get encrypted QR\n4. Staff station: `POST /campaigns/:campaignId/validate-raffle` → get `raffleEntryId`\n5. Wheel spins client-side → `POST /campaigns/:campaignId/spin-wheel` → record result\n\n---\n\n**Seeded campaign ID:** `1` | **Event tag:** `WORLDBEX2026` | **Threshold:** 300 pts",
+    "description": "**Two surfaces:**\n\n**Admin** (`/api/v1/raffles/admin/...`) — requires `Authorization: Bearer <token>`. Log in first via `POST /auth/login` to get a token.\n\n**Participant** (`/api/v1/raffles/campaigns/...`) — public, no auth required.\n\n---\n\n**Admin happy path:**\n1. `POST /auth/login` → save token\n2. `POST /admin/campaigns` → create campaign\n3. `POST /admin/campaigns/:campaignId/booths` → add booths\n4. `POST /admin/campaigns/:campaignId/prizes` → add wheel prizes\n5. `POST /admin/campaigns/:campaignId/images` → upload site images\n6. `PATCH /admin/campaigns/:campaignId` → set status to active\n\n**Participant happy path:**\n1. `GET /campaigns/event/:eventTag` — load campaign + booth list\n2. Client scans booths locally (no API call per scan)\n3. `POST /campaigns/:campaignId/generate-raffle-qr` — submit booth codes → get encrypted QR\n4. Staff station: `POST /campaigns/:campaignId/validate-raffle` → get `raffleEntryId`\n5. `GET /campaigns/:campaignId/prizes` — load prize list to render wheel\n6. Wheel spins client-side → `POST /campaigns/:campaignId/spin-wheel` → send `prizeId` (win) or null (lose)\n\n---\n\n**Seeded campaign ID:** `1` | **Event tag:** `WORLDBEX2026` | **Threshold:** 300 pts",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -51,6 +51,18 @@
       "value": "",
       "type": "string",
       "description": "Auto-filled from Generate Raffle QR"
+    },
+    {
+      "key": "prizeId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-filled from Create Prize or set manually"
+    },
+    {
+      "key": "imageId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-filled from Upload Image or set manually"
     }
   ],
   "item": [
@@ -333,7 +345,179 @@
       ]
     },
     {
-      "name": "C. Admin — Booth Management",
+      "name": "C. Admin — Prize Management",
+      "description": "Prize catalog CRUD. All requests require `Authorization: Bearer {{admin_token}}`.\n\nBase path: `{{base_url}}/admin/campaigns/:campaignId/prizes`\n\n`prizeId` is auto-saved from Create Prize. The public `GET /campaigns/:campaignId/prizes` endpoint returns active prizes for the wheel.",
+      "item": [
+        {
+          "name": "List All Prizes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Prizes returned', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.prizes).to.be.an('array');",
+                  "  console.log('Total prizes:', json.data.total);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/prizes",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "campaigns", "{{campaignId}}", "prizes"]
+            },
+            "description": "Returns all prizes (active and inactive) ordered by sortOrder."
+          },
+          "response": [
+            {
+              "name": "200 - Prize List",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Prizes retrieved\",\n  \"data\": {\n    \"total\": 5,\n    \"prizes\": [\n      { \"id\": 1, \"prizeName\": \"Samsung 65-inch TV\", \"description\": null, \"quantity\": 1, \"sortOrder\": 1, \"isPool\": true, \"isActive\": true },\n      { \"id\": 2, \"prizeName\": \"iPhone 16 Pro\",      \"description\": null, \"quantity\": 3, \"sortOrder\": 2, \"isPool\": true, \"isActive\": true },\n      { \"id\": 3, \"prizeName\": \"No Prize\",           \"description\": null, \"quantity\": 99, \"sortOrder\": 9, \"isPool\": false, \"isActive\": true }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Prize",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Prize created', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.collectionVariables.set('prizeId', String(json.data.prize.id));",
+                  "  console.log('Created prize ID:', json.data.prize.id);",
+                  "  console.log('prizeName:', json.data.prize.prizeName);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prizeName\": \"Samsung 65-inch TV\",\n  \"description\": \"Grand prize\",\n  \"quantity\": 1,\n  \"sortOrder\": 1,\n  \"isPool\": true,\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/prizes",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "campaigns", "{{campaignId}}", "prizes"]
+            },
+            "description": "`prizeId` is auto-saved. Create a 'No Prize' entry with `isPool: false` for the losing wheel segment."
+          },
+          "response": [
+            {
+              "name": "201 - Prize Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Prize created successfully\",\n  \"data\": {\n    \"prize\": {\n      \"id\": 1,\n      \"prizeName\": \"Samsung 65-inch TV\",\n      \"description\": \"Grand prize\",\n      \"quantity\": 1,\n      \"sortOrder\": 1,\n      \"isPool\": true,\n      \"isActive\": true\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Prize",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Prize updated', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  console.log('Updated:', json.data.prize.prizeName, '| qty:', json.data.prize.quantity, '| active:', json.data.prize.isActive);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 2,\n  \"isActive\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/prizes/{{prizeId}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "campaigns", "{{campaignId}}", "prizes", "{{prizeId}}"]
+            },
+            "description": "Partial update — at least one field required."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Prize",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 409', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 409]);",
+                  "});",
+                  "console.log(pm.response.json().message);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/prizes/{{prizeId}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "campaigns", "{{campaignId}}", "prizes", "{{prizeId}}"]
+            },
+            "description": "Blocked if any claims reference this prize. Set `isActive: false` instead."
+          },
+          "response": [
+            {
+              "name": "200 - Deleted",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Prize deleted successfully\"\n}"
+            },
+            {
+              "name": "409 - Claims Exist",
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Cannot delete prize \\\"Samsung 65-inch TV\\\" — it has existing claims. Set isActive to false instead.\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "D. Admin — Booth Management",
       "description": "Booth CRUD. All requests require `Authorization: Bearer {{admin_token}}`.\n\nBase path: `{{base_url}}/admin/campaigns/:campaignId/booths`\n\n`boothId` is auto-saved from Create Booth. Default `20260001` matches the seeded first booth.",
       "item": [
         {
@@ -566,11 +750,261 @@
       ]
     },
     {
-      "name": "D. Admin — Stats",
+      "name": "D. Admin — Image Maps",
+      "description": "Upload and manage site images per campaign. All requests require `Authorization: Bearer {{admin_token}}`.\n\nBase path: `{{base_url}}/admin/campaigns/:campaignId/images`\n\n**Upload** uses `multipart/form-data` with the file field named `image`.\n**Metadata-only edits** use JSON PATCH.\n**File replacement** uses `POST .../replace` (multipart).",
+      "item": [
+        {
+          "name": "List All Images (grouped by site)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Sites returned', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.sites).to.be.an('array');",
+                  "  console.log('Total images:', json.data.total);",
+                  "  console.log('Sites:', json.data.sites.map(s => s.siteCode).join(', '));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/images",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "campaigns", "{{campaignId}}", "images"]
+            },
+            "description": "Returns all images grouped by siteCode, ordered by siteCode → sortOrder."
+          },
+          "response": [
+            {
+              "name": "200 - Image List",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Image maps retrieved\",\n  \"data\": {\n    \"total\": 3,\n    \"sites\": [\n      {\n        \"siteCode\": \"BLDG-A\",\n        \"siteName\": \"Building A\",\n        \"images\": [\n          { \"id\": 1, \"imageUrl\": \"campaigns/1/images/abc123.jpg\", \"altText\": \"Building A entrance\", \"sortOrder\": 1, \"isActive\": true }\n        ]\n      },\n      {\n        \"siteCode\": \"MAIN-HALL\",\n        \"siteName\": \"Main Hall\",\n        \"images\": [\n          { \"id\": 2, \"imageUrl\": \"campaigns/1/images/def456.jpg\", \"altText\": null, \"sortOrder\": 1, \"isActive\": true },\n          { \"id\": 3, \"imageUrl\": \"campaigns/1/images/ghi789.jpg\", \"altText\": \"Stage view\",       \"sortOrder\": 2, \"isActive\": true }\n        ]\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Single Image",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Image returned', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.image).to.be.an('object');",
+                  "  console.log('siteCode:', json.data.image.siteCode);",
+                  "  console.log('imageUrl:', json.data.image.imageUrl);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/images/{{imageId}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "campaigns", "{{campaignId}}", "images", "{{imageId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Image",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Image uploaded', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.collectionVariables.set('imageId', String(json.data.image.id));",
+                  "  console.log('Image ID saved:', json.data.image.id);",
+                  "  console.log('imageUrl:', json.data.image.imageUrl);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "image",     "type": "file",  "src": "",                  "description": "Image file (jpg/png/webp/gif, max 5MB)" },
+                { "key": "siteCode",  "type": "text",  "value": "MAIN-HALL",       "description": "Programmatic site key" },
+                { "key": "siteName",  "type": "text",  "value": "Main Hall",       "description": "Display label" },
+                { "key": "altText",   "type": "text",  "value": "Main hall view",  "description": "Optional accessibility text" },
+                { "key": "sortOrder", "type": "text",  "value": "1",               "description": "Display order within site" },
+                { "key": "isActive",  "type": "text",  "value": "true",            "description": "true or false" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/images",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "campaigns", "{{campaignId}}", "images"]
+            },
+            "description": "Multipart form upload. Field name must be `image`. Supported types: jpg, jpeg, png, webp, gif, svg, bmp, tiff. Max 5 MB. `imageId` is auto-saved."
+          },
+          "response": [
+            {
+              "name": "201 - Uploaded",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Image uploaded successfully\",\n  \"data\": {\n    \"image\": {\n      \"id\": 1,\n      \"siteCode\": \"MAIN-HALL\",\n      \"siteName\": \"Main Hall\",\n      \"imageUrl\": \"campaigns/1/images/abc123def456.jpg\",\n      \"altText\": \"Main hall view\",\n      \"sortOrder\": 1,\n      \"isActive\": true\n    }\n  }\n}"
+            },
+            {
+              "name": "400 - No File",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Image file is required\"\n}"
+            },
+            {
+              "name": "400 - File Too Large",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"error\": \"File too large\",\n  \"message\": \"File size exceeds the maximum allowed size\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Image Metadata",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Image updated', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  console.log('siteCode:', json.data.image.siteCode);",
+                  "  console.log('sortOrder:', json.data.image.sortOrder);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"altText\": \"Updated description\",\n  \"sortOrder\": 2,\n  \"isActive\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/images/{{imageId}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "campaigns", "{{campaignId}}", "images", "{{imageId}}"]
+            },
+            "description": "Update metadata only (siteCode, siteName, altText, sortOrder, isActive). Does not replace the file. At least one field required."
+          },
+          "response": []
+        },
+        {
+          "name": "Replace Image File",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Image replaced', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  console.log('New imageUrl:', json.data.image.imageUrl);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "image", "type": "file", "src": "", "description": "New image file to replace the existing one" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/images/{{imageId}}/replace",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "campaigns", "{{campaignId}}", "images", "{{imageId}}", "replace"]
+            },
+            "description": "Upload a new file to replace the existing one. Old file is deleted from disk. Metadata (siteCode, siteName, etc.) is preserved."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Image",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "console.log(pm.response.json().message);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/images/{{imageId}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "campaigns", "{{campaignId}}", "images", "{{imageId}}"]
+            },
+            "description": "Deletes the DB record and removes the file from disk. Best-effort — request succeeds even if the file was already missing."
+          },
+          "response": [
+            {
+              "name": "200 - Deleted",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Image deleted successfully\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "E. Admin — Stats",
       "description": "Admin read-only views. All requests require `Authorization: Bearer {{admin_token}}`.",
       "item": [
         {
-          "name": "Get Campaign Prize Statistics",
+          "name": "Get Prize Claim Statistics",
           "event": [
             {
               "listen": "test",
@@ -596,11 +1030,11 @@
               { "key": "Authorization", "value": "Bearer {{admin_token}}" }
             ],
             "url": {
-              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/prizes",
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/prizes/stats",
               "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}", "prizes"]
+              "path": ["admin", "campaigns", "{{campaignId}}", "prizes", "stats"]
             },
-            "description": "Returns claim history grouped by prize name + 50 most recent claims. Not a prize catalog."
+            "description": "Claim history grouped by prize name + 50 most recent claims."
           },
           "response": []
         },
@@ -1028,8 +1462,57 @@
       ]
     },
     {
-      "name": "4. Spin Wheel",
-      "description": "STEP 7 — Public (raffle station). The wheel spins client-side. Send the outcome here. Uses `raffleEntryId` auto-saved from Validate Raffle.\n\nSend `prizeName: 'No Prize'` for a losing spin.",
+      "name": "4. Get Prizes (Wheel Catalog)",
+      "description": "STEP 5 — Public. Load the prize list before rendering the wheel. Returns only active prizes ordered by sortOrder.",
+      "item": [
+        {
+          "name": "Get Active Prizes ✓",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Prizes returned', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.prizes).to.be.an('array');",
+                  "  if (json.data.prizes.length > 0) {",
+                  "    pm.collectionVariables.set('prizeId', String(json.data.prizes[0].id));",
+                  "    console.log('First prize ID saved:', json.data.prizes[0].id);",
+                  "  }",
+                  "  console.log('Total active prizes:', json.data.prizes.length);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/prizes",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "prizes"]
+            },
+            "description": "Public endpoint. Returns active prizes only. Use the returned `id` values as `prizeId` in spin-wheel."
+          },
+          "response": [
+            {
+              "name": "200 - Active Prizes",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Prizes retrieved\",\n  \"data\": {\n    \"prizes\": [\n      { \"id\": 1, \"prizeName\": \"Samsung 65-inch TV\", \"description\": \"Grand prize\", \"quantity\": 1, \"sortOrder\": 1, \"isPool\": true },\n      { \"id\": 2, \"prizeName\": \"iPhone 16 Pro\",      \"description\": null,          \"quantity\": 3, \"sortOrder\": 2, \"isPool\": true },\n      { \"id\": 3, \"prizeName\": \"No Prize\",           \"description\": null,          \"quantity\": 99, \"sortOrder\": 9, \"isPool\": false }\n    ]\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Spin Wheel",
+      "description": "STEP 6 — Public (raffle station). The wheel spins client-side. Send the outcome here.\n\n- **Win:** send `prizeId` (from the prizes catalog) + `wheelResult`\n- **Lose:** omit `prizeId` or send `null`, set `wheelResult` to `\"No Prize\"`\n\nUses `raffleEntryId` auto-saved from Validate Raffle.",
       "item": [
         {
           "name": "Spin Wheel — Win Prize ✓",
@@ -1045,6 +1528,7 @@
                   "  pm.expect(json.data.outcome).to.equal('won');",
                   "  pm.expect(json.data.prize).to.not.be.null;",
                   "  console.log('claimId:', json.data.prize.claimId);",
+                  "  console.log('prizeId:', json.data.prize.prizeId);",
                   "  console.log('prizeName:', json.data.prize.prizeName);",
                   "});"
                 ],
@@ -1057,14 +1541,14 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"raffleEntryId\": \"{{raffleEntryId}}\",\n  \"prizeName\": \"Samsung 65-inch Smart TV\",\n  \"wheelResult\": \"Samsung 65-inch Smart TV\",\n  \"claimedBy\": \"Event Staff - Maria\"\n}"
+              "raw": "{\n  \"raffleEntryId\": \"{{raffleEntryId}}\",\n  \"prizeId\": {{prizeId}},\n  \"wheelResult\": \"Samsung 65-inch TV\",\n  \"claimedBy\": \"Event Staff - Maria\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/spin-wheel",
               "host": ["{{base_url}}"],
               "path": ["campaigns", "{{campaignId}}", "spin-wheel"]
             },
-            "description": "Server creates a campaign_claims record and marks the entry as 'won'."
+            "description": "Send `prizeId` from the catalog. Server looks up the prize name, creates a claim record, and decrements quantity."
           },
           "response": [
             {
@@ -1072,7 +1556,7 @@
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Congratulations! Prize awarded.\",\n  \"data\": {\n    \"raffleEntryId\": \"1\",\n    \"participantId\": 1,\n    \"outcome\": \"won\",\n    \"wheelResult\": \"Samsung 65-inch Smart TV\",\n    \"prize\": {\n      \"claimId\": 1,\n      \"prizeName\": \"Samsung 65-inch Smart TV\",\n      \"claimedBy\": \"Event Staff - Maria\",\n      \"claimedAt\": \"2026-04-01T08:10:00.000Z\",\n      \"status\": \"won\"\n    }\n  }\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Congratulations! Prize awarded.\",\n  \"data\": {\n    \"raffleEntryId\": \"1\",\n    \"participantId\": 1,\n    \"outcome\": \"won\",\n    \"wheelResult\": \"Samsung 65-inch TV\",\n    \"prize\": {\n      \"claimId\": 1,\n      \"prizeId\": 1,\n      \"prizeName\": \"Samsung 65-inch TV\",\n      \"claimedBy\": \"Event Staff - Maria\",\n      \"claimedAt\": \"2026-04-01T08:10:00.000Z\",\n      \"status\": \"won\"\n    }\n  }\n}"
             }
           ]
         },
@@ -1100,14 +1584,14 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"raffleEntryId\": \"{{raffleEntryId}}\",\n  \"prizeName\": \"No Prize\",\n  \"wheelResult\": \"No Prize\"\n}"
+              "raw": "{\n  \"raffleEntryId\": \"{{raffleEntryId}}\",\n  \"wheelResult\": \"No Prize\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/spin-wheel",
               "host": ["{{base_url}}"],
               "path": ["campaigns", "{{campaignId}}", "spin-wheel"]
             },
-            "description": "No claim record is created. Entry marked as 'lost'."
+            "description": "Omit `prizeId` for a losing spin. No claim record is created. Entry marked as 'lost'."
           },
           "response": [
             {
@@ -1142,7 +1626,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"raffleEntryId\": \"{{raffleEntryId}}\",\n  \"prizeName\": \"iPhone 16 Pro\",\n  \"wheelResult\": \"iPhone 16 Pro\"\n}"
+              "raw": "{\n  \"raffleEntryId\": \"{{raffleEntryId}}\",\n  \"prizeId\": {{prizeId}},\n  \"wheelResult\": \"Samsung 65-inch TV\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/spin-wheel",
@@ -1152,11 +1636,40 @@
             "description": "Re-spin the same entry after it has been processed."
           },
           "response": []
+        },
+        {
+          "name": "Spin Wheel — Invalid prizeId ✗",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "console.log(pm.response.json().message);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"raffleEntryId\": \"{{raffleEntryId}}\",\n  \"prizeId\": 99999,\n  \"wheelResult\": \"Fake Prize\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/spin-wheel",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "spin-wheel"]
+            }
+          },
+          "response": []
         }
       ]
     },
     {
-      "name": "5. Validation Errors",
+      "name": "6. Validation Errors",
       "description": "Key Zod validation failure cases (no auth required — all public endpoints).",
       "item": [
         {

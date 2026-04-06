@@ -11,7 +11,7 @@
 //         STAFF role can access Prizes only.
 // ============================================
 
-import { Trophy, Layers, Megaphone } from "lucide-react";
+import { Megaphone } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import BasicLayout from "../../components/layout/BasicLayout";
@@ -19,9 +19,7 @@ import { ComponentLoader } from "../../components/LoadingFallback";
 import { Auth, UnAuth } from "../ValidateAuth";
 import { useAdminAuthStore, useCurrentActiveUserToken } from "../../store/useAdminAuthStore";
 
-const Login           = lazy(() => import("../../pages/admin/Login"));
-const RouletteprizesCMS = lazy(() => import("../../pages/admin/RouletteprizesCMS"));
-const PrizePoolConfig   = lazy(() => import("../../pages/admin/PrizePoolConfig"));
+const Login             = lazy(() => import("../../pages/admin/Login"));
 const CampaignManager   = lazy(() => import("../../pages/admin/CampaignManager"));
 
 // Combined store passed to BasicLayout — merges userData from admin store
@@ -48,28 +46,6 @@ const CmsRoute = () => {
       component: (
         <Suspense fallback={<ComponentLoader />}>
           <CampaignManager />
-        </Suspense>
-      ),
-    },
-    {
-      route: "/prizes",
-      name: "prizes",
-      label: "Roulette Prizes",
-      icon: <Trophy className="h-5 w-5" />,
-      component: (
-        <Suspense fallback={<ComponentLoader />}>
-          <RouletteprizesCMS />
-        </Suspense>
-      ),
-    },
-    {
-      route: "/pool",
-      name: "pool",
-      label: "Prize Pool Config",
-      icon: <Layers className="h-5 w-5" />,
-      component: (
-        <Suspense fallback={<ComponentLoader />}>
-          <PrizePoolConfig />
         </Suspense>
       ),
     },

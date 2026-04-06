@@ -71,7 +71,7 @@ const Sidebar = ({ collapsed, handleCollapse, navigations, reset }) => {
         </Link>
       </motion.div>,
       "signout",
-      <LoginOutlined />
+      <LoginOutlined />,
     ),
   ];
 
@@ -84,7 +84,9 @@ const Sidebar = ({ collapsed, handleCollapse, navigations, reset }) => {
           onClose={() => handleCollapse(false)}
           open={collapsed}
           className="h-full"
-          styles={{ body: { padding: 0, display: "flex", flexDirection: "column" } }}
+          styles={{
+            body: { padding: 0, display: "flex", flexDirection: "column" },
+          }}
         >
           <Brand collapsed={false} />
           <TopMenus
@@ -103,7 +105,7 @@ const Sidebar = ({ collapsed, handleCollapse, navigations, reset }) => {
       ) : (
         /* Desktop: persistent collapsible Sider */
         <Sider
-          className="hidden h-screen overflow-hidden md:flex flex-col shadow"
+          className="hidden h-screen overflow-hidden md:flex flex-1 flex-col shadow"
           breakpoint="lg"
           collapsible
           collapsed={collapsed}
@@ -111,10 +113,15 @@ const Sidebar = ({ collapsed, handleCollapse, navigations, reset }) => {
           onCollapse={(value) => handleCollapse(value)}
           width={220}
         >
-          <Brand collapsed={collapsed} />
-          <TopMenus path={pathname} navigations={navigations} />
-          <Divider className="my-0" />
-          <Menu mode="inline" items={bottomItems} selectedKeys={[]} />
+          <div className="flex flex-col h-full">
+            <Brand collapsed={collapsed} />
+            <div className="flex-1 overflow-y-auto">
+              <TopMenus path={pathname} navigations={navigations} />
+            </div>
+            <div className="mt-auto border-t border-gray-800">
+              <Menu mode="inline" items={bottomItems} selectedKeys={[]} />
+            </div>
+          </div>
         </Sider>
       )}
     </div>
