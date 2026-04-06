@@ -28,6 +28,7 @@ import {
 } from "antd";
 import {
   DeleteOutlined,
+  CopyOutlined,
   DownloadOutlined,
   EditOutlined,
   EyeOutlined,
@@ -68,9 +69,30 @@ const STATUS_META = {
   cancelled: { color: "error", label: "Cancelled" },
 };
 
+const STATUS_ACCENT = {
+  draft: "#8892A4",
+  active: "#00D68F",
+  ended: "#4096ff",
+  cancelled: "#F5A623",
+};
+
 const fmtDate = (iso) => (iso ? dayjs(iso).format("MMM D, YYYY") : "—");
 const boothQrUrl = (eventTag, boothCode, points) =>
   `${window.location.origin}/${eventTag}?i=${boothCode}&p=${points}`;
+
+const copyText = (text) => {
+  if (navigator.clipboard) {
+    return navigator.clipboard.writeText(text);
+  }
+  const el = document.createElement("textarea");
+  el.value = text;
+  el.style.cssText = "position:fixed;opacity:0;pointer-events:none";
+  document.body.appendChild(el);
+  el.select();
+  document.execCommand("copy");
+  document.body.removeChild(el);
+  return Promise.resolve();
+};
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
@@ -137,7 +159,7 @@ const BoothQrModal = ({ open, onClose, campaign, booths }) => {
       open={open}
       onCancel={onClose}
       footer={null}
-      width={860}
+      width="min(860px, 95vw)"
       destroyOnHidden
       styles={{
         header: {
@@ -179,7 +201,7 @@ const BoothQrModal = ({ open, onClose, campaign, booths }) => {
         <>
           {/* URL format + Download All */}
           <div
-            className="flex items-center justify-between gap-3 mb-5 rounded-xl px-4 py-3"
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5 rounded-xl px-4 py-3"
             style={{ background: "#16213E", border: "1px solid #1A1A2E" }}
           >
             <div className="flex items-center gap-2 min-w-0">
@@ -195,11 +217,11 @@ const BoothQrModal = ({ open, onClose, campaign, booths }) => {
               size="small"
               icon={<DownloadOutlined />}
               onClick={() => downloadAllQRs(booths)}
+              className="shrink-0 self-end sm:self-auto"
               style={{
                 background: "#E94560",
                 borderColor: "#E94560",
                 color: "#fff",
-                shrink: 0,
               }}
             >
               Download All
@@ -207,7 +229,7 @@ const BoothQrModal = ({ open, onClose, campaign, booths }) => {
           </div>
 
           {/* QR grid */}
-          <div className="grid grid-cols-3 gap-4 max-h-130 overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-h-130 overflow-y-auto pr-1">
             {booths.map((booth, i) => {
               const accent = CARD_ACCENTS[i % CARD_ACCENTS.length];
               return (
@@ -372,11 +394,11 @@ const CampaignFormModal = ({ open, onClose, initialValues }) => {
           {isEditing ? "Save Changes" : "Create Event"}
         </Button>,
       ]}
-      width={560}
+      width="min(560px, 95vw)"
       destroyOnHidden
     >
       <Form form={form} layout="vertical" className="pt-2">
-        <div className="grid grid-cols-2 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           <Form.Item
             label="Event Code"
             name="campaignCode"
@@ -402,7 +424,7 @@ const CampaignFormModal = ({ open, onClose, initialValues }) => {
         <Form.Item label="Description" name="description">
           <TextArea rows={3} placeholder="Optional description…" />
         </Form.Item>
-        <div className="grid grid-cols-3 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4">
           <Form.Item
             label="Threshold (pts)"
             name="thresholdPoints"
@@ -491,11 +513,11 @@ const BoothFormModal = ({ open, onClose, campaignId, initialValues }) => {
           {isEditing ? "Save Changes" : "Add Booth"}
         </Button>,
       ]}
-      width={480}
+      width="min(480px, 95vw)"
       destroyOnHidden
     >
       <Form form={form} layout="vertical" className="pt-2">
-        <div className="grid grid-cols-2 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           <Form.Item
             label="Booth Code"
             name="boothCode"
@@ -511,7 +533,7 @@ const BoothFormModal = ({ open, onClose, campaignId, initialValues }) => {
             <Input placeholder="Main Stage" />
           </Form.Item>
         </div>
-        <div className="grid grid-cols-3 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4">
           <Form.Item
             label="Points"
             name="points"
@@ -593,6 +615,7 @@ const BoothsTab = ({ campaign }) => {
         <Empty description="No booths yet" />
       ) : (
         <Table
+          scroll={{ x: 480 }}
           dataSource={booths}
           columns={[
             {
@@ -774,18 +797,18 @@ const CampaignDetailDrawer = ({ campaign, open, onClose }) => {
   return (
     <Drawer
       title={
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="font-bold">{campaign.campaignName}</span>
           <Tag color={color}>{label}</Tag>
         </div>
       }
       open={open}
       onClose={onClose}
-      size="large"
+      width={typeof window !== "undefined" ? Math.min(736, window.innerWidth) : 736}
       destroyOnHidden
     >
       <Descriptions
-        column={2}
+        column={{ xs: 1, sm: 2 }}
         size="small"
         bordered
         className="mb-5"
@@ -839,6 +862,167 @@ const CampaignDetailDrawer = ({ campaign, open, onClose }) => {
   );
 };
 
+// ─── Campaign Card ────────────────────────────────────────────────────────────
+
+const CampaignCard = ({ campaign, onView, onEdit, onDelete, deleting }) => {
+  const { message } = App.useApp();
+  const { color, label } = STATUS_META[campaign.status] ?? {
+    color: "default",
+    label: campaign.status,
+  };
+  const accent = STATUS_ACCENT[campaign.status] ?? "#E94560";
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden flex flex-col transition-transform hover:-translate-y-0.5"
+      style={{ background: "#16213E", border: `1px solid ${accent}30` }}
+    >
+      {/* Status accent strip */}
+      <div className="h-1 shrink-0" style={{ background: accent }} />
+
+      {/* Card body */}
+      <div className="p-4 flex flex-col gap-3 flex-1">
+        {/* Title row */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p
+              className="font-black text-base leading-snug"
+              style={{ color: "#fff" }}
+            >
+              {campaign.campaignName}
+            </p>
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              <Text
+                code
+                className="text-xs !bg-[#0F1629] !border-[#0F1629] !text-[#8892A4]"
+              >
+                {campaign.campaignCode}
+              </Text>
+              <Tag
+                color="blue"
+                className="font-mono font-bold text-xs m-0"
+              >
+                {campaign.eventTag}
+              </Tag>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <Tag color={color} className="m-0">
+              {label}
+            </Tag>
+            <span className="text-xs" style={{ color: "#8892A450" }}>
+              #{campaign.id}
+            </span>
+          </div>
+        </div>
+
+        {/* Description */}
+        {campaign.description && (
+          <p
+            className="text-xs leading-relaxed line-clamp-2"
+            style={{ color: "#8892A4" }}
+          >
+            {campaign.description}
+          </p>
+        )}
+
+        {/* Stats */}
+        <div className="flex flex-col gap-2 mt-auto">
+          {/* Threshold */}
+          <div
+            className="flex items-center justify-between rounded-xl px-3 py-2.5"
+            style={{ background: "#0F1629" }}
+          >
+            <span className="text-xs" style={{ color: "#8892A4" }}>
+              Threshold
+            </span>
+            <span className="font-black text-sm" style={{ color: "#E94560" }}>
+              {campaign.thresholdPoints} pts
+            </span>
+          </div>
+          {/* Duration */}
+          <div
+            className="rounded-xl px-3 py-3 flex flex-col gap-1"
+            style={{ background: "#0F1629" }}
+          >
+            <span className="text-xs" style={{ color: "#8892A4" }}>
+              Duration
+            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-sm" style={{ color: "#fff" }}>
+                {fmtDate(campaign.startDate)}
+              </span>
+              <span className="text-xs" style={{ color: "#8892A4" }}>→</span>
+              <span className="font-semibold text-sm" style={{ color: "#fff" }}>
+                {fmtDate(campaign.endDate)}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Actions footer */}
+      <div
+        className="px-4 py-3 flex items-center gap-2"
+        style={{ borderTop: `1px solid ${accent}18` }}
+      >
+        <button
+          onClick={() => onView(campaign)}
+          className="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-opacity hover:opacity-80 active:scale-95"
+          style={{
+            background: `${accent}15`,
+            color: accent,
+            border: `1px solid ${accent}25`,
+          }}
+        >
+          <EyeOutlined style={{ fontSize: 12 }} />
+          Booths & QR
+        </button>
+        <Tooltip title={`Copy link: /${campaign.eventTag}`} color="#E94560">
+          <button
+            onClick={() => {
+              copyText(`${window.location.origin}/${campaign.eventTag}`)
+                .then(() => message.success("Link copied!"))
+                .catch(() => message.error("Copy failed."));
+            }}
+            className="w-8 h-8 flex items-center justify-center rounded-xl transition-opacity hover:opacity-80 active:scale-95"
+            style={{ background: "#0F1629", border: "1px solid #ffffff10" }}
+          >
+            <CopyOutlined style={{ fontSize: 13, color: "#8892A4" }} />
+          </button>
+        </Tooltip>
+        <Tooltip title="Edit">
+          <button
+            onClick={() => onEdit(campaign)}
+            className="w-8 h-8 flex items-center justify-center rounded-xl transition-opacity hover:opacity-80 active:scale-95"
+            style={{ background: "#0F1629", border: "1px solid #ffffff10" }}
+          >
+            <EditOutlined style={{ fontSize: 13, color: "#8892A4" }} />
+          </button>
+        </Tooltip>
+        {campaign.status === "draft" && (
+          <Tooltip title="Delete draft">
+            <Popconfirm
+              title="Delete this event?"
+              description="This cannot be undone."
+              okText="Delete"
+              okButtonProps={{ danger: true, loading: deleting }}
+              onConfirm={() => onDelete(campaign.id)}
+            >
+              <button
+                className="w-8 h-8 flex items-center justify-center rounded-xl transition-opacity hover:opacity-80 active:scale-95"
+                style={{ background: "#E9456015", border: "1px solid #E9456025" }}
+              >
+                <DeleteOutlined style={{ fontSize: 13, color: "#E94560" }} />
+              </button>
+            </Popconfirm>
+          </Tooltip>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const CampaignManager = () => {
@@ -882,162 +1066,34 @@ const CampaignManager = () => {
     }
   };
 
-  const columns = [
-    {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
-      width: 55,
-      render: (v) => (
-        <Text type="secondary" className="text-xs">
-          #{v}
-        </Text>
-      ),
-    },
-    {
-      title: "Code",
-      dataIndex: "campaignCode",
-      key: "campaignCode",
-      width: 165,
-      render: (v) => (
-        <Text code className="text-xs">
-          {v}
-        </Text>
-      ),
-    },
-    {
-      title: "Event Name",
-      dataIndex: "campaignName",
-      key: "campaignName",
-      render: (v, r) => (
-        <div>
-          <p
-            className="font-semibold text-sm leading-tight"
-            style={{ color: "#fff" }}
-          >
-            {v}
-          </p>
-          {r.description && (
-            <p
-              className="text-xs mt-0.5 truncate max-w-xs"
-              style={{ color: "#8892A4" }}
-            >
-              {r.description}
-            </p>
-          )}
-        </div>
-      ),
-    },
-    {
-      title: "Event Tag",
-      dataIndex: "eventTag",
-      key: "eventTag",
-      width: 115,
-      render: (v) => (
-        <Tag color="blue" className="font-mono font-bold">
-          {v}
-        </Tag>
-      ),
-    },
-    {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
-      width: 110,
-      render: (v) => {
-        const meta = STATUS_META[v] ?? { color: "default", label: v };
-        return <Tag color={meta.color}>{meta.label}</Tag>;
-      },
-    },
-    {
-      title: "Dates",
-      key: "dates",
-      width: 200,
-      render: (_, r) => (
-        <span className="text-xs" style={{ color: "#8892A4" }}>
-          {fmtDate(r.startDate)} – {fmtDate(r.endDate)}
-        </span>
-      ),
-    },
-    {
-      title: "Threshold",
-      dataIndex: "thresholdPoints",
-      key: "thresholdPoints",
-      width: 105,
-      render: (v) => <span className="font-bold text-[#E94560]">{v} pts</span>,
-    },
-    {
-      title: "Actions",
-      key: "actions",
-      width: 110,
-      render: (_, record) => (
-        <Space size={2}>
-          <Tooltip title="View booths & QR codes">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined style={{ color: "#8892A4" }} />}
-              onClick={() => setDrawerTarget(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Edit">
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined style={{ color: "#8892A4" }} />}
-              onClick={() => openEdit(record)}
-            />
-          </Tooltip>
-          {record.status === "draft" && (
-            <Tooltip title="Delete (draft only)">
-              <Popconfirm
-                title="Delete this event?"
-                description="This cannot be undone."
-                okText="Delete"
-                okButtonProps={{ danger: true, loading: deleting }}
-                onConfirm={() => handleDelete(record.id)}
-              >
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<DeleteOutlined style={{ color: "#E94560" }} />}
-                />
-              </Popconfirm>
-            </Tooltip>
-          )}
-        </Space>
-      ),
-    },
-  ];
-
   return (
     <div className="min-h-full" style={{ background: "#0F1629" }}>
       {/* Header */}
       <div
-        className="px-6 pt-6 pb-5"
+        className="px-4 pt-4 pb-4 sm:px-6 sm:pt-6 sm:pb-5"
         style={{ borderBottom: "1px solid #16213E" }}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
               style={{ background: "#E9456020" }}
             >
               <Megaphone color="#E94560" size={20} />
             </div>
-            <div>
+            <div className="min-w-0">
               <h1
-                className="font-black text-lg leading-none"
+                className="font-black text-lg leading-none truncate"
                 style={{ color: "#fff" }}
               >
                 Event Manager
               </h1>
-              <p className="text-xs mt-0.5" style={{ color: "#8892A4" }}>
+              <p className="text-xs mt-0.5 hidden sm:block" style={{ color: "#8892A4" }}>
                 Manage raffle events and generate booth QR codes
               </p>
             </div>
           </div>
-          <Space>
+          <Space size={6}>
             <Button
               icon={<ReloadOutlined />}
               onClick={() => refetch()}
@@ -1048,7 +1104,7 @@ const CampaignManager = () => {
                 color: "#fff",
               }}
             >
-              Refresh
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
             <Button
               type="primary"
@@ -1056,13 +1112,13 @@ const CampaignManager = () => {
               onClick={openCreate}
               style={{ background: "#E94560", borderColor: "#E94560" }}
             >
-              New Event
+              <span className="hidden sm:inline">New Event</span>
             </Button>
           </Space>
         </div>
 
         {/* Stats */}
-        <div className="flex gap-3 mt-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-4">
           <StatCard
             icon={<Zap size={18} color="#E94560" />}
             label="Total"
@@ -1096,28 +1152,33 @@ const CampaignManager = () => {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="p-6">
-        <div
-          className="rounded-2xl overflow-hidden"
-          style={{ border: "1px solid #16213E" }}
-        >
-          <Table
-            dataSource={campaigns}
-            columns={columns}
-            rowKey="id"
-            loading={isLoading}
-            pagination={{ pageSize: 15, showSizeChanger: false }}
-            size="middle"
-            locale={{
-              emptyText: (
-                <Empty description="No events yet" className="py-10" />
-              ),
-            }}
-            style={{ background: "#16213E" }}
-            onRow={() => ({ style: { background: "#16213E" } })}
+      {/* Cards */}
+      <div className="p-3 sm:p-6">
+        {isLoading ? (
+          <div className="flex justify-center py-24">
+            <Spin size="large" />
+          </div>
+        ) : campaigns.length === 0 ? (
+          <Empty
+            description={
+              <span style={{ color: "#8892A4" }}>No events yet</span>
+            }
+            className="py-24"
           />
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {campaigns.map((c) => (
+              <CampaignCard
+                key={c.id}
+                campaign={c}
+                onView={setDrawerTarget}
+                onEdit={openEdit}
+                onDelete={handleDelete}
+                deleting={deleting}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <CampaignFormModal
