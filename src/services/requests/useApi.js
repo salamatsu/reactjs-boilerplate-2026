@@ -24,6 +24,7 @@ import {
   generateRaffleQrApi,
   validateRaffleApi,
   spinWheelApi,
+  getCampaignPrizesPublicApi,
   listCampaignsApi,
   getCampaignByIdApi,
   createCampaignApi,
@@ -180,6 +181,14 @@ export const useValidateRaffle = () => {
 export const useSpinWheel = () => {
   return useMutation({
     mutationFn: spinWheelApi,
+  });
+};
+
+export const useGetCampaignPrizesPublic = (campaignId) => {
+  return useQuery({
+    queryKey: ["campaign-prizes-public", campaignId],
+    queryFn: () => getCampaignPrizesPublicApi(campaignId),
+    enabled: !!campaignId,
   });
 };
 

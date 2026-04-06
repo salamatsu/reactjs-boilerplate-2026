@@ -14,6 +14,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Wheel } from "react-custom-roulette";
 import {
   ScanLine,
   X,
@@ -24,14 +25,14 @@ import {
 } from "lucide-react";
 import {
   useGetCampaignByEventTag,
-  useGetPrizes,
+  useGetCampaignPrizesPublic,
   useValidateRaffle,
   useSpinWheel,
 } from "../../services/requests/useApi";
 
 // ─── localStorage helpers ─────────────────────────────────────────────────────
 
-const STATION_KEY = "scan2win_station";
+const STATION_KEY = "qrquest_station";
 
 const loadStation = () => {
   try {
@@ -51,14 +52,6 @@ const clearStation = () => localStorage.removeItem(STATION_KEY);
 
 const STEPS = ["scan", "spin", "done"];
 
-// ─── Prize wheel helper ────────────────────────────────────────────────────────
-
-/** Pick a random winner from pool-eligible (isPool: 1) prizes */
-const pickWinner = (prizes) => {
-  const pool = prizes.filter((p) => p.isPool === 1);
-  if (!pool.length) return prizes[0];
-  return pool[Math.floor(Math.random() * pool.length)];
-};
 
 // ─── Event Setup Screen ────────────────────────────────────────────────────
 
@@ -338,11 +331,15 @@ const ScanStep = ({ station, onNext }) => {
 
 // ─── Step: Spin Wheel ─────────────────────────────────────────────────────────
 
-const SpinStep = ({ participant, station, prizes, onNext }) => {
-  const canvasRef = useRef(null);
-  const [spinning, setSpinning] = useState(false);
+const SpinStep = ({ participant, station, onNext }) => {
+  const [mustSpin, setMustSpin] = useState(false);
+  const [prizeNumber, setPrizeNumber] = useState(0);
   const [winner, setWinner] = useState(null);
-  const [rotation, setRotation] = useState(0);
+
+  const { data: prizesData, isLoading: loadingPrizes } =
+    useGetCampaignPrizesPublic(station.campaignId);
+
+  const prizes = prizesData?.data?.prizes ?? [];
 
   const {
     mutateAsync: recordSpin,
@@ -350,129 +347,46 @@ const SpinStep = ({ participant, station, prizes, onNext }) => {
     error: spinError,
   } = useSpinWheel();
 
-  const drawWheel = useCallback(
-    (currentRotation = 0) => {
-      const canvas = canvasRef.current;
-      if (!canvas || !prizes.length) return;
-      const ctx = canvas.getContext("2d");
-      const { width, height } = canvas;
-      const cx = width / 2;
-      const cy = height / 2;
-      const radius = Math.min(cx, cy) - 8;
-      const sliceAngle = (2 * Math.PI) / prizes.length;
-
-      ctx.clearRect(0, 0, width, height);
-
-      prizes.forEach((prize, i) => {
-        const startAngle = currentRotation + i * sliceAngle;
-        const endAngle = startAngle + sliceAngle;
-        const isPool = prize.isPool === 1;
-        const fill = isPool
-          ? i % 2 === 0
-            ? "#E94560"
-            : "#F5A623"
-          : i % 2 === 0
-            ? "#16213E"
-            : "#1A1A2E";
-
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.arc(cx, cy, radius, startAngle, endAngle);
-        ctx.closePath();
-        ctx.fillStyle = fill;
-        ctx.fill();
-        ctx.strokeStyle = "#0D0D1A";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(startAngle + sliceAngle / 2);
-        ctx.textAlign = "right";
-        ctx.fillStyle = "#FFFFFF";
-        ctx.font = `bold ${Math.max(9, Math.floor(radius / prizes.length) + 4)}px DM Sans, sans-serif`;
-        ctx.fillText(
-          prize.name.length > 14 ? prize.name.slice(0, 13) + "…" : prize.name,
-          radius - 10,
-          5,
-        );
-        ctx.restore();
-      });
-
-      // Center circle
-      ctx.beginPath();
-      ctx.arc(cx, cy, 20, 0, 2 * Math.PI);
-      ctx.fillStyle = "#0D0D1A";
-      ctx.fill();
-
-      // Pointer
-      const pSize = 18;
-      ctx.beginPath();
-      ctx.moveTo(cx - pSize / 2, 0);
-      ctx.lineTo(cx + pSize / 2, 0);
-      ctx.lineTo(cx, pSize);
-      ctx.closePath();
-      ctx.fillStyle = "#E94560";
-      ctx.fill();
+  // Build react-custom-roulette data array
+  const wheelData = prizes.map((p, i) => ({
+    option: p.prizeName,
+    style: {
+      backgroundColor: p.isPool ? (i % 2 === 0 ? "#E94560" : "#F5A623") : (i % 2 === 0 ? "#16213E" : "#2A2A4E"),
+      textColor: "#FFFFFF",
     },
-    [prizes],
-  );
+  }));
 
-  useEffect(() => {
-    drawWheel(rotation);
-  }, [drawWheel, rotation]);
+  const handleSpin = () => {
+    if (mustSpin || winner || !prizes.length) return;
+    // Pick a random winner from pool-eligible prizes
+    const pool = prizes.filter((p) => p.isPool);
+    const picked = pool.length
+      ? pool[Math.floor(Math.random() * pool.length)]
+      : prizes[Math.floor(Math.random() * prizes.length)];
+    const idx = prizes.findIndex((p) => p.id === picked.id);
+    setPrizeNumber(idx);
+    setMustSpin(true);
+  };
 
-  const spin = () => {
-    if (spinning || winner) return;
-    setSpinning(true);
-
-    const winnerPrize = pickWinner(prizes);
-    const winnerIndex = prizes.findIndex((p) => p.id === winnerPrize.id);
-    const sliceAngle = (2 * Math.PI) / prizes.length;
-    const extraSpins = 5 + Math.floor(Math.random() * 5);
-    const targetAngle =
-      extraSpins * 2 * Math.PI +
-      (2 * Math.PI - winnerIndex * sliceAngle - sliceAngle / 2);
-
-    const duration = 4000;
-    const start = performance.now();
-    const startRot = rotation;
-
-    const animate = (now) => {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const currentRot = startRot + targetAngle * eased;
-      setRotation(currentRot);
-      drawWheel(currentRot);
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      } else {
-        setSpinning(false);
-        setWinner(winnerPrize);
-      }
-    };
-
-    requestAnimationFrame(animate);
+  const handleStopSpinning = () => {
+    setMustSpin(false);
+    setWinner(prizes[prizeNumber]);
   };
 
   const handleConfirm = async () => {
-    // Determine prizeName: pool prizes win, non-pool prizes = "No Prize"
-    const isWin = winner.isPool === 1;
-    const prizeName = isWin ? winner.name : "No Prize";
-
+    const isWin = !!winner.isPool;
     try {
       const res = await recordSpin({
         campaignId: station.campaignId,
         raffleEntryId: String(participant.raffleEntryId),
-        prizeName,
-        wheelResult: winner.name,
+        prizeId: isWin ? winner.id : null,
+        wheelResult: isWin ? winner.prizeName : "No Prize",
         claimedBy: station.staffName || undefined,
       });
       onNext({
         outcome: res.data.outcome,
         prize: res.data.prize,
-        prizeName,
+        prizeName: isWin ? winner.prizeName : "No Prize",
         winner,
       });
     } catch {
@@ -499,55 +413,76 @@ const SpinStep = ({ participant, station, prizes, onNext }) => {
         Spin to Win!
       </h2>
 
-      <canvas
-        ref={canvasRef}
-        width={300}
-        height={300}
-        className="rounded-full shadow-2xl shadow-[#E94560]/20"
-        aria-label="Prize wheel"
-      />
-
-      {!winner ? (
-        <button
-          onClick={spin}
-          disabled={spinning}
-          className="w-full bg-gradient-to-r from-[#E94560] to-[#F5A623] text-white rounded-2xl py-4 font-black text-lg disabled:opacity-60 shadow-lg shadow-[#E94560]/30"
-          aria-label="Spin the wheel"
-        >
-          {spinning ? "Spinning…" : "SPIN!"}
-        </button>
+      {loadingPrizes ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="animate-spin text-[#E94560]" size={32} />
+        </div>
+      ) : wheelData.length === 0 ? (
+        <p className="text-[#8892A4] text-sm text-center">
+          No prizes configured for this campaign.
+        </p>
       ) : (
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="w-full bg-[#16213E] border border-[#00D68F]/30 rounded-2xl p-5 text-center"
-        >
-          <p className="text-[#00D68F] text-xs font-bold mb-1">
-            {winner.isPool === 1 ? "YOU WON!" : "RESULT"}
-          </p>
-          <p className="text-white text-xl font-black">{winner.name}</p>
-          {winner.description && (
-            <p className="text-[#8892A4] text-sm mt-1">{winner.description}</p>
+        <div className="flex flex-col items-center gap-6 w-full">
+          <Wheel
+            mustStartSpinning={mustSpin}
+            prizeNumber={prizeNumber}
+            data={wheelData}
+            onStopSpinning={handleStopSpinning}
+            backgroundColors={["#E94560", "#F5A623"]}
+            textColors={["#FFFFFF"]}
+            outerBorderColor="#0D0D1A"
+            outerBorderWidth={4}
+            innerBorderColor="#0D0D1A"
+            innerBorderWidth={2}
+            radiusLineColor="#0D0D1A"
+            radiusLineWidth={2}
+            spinDuration={0.8}
+            fontSize={14}
+          />
+
+          {!winner ? (
+            <button
+              onClick={handleSpin}
+              disabled={mustSpin}
+              className="w-full bg-linear-to-r from-[#E94560] to-[#F5A623] text-white rounded-2xl py-4 font-black text-lg disabled:opacity-60 shadow-lg shadow-[#E94560]/30"
+              aria-label="Spin the wheel"
+            >
+              {mustSpin ? "Spinning…" : "SPIN!"}
+            </button>
+          ) : (
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="w-full bg-[#16213E] border border-[#00D68F]/30 rounded-2xl p-5 text-center"
+            >
+              <p className="text-[#00D68F] text-xs font-bold mb-1">
+                {winner.isPool ? "YOU WON!" : "RESULT"}
+              </p>
+              <p className="text-white text-xl font-black">{winner.prizeName}</p>
+              {winner.description && (
+                <p className="text-[#8892A4] text-sm mt-1">{winner.description}</p>
+              )}
+              {spinApiError && (
+                <p className="text-[#E94560] text-xs mt-2">{spinApiError}</p>
+              )}
+              <button
+                onClick={handleConfirm}
+                disabled={recording}
+                className="mt-4 w-full bg-[#00D68F] text-white rounded-xl py-3 font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                aria-label="Confirm and record result"
+              >
+                {recording ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Recording…
+                  </>
+                ) : (
+                  "Confirm Result"
+                )}
+              </button>
+            </motion.div>
           )}
-          {spinApiError && (
-            <p className="text-[#E94560] text-xs mt-2">{spinApiError}</p>
-          )}
-          <button
-            onClick={handleConfirm}
-            disabled={recording}
-            className="mt-4 w-full bg-[#00D68F] text-white rounded-xl py-3 font-bold flex items-center justify-center gap-2 disabled:opacity-50"
-            aria-label="Confirm and record result"
-          >
-            {recording ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                Recording…
-              </>
-            ) : (
-              "Confirm Result"
-            )}
-          </button>
-        </motion.div>
+        </div>
       )}
     </div>
   );
@@ -636,8 +571,6 @@ const RedeemPortal = () => {
   const [station, setStation] = useState(() => loadStation());
   const [step, setStep] = useState("scan");
   const [sessionData, setSessionData] = useState({});
-  const { data: prizesData } = useGetPrizes();
-  const prizes = prizesData ?? [];
 
   const advance = (newData) => {
     setSessionData((prev) => ({ ...prev, ...newData }));
@@ -662,7 +595,7 @@ const RedeemPortal = () => {
       <div className="min-h-screen bg-[#1A1A2E] text-white">
         <div className="bg-[#16213E] border-b border-[#E94560]/10 px-6 py-4">
           <h1 className="font-black text-lg tracking-wide">
-            SCAN2WIN — Raffle Station
+            Worldbex QR Quest — Raffle Station
           </h1>
         </div>
         <SetupScreen onSetup={setStation} />
@@ -676,7 +609,7 @@ const RedeemPortal = () => {
       <div className="bg-[#16213E] border-b border-[#E94560]/10 px-6 py-4 flex items-center justify-between">
         <div>
           <h1 className="font-black text-lg tracking-wide">
-            SCAN2WIN — Raffle
+            Worldbex QR Quest — Raffle
           </h1>
           <p className="text-[#8892A4] text-xs mt-0.5">
             {station.campaignName} · {station.eventTag}
@@ -715,11 +648,10 @@ const RedeemPortal = () => {
         >
           {step === "scan" && <ScanStep station={station} onNext={advance} />}
 
-          {step === "spin" && prizes.length > 0 && (
+          {step === "spin" && (
             <SpinStep
               participant={sessionData}
               station={station}
-              prizes={prizes}
               onNext={advance}
             />
           )}

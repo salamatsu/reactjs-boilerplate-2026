@@ -486,7 +486,7 @@ const CampaignFormModal = ({ open, onClose, initialValues }) => {
           style={{ borderColor: "#16213E", margin: "4px 0 12px" }}
         >
           <span className="text-xs font-semibold" style={{ color: "#8892A4" }}>
-            Scan2Win Mechanics
+            Worldbex QR Quest Mechanics
           </span>
         </Divider>
 
@@ -529,12 +529,13 @@ const BoothFormModal = ({ open, onClose, campaignId, initialValues }) => {
 
   const handleSubmit = async () => {
     const values = await form.validateFields();
+    const payload = { ...values, isActive: values.isActive === 1 };
     try {
       if (isEditing) {
-        await updateBooth({ campaignId, boothId: initialValues.id, ...values });
+        await updateBooth({ campaignId, boothId: initialValues.id, ...payload });
         message.success("Booth updated.");
       } else {
-        await createBooth({ campaignId, ...values });
+        await createBooth({ campaignId, ...payload });
         message.success("Booth created.");
       }
       onClose();
@@ -550,7 +551,12 @@ const BoothFormModal = ({ open, onClose, campaignId, initialValues }) => {
       onCancel={onClose}
       afterOpenChange={(v) => {
         if (v)
-          isEditing ? form.setFieldsValue(initialValues) : form.resetFields();
+          isEditing
+            ? form.setFieldsValue({
+                ...initialValues,
+                isActive: initialValues.isActive ? 1 : 0,
+              })
+            : form.resetFields();
       }}
       footer={[
         <Button key="cancel" onClick={onClose} disabled={saving}>
@@ -601,11 +607,11 @@ const BoothFormModal = ({ open, onClose, campaignId, initialValues }) => {
             <InputNumber min={1} className="w-full" />
           </Form.Item>
         </div>
-        <Form.Item label="Status" name="isActive" initialValue={true}>
+        <Form.Item label="Status" name="isActive" initialValue={1}>
           <Select
             options={[
-              { value: true, label: "Active" },
-              { value: false, label: "Inactive" },
+              { value: 1, label: "Active" },
+              { value: 0, label: "Inactive" },
             ]}
           />
         </Form.Item>

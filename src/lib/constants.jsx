@@ -3,7 +3,7 @@
 // Worldbex Events "Scan to Win" Platform
 // ============================================
 
-export const APP_NAME = "Scan2Win";
+export const APP_NAME = "Worldbex QR Quest";
 export const APP_VERSION = import.meta.env.VITE_APP_VERSION || "1.0.0";
 
 // Base URL for the visitor web app (used in QR/share links)

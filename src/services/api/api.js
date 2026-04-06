@@ -235,14 +235,31 @@ export const validateRaffleApi = async ({ campaignId, encryptedQr }) => {
 export const spinWheelApi = async ({
   campaignId,
   raffleEntryId,
-  prizeName,
+  prizeId,
   wheelResult,
   claimedBy,
 }) => {
   try {
     const response = await axiosInstance.post(
       `${RAFFLE_BASE}/campaigns/${campaignId}/spin-wheel`,
-      { raffleEntryId, prizeName, wheelResult, claimedBy },
+      { raffleEntryId, prizeId: prizeId ?? null, wheelResult, claimedBy },
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+// ============================================
+// PRIZES — Public (Participant / Raffle Station)
+// GET /campaigns/:campaignId/prizes → active prizes for wheel
+// ============================================
+
+export const getCampaignPrizesPublicApi = async (campaignId) => {
+  try {
+    const response = await axiosInstance.get(
+      `${RAFFLE_BASE}/campaigns/${campaignId}/prizes`,
     );
     return response.data;
   } catch (error) {

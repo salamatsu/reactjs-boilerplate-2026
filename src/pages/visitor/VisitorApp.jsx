@@ -42,6 +42,7 @@ import {
   Maximize2,
 } from "lucide-react";
 import { APP_BASE_URL } from "../../lib/constants";
+import { logo, dgsiLogo, eventbookLogo } from "../../assets/images/logos";
 import { formatDateTime, DATE_FORMATS } from "../../utils/formatDate";
 import {
   useGetCampaignByEventTag,
@@ -52,7 +53,7 @@ import {
 
 // ─── localStorage helpers ─────────────────────────────────────────────────────
 
-const ENTRY_KEY = "scan2win_entry";
+const ENTRY_KEY = "qrquest_entry";
 
 const loadEntry = () => {
   try {
@@ -1327,7 +1328,7 @@ const VisitorApp = () => {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const urlScanProcessed = useRef(false);
-  const GUIDE_SEEN_KEY = "scan2win_guide_seen";
+  const GUIDE_SEEN_KEY = "qrquest_guide_seen";
 
   // ── Derived ──
   const scannedCodes = entry?.scannedCodes ?? [];
@@ -1614,11 +1615,8 @@ const VisitorApp = () => {
       <div className="md:hidden min-h-screen bg-[#1A1A2E] text-white font-sans">
         {/* Top bar */}
         <div className="sticky top-0 z-30 bg-[#1A1A2E]/95 backdrop-blur border-b border-[#16213E] px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Zap size={18} className="text-[#E94560]" />
-            <span className="text-sm font-black tracking-wide">
-              Worldbex QR Quest
-            </span>
+          <div className="flex items-center">
+            <img src={logo} alt="Worldbex QR Quest" className="h-8 w-auto object-contain" />
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-[#8892A4] font-medium uppercase tracking-widest">
@@ -1644,6 +1642,18 @@ const VisitorApp = () => {
         </div>
 
         <div className="relative">{renderTab()}</div>
+
+        {/* Powered by footer */}
+        <div className="flex flex-col items-center gap-2 py-5 pb-20">
+          <span className="text-[10px] uppercase tracking-widest text-[#8892A4]/60 font-semibold">
+            Powered by
+          </span>
+          <div className="flex items-center gap-4">
+            <img src={dgsiLogo} alt="DGSI" className="h-6 w-auto object-contain opacity-70 brightness-0 invert" />
+            <div className="w-px h-4 bg-[#ffffff15]" />
+            <img src={eventbookLogo} alt="Eventbook" className="h-6 w-auto object-contain opacity-70 brightness-0 invert" />
+          </div>
+        </div>
 
         {/* Bottom navigation */}
         <nav className="fixed bottom-0 left-0 right-0 bg-[#16213E] border-t border-[#1A1A2E] flex z-30">
@@ -1773,7 +1783,7 @@ const VisitorApp = () => {
                     How to Play
                   </p>
                   <p className="text-[#8892A4] text-xs mt-0.5">
-                    Scan2Win mechanics
+                    Worldbex QR Quest mechanics
                   </p>
                 </div>
                 <button

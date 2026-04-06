@@ -38,7 +38,7 @@ const Brand = ({ collapsed }) => (
     <Zap size={20} color="#E94560" />
     {!collapsed && (
       <span className="font-black tracking-widest text-sm text-[#E94560]">
-        SCAN2WIN
+        Worldbex QR Quest
       </span>
     )}
   </div>

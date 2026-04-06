@@ -88,7 +88,7 @@ const Login = () => {
             <div className="flex items-center justify-center gap-2 mb-2">
               <Zap size={28} color="#E94560" />
               <Title level={3} style={{ color: "#FFFFFF", margin: 0 }}>
-                SCAN2WIN
+                Worldbex QR Quest
               </Title>
             </div>
             <Paragraph style={{ color: "#8892A4", margin: 0, fontSize: 13 }}>
