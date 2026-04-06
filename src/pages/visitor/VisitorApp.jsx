@@ -636,6 +636,113 @@ const SuccessModal = ({ points, totalPoints, threshold, onClose }) => (
   </div>
 );
 
+/** First-ever scan modal — shown when scannedCodes was empty before this scan */
+const FirstScanModal = ({ booth, points, bonus, totalPoints, threshold, campaignName, onClose }) => {
+  useEffect(() => {
+    confetti({
+      particleCount: 180,
+      spread: 100,
+      origin: { y: 0.55 },
+      colors: ["#E94560", "#F5A623", "#00D68F", "#7360F2", "#4096ff"],
+    });
+  }, []);
+
+  return (
+    <div className="fixed inset-0 bg-black/80 z-50 flex items-end justify-center p-4">
+      <motion.div
+        initial={{ y: 120, opacity: 0, scale: 0.95 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        exit={{ y: 120, opacity: 0 }}
+        transition={{ type: "spring", damping: 22, stiffness: 280 }}
+        className="w-full max-w-sm rounded-3xl overflow-hidden text-center"
+        style={{ background: "#16213E" }}
+      >
+        {/* Top gradient banner */}
+        <div
+          className="px-6 pt-8 pb-6"
+          style={{ background: "linear-gradient(160deg, #E9456025 0%, #7360F215 100%)" }}
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.15, type: "spring", stiffness: 300 }}
+            className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-4"
+            style={{ background: "linear-gradient(135deg, #E94560, #F5A623)" }}
+          >
+            <Zap size={36} className="text-white" />
+          </motion.div>
+          <p className="text-[#F5A623] text-xs font-bold uppercase tracking-widest mb-1">
+            Welcome to the Event!
+          </p>
+          <h2 className="text-white font-black text-xl leading-tight">
+            First Scan Unlocked!
+          </h2>
+          <p className="text-[#8892A4] text-xs mt-1">{campaignName}</p>
+        </div>
+
+        {/* Booth + Points */}
+        <div className="px-6 py-5 space-y-3">
+          {/* Booth name */}
+          <div
+            className="flex items-center gap-3 rounded-2xl px-4 py-3 text-left"
+            style={{ background: "#0F1629" }}
+          >
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: "#4096ff20" }}
+            >
+              <ScanLine size={16} className="text-[#4096ff]" />
+            </div>
+            <div>
+              <p className="text-[#8892A4] text-xs">Booth scanned</p>
+              <p className="text-white font-bold text-sm">{booth.boothName}</p>
+            </div>
+          </div>
+
+          {/* Points breakdown */}
+          <div
+            className="rounded-2xl px-4 py-4 space-y-2"
+            style={{ background: "#0F1629" }}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[#8892A4] text-xs">Booth points</span>
+              <span className="text-white font-bold text-sm">+{points} pts</span>
+            </div>
+            {bonus > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold" style={{ color: "#F5A623" }}>
+                  🎁 1st scan bonus
+                </span>
+                <span className="font-bold text-sm" style={{ color: "#F5A623" }}>
+                  +{bonus} pts
+                </span>
+              </div>
+            )}
+            <div
+              className="flex items-center justify-between pt-2"
+              style={{ borderTop: "1px solid #16213E" }}
+            >
+              <span className="text-[#8892A4] text-xs">Your total</span>
+              <span className="font-black text-lg" style={{ color: "#00D68F" }}>
+                {totalPoints} / {threshold} pts
+              </span>
+            </div>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="w-full py-3.5 rounded-2xl font-black text-sm text-white"
+            style={{ background: "linear-gradient(135deg, #E94560, #F5A623)" }}
+            aria-label="Continue scanning"
+          >
+            Let's Keep Scanning!
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 /**
  * Goal modal — two phases:
  *   "form"  → collect optional participant info + call generate-raffle-qr API
@@ -897,7 +1004,7 @@ const VisitorApp = () => {
 
   // ── Core scan logic ──
   const processScan = useCallback(
-    (boothCode, currentEntry, currentBooths, currentThreshold) => {
+    (boothCode, currentEntry, currentBooths, currentThreshold, firstScanBonus = 0) => {
       const booth = currentBooths.find((b) => b.boothCode === boothCode);
 
       if (!booth) {
@@ -928,8 +1035,10 @@ const VisitorApp = () => {
         return;
       }
 
+      const isFirstScan = currentEntry.scannedCodes.length === 0;
+      const bonus = isFirstScan ? (firstScanBonus ?? 0) : 0;
       const updatedCodes = [...currentEntry.scannedCodes, boothCode];
-      const updatedPoints = currentEntry.currentPoints + booth.points;
+      const updatedPoints = currentEntry.currentPoints + booth.points + bonus;
       const updatedEntry = {
         ...currentEntry,
         scannedCodes: updatedCodes,
@@ -940,6 +1049,14 @@ const VisitorApp = () => {
 
       if (updatedPoints >= currentThreshold) {
         setModal({ type: "goal" });
+      } else if (isFirstScan) {
+        setModal({
+          type: "firstScan",
+          booth,
+          points: booth.points,
+          bonus,
+          totalPoints: updatedPoints,
+        });
       } else {
         setModal({
           type: "success",
@@ -958,7 +1075,7 @@ const VisitorApp = () => {
       return;
     urlScanProcessed.current = true;
     setSearchParams({}, { replace: true });
-    processScan(boothCode, entry, booths, thresholdPoints);
+    processScan(boothCode, entry, booths, thresholdPoints, campaign?.firstScanBonus ?? 0);
   }, [
     searchParams,
     entry,
@@ -984,9 +1101,9 @@ const VisitorApp = () => {
         // not a URL — use raw value as boothCode
       }
 
-      processScan(boothCode, entry, booths, thresholdPoints);
+      processScan(boothCode, entry, booths, thresholdPoints, campaign?.firstScanBonus ?? 0);
     },
-    [entry, booths, thresholdPoints, processScan],
+    [entry, booths, thresholdPoints, processScan, campaign],
   );
 
   // ── QR generated callback ──
@@ -1356,6 +1473,17 @@ const VisitorApp = () => {
       <AnimatePresence>
         {modal?.type === "error" && (
           <ErrorModal message={modal.message} onClose={() => setModal(null)} />
+        )}
+        {modal?.type === "firstScan" && (
+          <FirstScanModal
+            booth={modal.booth}
+            points={modal.points}
+            bonus={modal.bonus}
+            totalPoints={modal.totalPoints}
+            threshold={thresholdPoints}
+            campaignName={campaign?.campaignName}
+            onClose={() => setModal(null)}
+          />
         )}
         {modal?.type === "success" && (
           <SuccessModal
