@@ -1,9 +1,11 @@
-// Centralized exports for all utilities
+// ============================================
+// SCAN2WIN — Utilities (centralized exports)
+// ============================================
 
 // ClassName utilities
 export { cn, createVariants } from "./cn";
 
-// Zod validation utilities
+// Zod form validation helpers
 export {
   validateWithZod,
   zodValidator,
@@ -11,12 +13,8 @@ export {
   validateFormWithZod,
 } from "./zodValidator";
 
-// Formatting utilities
-export { default as formatCurrency } from "./formatCurrency";
+// Date formatting (dayjs-based)
 export { default as formatDate } from "./formatDate";
 
-// JSON utilities
-export { default as parseJsonField } from "./parseJsonField";
-
-// Handler utilities
+// API error handler
 export * from "./handlers";

@@ -1,3 +1,8 @@
+// ============================================
+// SCAN2WIN — 404 Not Found Page
+// Worldbex Events "Scan to Win" Platform
+// ============================================
+
 import { Button, Result, Typography } from "antd";
 import { HomeOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router";
@@ -18,7 +23,7 @@ export default function NotFound() {
         alignItems: "center",
         justifyContent: "center",
         minHeight: "100vh",
-        background: "linear-gradient(135deg, #ffffff 0%, #667eea 100%)",
+        background: "linear-gradient(135deg, #1A1A2E 0%, #16213E 60%, #E94560 200%)",
         padding: "20px",
       }}
     >
@@ -53,7 +58,7 @@ export default function NotFound() {
               style={{
                 marginRight: "10px",
                 background: "#fff",
-                color: "#667eea",
+                color: "#E94560",
                 borderColor: "#fff",
                 fontWeight: "600",
               }}

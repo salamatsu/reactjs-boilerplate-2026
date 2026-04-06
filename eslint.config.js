@@ -1,3 +1,7 @@
+// ============================================
+// SCAN2WIN — ESLint Configuration
+// ============================================
+
 import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
@@ -6,6 +10,16 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
   globalIgnores(['dist']),
+
+  // Node config files (vite.config.js etc.) — need process, __dirname etc.
+  {
+    files: ['*.config.{js,ts}'],
+    languageOptions: {
+      globals: { ...globals.browser, ...globals.node },
+    },
+  },
+
+  // React source files
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -23,7 +37,9 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // Allow uppercase/underscore vars (React components) and the `motion`
+      // namespace from framer-motion (used as motion.div etc. in JSX).
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]|^motion$' }],
     },
   },
 ])

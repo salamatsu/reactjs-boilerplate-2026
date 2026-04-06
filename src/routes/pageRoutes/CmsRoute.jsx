@@ -1,62 +1,61 @@
-import { Home, List, Users as UsersIcon } from "lucide-react";
+// ============================================
+// SCAN2WIN — Admin CMS Route
+// Worldbex Events "Scan to Win" Platform
+//
+// Surfaces under /admin/*:
+//   /admin              → Login (unauthenticated only)
+//   /admin/prizes       → Roulette Prize CMS (CRUD)
+//   /admin/pool         → Prize Pool Config (isPool toggles)
+//
+// Access: ADMIN role can access all pages.
+//         STAFF role can access Prizes only.
+// ============================================
+
+import { Trophy, Layers } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import BasicLayout from "../../components/layout/BasicLayout";
 import { ComponentLoader } from "../../components/LoadingFallback";
-import Dashboard from "../../pages/admin/Dashboard";
 import { useAdminAuthStore } from "../../store/useAdminAuthStore";
 import { Auth, UnAuth } from "../ValidateAuth";
 
-const Login = lazy(() => import("../../pages/admin/Login"));
-const ItemsPage = lazy(() => import("../../pages/admin/Items"));
-const UsersPage = lazy(() => import("../../pages/admin/Users"));
+const Login            = lazy(() => import("../../pages/admin/Login"));
+const RouletteprizesCMS = lazy(() => import("../../pages/admin/RouletteprizesCMS"));
+const PrizePoolConfig  = lazy(() => import("../../pages/admin/PrizePoolConfig"));
 
-const AdminRoute = () => {
+const CmsRoute = () => {
   const { userData } = useAdminAuthStore();
   const userType = userData?.userType;
 
+  // ADMIN sees all CMS pages; STAFF sees Prizes only
   const canAccess = (pageName) => {
     if (userType === "ADMIN") return true;
-    if (userType === "STAFF") return ["Dashboard", "users"].includes(pageName);
+    if (userType === "STAFF") return pageName === "prizes";
     return false;
   };
 
   const navigations = [
     {
-      route: "/dashboard",
-      name: "Dashboard",
-      label: "Dashboard",
-      icon: <Home className="h-5 w-5" />,
+      route: "/prizes",
+      name: "prizes",
+      label: "Roulette Prizes",
+      icon: <Trophy className="h-5 w-5" />,
       component: (
         <Suspense fallback={<ComponentLoader />}>
-          <Dashboard />
+          <RouletteprizesCMS />
         </Suspense>
       ),
-      isFilter: true,
     },
     {
-      route: "/items",
-      name: "items",
-      label: "Items",
-      icon: <List className="h-5 w-5" />,
+      route: "/pool",
+      name: "pool",
+      label: "Prize Pool Config",
+      icon: <Layers className="h-5 w-5" />,
       component: (
         <Suspense fallback={<ComponentLoader />}>
-          <ItemsPage />
+          <PrizePoolConfig />
         </Suspense>
       ),
-      isFilter: true,
-    },
-    {
-      route: "/attendees",
-      name: "attendees",
-      label: "Attendees",
-      icon: <UsersIcon className="h-5 w-5" />,
-      component: (
-        <Suspense fallback={<ComponentLoader />}>
-          <UsersPage />
-        </Suspense>
-      ),
-      isFilter: true,
     },
   ].map((page) => ({
     ...page,
@@ -66,10 +65,10 @@ const AdminRoute = () => {
 
   return (
     <Routes>
-      {/* Login - redirect to dashboard if already authenticated */}
+      {/* Login — redirect to prizes dashboard if already authenticated */}
       <Route
         element={
-          <UnAuth store={useAdminAuthStore} redirect="/admin/dashboard" />
+          <UnAuth store={useAdminAuthStore} redirect="/admin/prizes" />
         }
       >
         <Route
@@ -83,18 +82,18 @@ const AdminRoute = () => {
         />
       </Route>
 
-      {/* Protected Routes */}
+      {/* Protected CMS Routes */}
       <Route element={<Auth store={useAdminAuthStore} redirect="/admin" />}>
         <Route
           element={
             <BasicLayout
-              navigations={navigations.filter((page) => page.isShow)}
+              navigations={navigations.filter((p) => p.isShow)}
               store={useAdminAuthStore}
             />
           }
         >
           {navigations
-            .filter((page) => page.isShow)
+            .filter((p) => p.isShow)
             .map((page) => {
               const routePath = page.route.replace("/admin/", "");
               return (
@@ -106,14 +105,14 @@ const AdminRoute = () => {
               );
             })}
 
-          {/* Default redirect to first accessible page */}
+          {/* Redirect /admin/* to first accessible page */}
           <Route
             path="*"
             element={
               <Navigate
                 to={
-                  navigations.filter((page) => page.isShow)[0]?.route ||
-                  "/admin/dashboard"
+                  navigations.filter((p) => p.isShow)[0]?.route ||
+                  "/admin/prizes"
                 }
                 replace
               />
@@ -125,4 +124,4 @@ const AdminRoute = () => {
   );
 };
 
-export default AdminRoute;
+export default CmsRoute;

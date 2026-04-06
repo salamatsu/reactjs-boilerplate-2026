@@ -1,0 +1,968 @@
+{
+  "info": {
+    "_postman_id": "campaign-reward-api-v3",
+    "name": "Campaign Reward API",
+    "description": "Campaign management (CRUD) + client-side booth scanning + raffle QR + spin wheel + claim flow.\n\n**Participant happy path:**\n1. `GET /campaigns/event/:eventTag` — load active campaign + active booth list\n2. Client scans booths locally (no API call per scan) → accumulates points\n3. `POST /campaigns/:campaignId/generate-raffle-qr` — submit scanned booth codes + optional participant info → receive encrypted QR\n4. Client presents QR at raffle station\n5. `POST /campaigns/:campaignId/validate-raffle` — station scans QR → creates participant record + scan logs + raffle entry atomically → returns `raffleEntryId`\n6. Wheel spins **client-side** → client sends outcome to server\n7. `POST /campaigns/:campaignId/spin-wheel` — record prize result\n\n**Note:** `GET /campaigns/:campaignId/prizes` is an **admin/stats** endpoint — it shows claim history, not a prize catalog.\n\n**Seeded campaign ID:** `1`\n**Seeded event tag:** `WORLDBEX2026`\n**Active booth codes:** BOOTH-MAIN-01 (100pts), BOOTH-TECH-01 (75pts), BOOTH-FOOD-01 (50pts), BOOTH-INNO-01 (75pts), BOOTH-SPON-01 (50pts)\n**Threshold:** 300 pts — scanning all 5 active booths gives 350 pts",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000/api/v1/raffles",
+      "type": "string"
+    },
+    {
+      "key": "campaignId",
+      "value": "1",
+      "type": "string",
+      "description": "Auto-filled from Create Campaign or Get Campaign by Event Tag"
+    },
+    {
+      "key": "eventTag",
+      "value": "WORLDBEX2026",
+      "type": "string"
+    },
+    {
+      "key": "participantId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-filled from Validate Raffle"
+    },
+    {
+      "key": "raffleEntryId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-filled from Validate Raffle"
+    },
+    {
+      "key": "encryptedQr",
+      "value": "",
+      "type": "string",
+      "description": "Auto-filled from Generate Raffle QR"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Campaign Management",
+      "item": [
+        {
+          "name": "List All Campaigns",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns campaigns array', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.campaigns).to.be.an('array');",
+                  "  console.log('Total campaigns:', json.data.total);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/campaigns",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Campaign by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Campaign returned', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.campaign).to.be.an('object');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Campaign",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Campaign created', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.collectionVariables.set('campaignId', String(json.data.campaign.id));",
+                  "  console.log('Created campaign ID:', json.data.campaign.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campaignCode\": \"RFFL-2026-TEST\",\n  \"campaignName\": \"Test Raffle Campaign\",\n  \"eventTag\": \"TESTFEST2026\",\n  \"description\": \"A test campaign.\",\n  \"thresholdPoints\": 100,\n  \"startDate\": \"2026-04-01\",\n  \"endDate\": \"2026-04-30\",\n  \"status\": \"draft\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Campaign",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Campaign updated', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"active\",\n  \"description\": \"Updated description.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Campaign (draft only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 400', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 400]);",
+                  "});",
+                  "console.log(pm.response.json().message);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}"]
+            },
+            "description": "Only campaigns with status=draft can be deleted."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "1. Get Campaign by Event Tag",
+      "description": "STEP 1 — Client entry point. Returns active campaign details and active booth list. Client uses the booth list to display scannable QR codes. campaignId is auto-saved for subsequent requests.",
+      "item": [
+        {
+          "name": "Get Campaign by Event Tag",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns campaign + booth list', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.campaign).to.be.an('object');",
+                  "  pm.expect(json.data.booths).to.be.an('array');",
+                  "  pm.collectionVariables.set('campaignId', String(json.data.campaign.id));",
+                  "  console.log('Campaign ID saved:', json.data.campaign.id);",
+                  "  console.log('Active booths:', json.data.booths.length);",
+                  "  console.log('Total booth points available:', json.data.totalBoothPoints);",
+                  "  console.log('Threshold:', json.data.thresholdPoints);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/campaigns/event/{{eventTag}}",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "event", "{{eventTag}}"]
+            }
+          },
+          "response": [
+            {
+              "name": "200 - Campaign + Booths",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Campaign retrieved\",\n  \"data\": {\n    \"campaign\": {\n      \"id\": 1,\n      \"campaignCode\": \"RFFL-2026-001\",\n      \"campaignName\": \"Worldbex 2026 Raffle Campaign\",\n      \"eventTag\": \"WORLDBEX2026\",\n      \"description\": \"Collect points from all booths and join the grand raffle draw.\",\n      \"thresholdPoints\": 300,\n      \"startDate\": \"2026-04-01T00:00:00.000Z\",\n      \"endDate\": \"2026-04-05T23:59:59.000Z\",\n      \"status\": \"active\"\n    },\n    \"booths\": [\n      { \"id\": 20260001, \"boothCode\": \"BOOTH-MAIN-01\", \"boothName\": \"Main Stage\",     \"points\": 100, \"maxScanPerUser\": 1, \"sortOrder\": 1 },\n      { \"id\": 20260002, \"boothCode\": \"BOOTH-TECH-01\", \"boothName\": \"Tech Zone\",      \"points\": 75,  \"maxScanPerUser\": 1, \"sortOrder\": 2 },\n      { \"id\": 20260003, \"boothCode\": \"BOOTH-FOOD-01\", \"boothName\": \"Food Court\",     \"points\": 50,  \"maxScanPerUser\": 1, \"sortOrder\": 3 },\n      { \"id\": 20260004, \"boothCode\": \"BOOTH-INNO-01\", \"boothName\": \"Innovation Hub\", \"points\": 75,  \"maxScanPerUser\": 1, \"sortOrder\": 4 },\n      { \"id\": 20260005, \"boothCode\": \"BOOTH-SPON-01\", \"boothName\": \"Sponsors Area\",  \"points\": 50,  \"maxScanPerUser\": 1, \"sortOrder\": 5 }\n    ],\n    \"thresholdPoints\": 300,\n    \"totalBoothPoints\": 350\n  }\n}"
+            },
+            {
+              "name": "400 - Campaign Not Active",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Campaign is not active\"\n}"
+            },
+            {
+              "name": "404 - Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Campaign not found\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Generate Raffle QR",
+      "description": "STEP 2 — Client submits the booth codes scanned locally + optional participant info. Server validates booth codes, computes total points, and returns an encrypted QR. No participant record is created yet.\n\n`participantInfo.participantCode` is a client-generated identifier (e.g. device ID or UUID) stored as the participant's unique code. All participantInfo fields are optional.",
+      "item": [
+        {
+          "name": "Generate Raffle QR — All 5 Booths (350pts) ✓",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Encrypted QR returned', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.encryptedQr).to.be.a('string').and.not.empty;",
+                  "  pm.collectionVariables.set('encryptedQr', json.data.encryptedQr);",
+                  "  console.log('raffleQrId:', json.data.raffleQrId);",
+                  "  console.log('totalPoints:', json.data.totalPoints);",
+                  "  console.log('boothCount:', json.data.boothCount);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"boothCodes\": [\n    \"BOOTH-MAIN-01\",\n    \"BOOTH-TECH-01\",\n    \"BOOTH-FOOD-01\",\n    \"BOOTH-INNO-01\",\n    \"BOOTH-SPON-01\"\n  ],\n  \"participantInfo\": {\n    \"participantCode\": \"CLIENT-DEVICE-ABC123\",\n    \"fullName\": \"Juan dela Cruz\",\n    \"mobileNumber\": \"09171234567\",\n    \"email\": \"juan@example.com\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/generate-raffle-qr",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "generate-raffle-qr"]
+            },
+            "description": "All 5 active booths = 350pts. Threshold is 300. encryptedQr is auto-saved for the next step."
+          },
+          "response": [
+            {
+              "name": "200 - QR Generated",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Raffle QR generated successfully\",\n  \"data\": {\n    \"raffleQrId\": 1,\n    \"encryptedQr\": \"<url_safe_encrypted_string>\",\n    \"participantId\": 1,\n    \"participantCode\": \"CLIENT-DEVICE-ABC123\",\n    \"totalPoints\": 350,\n    \"thresholdPoints\": 300,\n    \"boothCount\": 5,\n    \"generatedAt\": \"2026-04-01T08:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Generate Raffle QR — No participantInfo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('QR generated without participant info', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.encryptedQr).to.be.a('string').and.not.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"boothCodes\": [\n    \"BOOTH-MAIN-01\",\n    \"BOOTH-TECH-01\",\n    \"BOOTH-FOOD-01\",\n    \"BOOTH-INNO-01\",\n    \"BOOTH-SPON-01\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/generate-raffle-qr",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "generate-raffle-qr"]
+            },
+            "description": "participantInfo is fully optional. QR is still generated."
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Raffle QR — Below Threshold (125pts) ✗",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Insufficient points error', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.false;",
+                  "  pm.expect(json.message).to.include('Insufficient points');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"boothCodes\": [\n    \"BOOTH-FOOD-01\",\n    \"BOOTH-SPON-01\"\n  ],\n  \"participantInfo\": {\n    \"participantCode\": \"CLIENT-DEVICE-XYZ999\",\n    \"mobileNumber\": \"09187654321\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/generate-raffle-qr",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "generate-raffle-qr"]
+            },
+            "description": "2 booths = 125pts. Threshold is 300."
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Raffle QR — Invalid Booth Code ✗",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Invalid booth code error', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.false;",
+                  "  pm.expect(json.message).to.include('Invalid or unknown booth code');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"boothCodes\": [\n    \"BOOTH-MAIN-01\",\n    \"BOOTH-FAKE-99\"\n  ],\n  \"participantInfo\": {\n    \"participantCode\": \"CLIENT-DEVICE-TEST01\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/generate-raffle-qr",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "generate-raffle-qr"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Raffle QR — Inactive Booth ✗",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Inactive booth error', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.false;",
+                  "  pm.expect(json.message).to.include('Inactive booth');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"boothCodes\": [\n    \"BOOTH-MAIN-01\",\n    \"BOOTH-TECH-01\",\n    \"BOOTH-FOOD-01\",\n    \"BOOTH-INNO-01\",\n    \"BOOTH-SPON-01\",\n    \"BOOTH-PHOT-01\"\n  ],\n  \"participantInfo\": {\n    \"participantCode\": \"CLIENT-DEVICE-TEST02\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/generate-raffle-qr",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "generate-raffle-qr"]
+            },
+            "description": "BOOTH-PHOT-01 is inactive (isActive=0). Should fail."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Validate Raffle",
+      "description": "STEP 3 — Raffle station scans the client's QR. Decrypts and validates it, then creates the raffle entry. Participant record and scan logs were already created at generate-raffle-qr time. Returns raffleEntryId used for the spin.",
+      "item": [
+        {
+          "name": "Validate Raffle QR ✓",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Participant + entry created', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.raffleEntryId).to.be.a('number');",
+                  "  pm.expect(json.data.participantId).to.be.a('number');",
+                  "  pm.collectionVariables.set('raffleEntryId', String(json.data.raffleEntryId));",
+                  "  pm.collectionVariables.set('participantId', String(json.data.participantId));",
+                  "  console.log('participantId:', json.data.participantId);",
+                  "  console.log('participantCode:', json.data.participantCode);",
+                  "  console.log('raffleEntryId:', json.data.raffleEntryId);",
+                  "  console.log('totalPoints:', json.data.totalPoints);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"encryptedQr\": \"{{encryptedQr}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/validate-raffle",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "validate-raffle"]
+            },
+            "description": "Uses encryptedQr saved from Step 2. Creates participant + scan logs + raffle entry in one transaction. raffleEntryId and participantId are auto-saved."
+          },
+          "response": [
+            {
+              "name": "200 - Validated",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Raffle QR validated. Participant is eligible to spin.\",\n  \"data\": {\n    \"raffleEntryId\": 1,\n    \"participantId\": 1,\n    \"participantCode\": \"CLIENT-DEVICE-ABC123\",\n    \"fullName\": \"Juan dela Cruz\",\n    \"campaignId\": 1,\n    \"totalPoints\": 350,\n    \"thresholdPoints\": 300,\n    \"status\": \"pending\",\n    \"dateCreated\": \"2026-04-01T08:05:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "409 - QR Already Used",
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Raffle QR has already been used\"\n}"
+            },
+            {
+              "name": "409 - Duplicate Participant",
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"This participant has already joined this campaign\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Validate Raffle QR — Already Used ✗",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Already used error', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.false;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"encryptedQr\": \"{{encryptedQr}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/validate-raffle",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "validate-raffle"]
+            },
+            "description": "Re-submit the same QR to confirm it cannot be used twice."
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Raffle QR — Tampered QR ✗",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Tampered QR error', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.message).to.include('Invalid or tampered');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"encryptedQr\": \"this_is_not_a_valid_encrypted_qr_string\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/validate-raffle",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "validate-raffle"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Spin Wheel",
+      "description": "STEP 4 — The wheel spins client-side. The client sends the outcome to the server. Server records the result, creates a claim on win, and marks the raffle entry accordingly.\n\nSend `prizeName: 'No Prize'` for a losing spin.",
+      "item": [
+        {
+          "name": "Spin Wheel — Win Prize ✓",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Prize awarded', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.outcome).to.equal('won');",
+                  "  pm.expect(json.data.prize).to.not.be.null;",
+                  "  console.log('claimId:', json.data.prize.claimId);",
+                  "  console.log('prizeName:', json.data.prize.prizeName);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"raffleEntryId\": \"{{raffleEntryId}}\",\n  \"prizeName\": \"Samsung 65-inch Smart TV\",\n  \"wheelResult\": \"Samsung 65-inch Smart TV\",\n  \"claimedBy\": \"Event Staff - Maria\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/spin-wheel",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "spin-wheel"]
+            },
+            "description": "Wheel landed on a prize. Server creates a campaign_claims record and marks entry as 'won'."
+          },
+          "response": [
+            {
+              "name": "200 - Win",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Congratulations! Prize awarded.\",\n  \"data\": {\n    \"raffleEntryId\": \"1\",\n    \"participantId\": 1,\n    \"outcome\": \"won\",\n    \"wheelResult\": \"Samsung 65-inch Smart TV\",\n    \"prize\": {\n      \"claimId\": 1,\n      \"prizeName\": \"Samsung 65-inch Smart TV\",\n      \"claimedBy\": \"Event Staff - Maria\",\n      \"claimedAt\": \"2026-04-01T08:10:00.000Z\",\n      \"status\": \"won\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Spin Wheel — No Prize ✓",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('No prize outcome', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.outcome).to.equal('lost');",
+                  "  pm.expect(json.data.prize).to.be.null;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"raffleEntryId\": \"{{raffleEntryId}}\",\n  \"prizeName\": \"No Prize\",\n  \"wheelResult\": \"No Prize\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/spin-wheel",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "spin-wheel"]
+            },
+            "description": "Wheel landed on 'No Prize'. No claim record is created. Entry marked as 'lost'."
+          },
+          "response": [
+            {
+              "name": "200 - No Prize",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Better luck next time.\",\n  \"data\": {\n    \"raffleEntryId\": \"1\",\n    \"participantId\": 1,\n    \"outcome\": \"lost\",\n    \"wheelResult\": \"No Prize\",\n    \"prize\": null\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Spin Wheel — Already Processed ✗",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Already processed error', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.false;",
+                  "  pm.expect(json.message).to.include('already been processed');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"raffleEntryId\": \"{{raffleEntryId}}\",\n  \"prizeName\": \"iPhone 16 Pro\",\n  \"wheelResult\": \"iPhone 16 Pro\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/spin-wheel",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "spin-wheel"]
+            },
+            "description": "Re-spin the same entry after it has been processed."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Admin / Stats",
+      "description": "Admin and lookup endpoints. Not part of the participant journey.",
+      "item": [
+        {
+          "name": "Get Participant Progress",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Progress data returned', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.participant).to.be.an('object');",
+                  "  pm.expect(json.data.points).to.be.an('object');",
+                  "  pm.expect(json.data.scans).to.be.an('array');",
+                  "  console.log('Recomputed points:', json.data.points.recomputed);",
+                  "  console.log('Scan count:', json.data.scans.length);",
+                  "  console.log('Claims:', json.data.claims.length);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/participant/{{participantId}}/progress",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "participant", "{{participantId}}", "progress"]
+            },
+            "description": "Full participant view: points (recomputed from scan logs), scans, raffle QR status, claim history. participantId is auto-filled from Validate Raffle."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Campaign Booths (all incl. inactive)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Booths returned', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.booths).to.be.an('array');",
+                  "  console.log('Total booths (all incl. inactive):', json.data.total);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/booths",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "booths"]
+            },
+            "description": "Returns ALL booths including inactive ones. For active-only, use GET /campaigns/event/:eventTag."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Campaign Prize Statistics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Prize stats returned', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.summary).to.be.an('array');",
+                  "  pm.expect(json.data.recentClaims).to.be.an('array');",
+                  "  console.log('Prizes awarded:', json.data.summary.length);",
+                  "  console.log('Recent claims:', json.data.recentClaims.length);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/prizes",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "prizes"]
+            },
+            "description": "Admin stats only — returns claim history grouped by prize name + 50 most recent claims. This is NOT a prize catalog for the wheel."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Validation Errors",
+      "description": "Key Zod validation failure cases.",
+      "item": [
+        {
+          "name": "Generate QR — Missing boothCodes ✗",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "console.log(JSON.stringify(pm.response.json(), null, 2));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"participantInfo\": {\n    \"participantCode\": \"CLIENT-DEVICE-001\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/generate-raffle-qr",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "generate-raffle-qr"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Generate QR — Empty boothCodes array ✗",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "console.log(JSON.stringify(pm.response.json(), null, 2));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"boothCodes\": []\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/generate-raffle-qr",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "generate-raffle-qr"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Raffle — Missing encryptedQr ✗",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "console.log(JSON.stringify(pm.response.json(), null, 2));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/validate-raffle",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "validate-raffle"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Spin Wheel — Missing prizeName ✗",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "console.log(JSON.stringify(pm.response.json(), null, 2));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"raffleEntryId\": \"{{raffleEntryId}}\",\n  \"wheelResult\": \"iPhone 16 Pro\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/spin-wheel",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "{{campaignId}}", "spin-wheel"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Campaign by Event Tag — Not Found ✗",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "console.log(pm.response.json().message);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/campaigns/event/DOESNOTEXIST",
+              "host": ["{{base_url}}"],
+              "path": ["campaigns", "event", "DOESNOTEXIST"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

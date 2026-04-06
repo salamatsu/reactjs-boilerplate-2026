@@ -1,8 +1,6 @@
-// Centralized exports for all custom hooks
+// ============================================
+// SCAN2WIN — Custom Hooks (centralized exports)
+// ============================================
 
-export { default as useFilters } from "./useFilters";
-export { default as useModal } from "./useModal";
-export { default as useStyleTable } from "./useStyleTable";
-export { default as useTableData } from "./useTableData";
-export { default as useWindowSize } from "./useWindowSize";
+export { useWindowSize } from "./useWindowSize";
 export { useCsrfToken } from "./useCsrfToken";

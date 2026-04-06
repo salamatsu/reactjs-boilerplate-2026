@@ -1,3 +1,8 @@
+// ============================================
+// SCAN2WIN — Navigation & Query Param Utilities
+// Worldbex Events "Scan to Win" Platform
+// ============================================
+
 import { Typography } from "antd";
 import { motion } from "framer-motion";
 import { Link } from "react-router";
@@ -41,16 +46,6 @@ export const generateItems = (arr = []) => {
       <Link to={obj.route}>{obj.icon}</Link>
     )
   );
-};
-
-export const getSex = (data) => {
-  if (data == 0) {
-    return "Male";
-  } else if (data == 1) {
-    return "Female";
-  } else {
-    return "N/A";
-  }
 };
 
 export const formatQueryParams = (obj, options = {}) => {

@@ -1,152 +1,124 @@
+// ============================================
+// SCAN2WIN — Admin CMS Sidebar
+// Worldbex Events "Scan to Win" Platform
+//
+// Renders as a collapsible Sider on desktop (md+)
+// and as a Drawer on mobile/tablet.
+// Navigation items are passed in via props from CmsRoute.
+// ============================================
+
 import { LoginOutlined } from "@ant-design/icons";
-import { App, Divider, Drawer, Image, Layout, Menu } from "antd";
+import { App, Divider, Drawer, Layout, Menu } from "antd";
 import { motion } from "framer-motion";
+import { Zap } from "lucide-react";
 import { Link, useLocation } from "react-router";
-import { logo } from "../../assets/images/logos";
 import { useWindowSize } from "../../hooks/useWindowSize";
 import { generateItems, getItem } from "../../utils/itemFormat";
 
 const { Sider } = Layout;
+
+/** Renders the main navigation menu items */
 const TopMenus = ({ path, navigations = [], handleCollapse = () => {} }) => (
   <Menu
-    className=" flex-1"
+    className="flex-1"
     mode="inline"
     items={generateItems(navigations)}
-    defaultSelectedKeys={path}
+    defaultSelectedKeys={[path]}
+    selectedKeys={[path]}
     onClick={handleCollapse}
   />
 );
 
-const Sidebar = ({
-  collapsed,
-  handleCollapse,
-  navigations,
-  reset,
-  userData,
-}) => {
+/** Brand logo / wordmark shown at top of sidebar */
+const Brand = ({ collapsed }) => (
+  <div
+    className="flex items-center justify-center gap-2 py-5 px-4"
+    style={{ borderBottom: "1px solid rgba(233,69,96,0.15)" }}
+  >
+    <Zap size={20} color="#E94560" />
+    {!collapsed && (
+      <span className="font-black tracking-widest text-sm text-[#E94560]">
+        SCAN2WIN
+      </span>
+    )}
+  </div>
+);
+
+const Sidebar = ({ collapsed, handleCollapse, navigations, reset }) => {
   const { modal } = App.useApp();
   const [width] = useWindowSize();
   const location = useLocation();
-
   const pathname = location.pathname;
-  // const pathname = location.pathname.replace("/", "");
 
+  // Logout menu item — shows a confirmation dialog before resetting auth state
   const bottomItems = [
     getItem(
-      <motion.div
-        variants={{
-          offscreen: { y: -200, opacity: 0 },
-          onscreen: {
-            y: 0,
-            opacity: 1,
-            transition: { type: "spring", bounce: 0.2, duration: 1 },
-          },
-        }}
-        whileHover={{
-          x: 10,
-          shadow: 20,
-        }}
-      >
+      <motion.div whileHover={{ x: 6 }}>
         <Link
           href="javascript:void(0)"
           onClick={() => {
             modal.confirm({
-              title: "LOGOUT",
-              content: "Do you want to logout?",
-              okText: "YES",
-              cancelText: "NO",
-              okButtonProps: {
-                style: { backgroundColor: "red" },
-              },
+              title: "Sign Out",
+              content: "Are you sure you want to sign out?",
+              okText: "Sign Out",
+              cancelText: "Cancel",
+              okButtonProps: { danger: true },
               onOk: reset,
             });
           }}
         >
-          Logout
+          Sign Out
         </Link>
       </motion.div>,
       "signout",
-      <LoginOutlined className="h-6 w-6" />
+      <LoginOutlined />
     ),
   ];
 
   return (
-    <div className={width <= 992 ? "" : `h-screen`}>
+    <div className={width <= 992 ? "" : "h-screen"}>
+      {/* Mobile / tablet: slide-in Drawer */}
       {width <= 992 ? (
         <Drawer
           placement="left"
           onClose={() => handleCollapse(false)}
           open={collapsed}
-          className=" h-full"
+          className="h-full"
+          styles={{ body: { padding: 0, display: "flex", flexDirection: "column" } }}
         >
-          <motion.div
-            variants={{
-              transition: {
-                staggerChildren: 0.5,
-              },
-            }}
-            initial={"offscreen"}
-            whileInView={"onscreen"}
-            viewport={{ amount: 0.1 }}
-            transition={{ staggerChildren: 0.04 }}
-            className="  flex flex-col h-full"
-          >
-            <center>
-              <div className="logo">
-                <Image
-                  preview={false}
-                  src={logo}
-                  className="  p-4"
-                  style={{ maxWidth: "200px" }}
-                />
-              </div>
-              <div className="logo p-3 flex flex-col">
-                <label className=" text-2xl capitalize">
-                  {userData &&
-                    [userData.firstName, userData.lastName].join(" ")}
-                </label>
-                <label className="text-sm">
-                  {userData && userData.accountId}
-                </label>
-              </div>
-            </center>
-            <TopMenus
-              path={pathname}
-              navigations={navigations}
-              handleCollapse={() => handleCollapse(false)}
-            />
-            <Menu
-              mode="inline"
-              items={bottomItems}
-              defaultSelectedKeys={pathname}
-              onClick={() => handleCollapse(false)}
-            />
-          </motion.div>
+          <Brand collapsed={false} />
+          <TopMenus
+            path={pathname}
+            navigations={navigations}
+            handleCollapse={() => handleCollapse(false)}
+          />
+          <Divider className="my-0" />
+          <Menu
+            mode="inline"
+            items={bottomItems}
+            selectedKeys={[]}
+            onClick={() => handleCollapse(false)}
+          />
         </Drawer>
       ) : (
+        /* Desktop: persistent collapsible Sider */
         <Sider
-          className=" hidden h-screen overflow-hidden md:flex flex-col shadow"
+          className="hidden h-screen overflow-hidden md:flex flex-col shadow"
           breakpoint="lg"
           collapsible
           collapsed={collapsed}
           theme="light"
           onCollapse={(value) => handleCollapse(value)}
-          width={250}
+          width={220}
         >
-          <center className=" p-2">
-            <div className="logo ">
-              <Image
-                preview={false}
-                src={logo}
-                className="  p-4"
-                style={{ maxWidth: "150px" }}
-              />
-            </div>
-          </center>
+          <Brand collapsed={collapsed} />
           <TopMenus path={pathname} navigations={navigations} />
+          <Divider className="my-0" />
+          <Menu mode="inline" items={bottomItems} selectedKeys={[]} />
         </Sider>
       )}
     </div>
   );
 };
+
 export default Sidebar;

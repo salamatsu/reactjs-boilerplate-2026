@@ -2,8 +2,8 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import tailwindcss from "@tailwindcss/vite";
 
-// https://vite.dev/config/
-// https://vite.dev/config/
+// Scan2Win — Vite build configuration
+// Dev server port: 3045, with API proxy to VITE_BASEURL
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
 

@@ -22,6 +22,11 @@ import { useWindowSize } from "../../hooks/useWindowSize";
 import Sidebar from "./Sidebar";
 
 const { Header, Content } = Layout;
+// ============================================
+// SCAN2WIN — Admin CMS Layout
+// Wraps all admin pages with header + sidebar.
+// ============================================
+
 const BasicLayout = ({ navigations = [], store }) => {
   const { userData, reset } = store();
   const [collapsed, setCollapsed] = useState(false);
@@ -46,21 +51,24 @@ const BasicLayout = ({ navigations = [], store }) => {
       />
       <Layout className="site-layout">
         <Header
-          style={{ backgroundColor: "#1E3A71", padding: "0 16px" }}
-          className="site-layout-background flex justify-between items-center h-[55px] bg-primaryColor text-white px-3 md:pr-7"
+          style={{ backgroundColor: "#1A1A2E", padding: "0 16px" }}
+          className="site-layout-background flex justify-between items-center h-[55px] text-white px-3 md:pr-7"
         >
           <div className="flex h-full items-center gap-3 text-white">
             {collapsed ? (
               <MenuFoldOutlined
-                className=" text-2xl"
+                className="text-2xl"
                 onClick={() => handleCollapse(!collapsed)}
               />
             ) : (
               <MenuUnfoldOutlined
-                className=" text-2xl"
+                className="text-2xl"
                 onClick={() => handleCollapse(!collapsed)}
               />
             )}
+            <span className="font-black text-sm tracking-widest text-[#E94560]">
+              SCAN2WIN
+            </span>
           </div>
 
           <motion.div
@@ -126,7 +134,7 @@ const BasicLayout = ({ navigations = [], store }) => {
             )}
           </motion.div>
         </Header>
-        <Content className=" bg-white h-full w-full overflow-auto ">
+        <Content className="bg-white h-full w-full overflow-auto">
           <Outlet />
         </Content>
       </Layout>

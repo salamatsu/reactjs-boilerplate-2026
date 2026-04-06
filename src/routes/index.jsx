@@ -1,3 +1,16 @@
+// ============================================
+// SCAN2WIN — Root Router
+// Worldbex Events "Scan to Win" Platform
+//
+// Four public surfaces + admin CMS:
+//   /:eventTag          → Visitor Web App (e.g. /mias)
+//   /redeem             → Redeem Portal (prize booth staff)
+//   /rouletteprizes     → Roulette CMS (admin)
+//   /rouletteprizespool → Prize Pool Config (admin — secret)
+//   /admin              → Admin Login
+//   *                   → 404
+// ============================================
+
 import { Suspense, lazy } from "react";
 import {
   RouterProvider,
@@ -6,13 +19,13 @@ import {
 } from "react-router";
 import LoadingFallback from "../components/LoadingFallback";
 
-// Lazy load pages
-const LandingPage = lazy(() => import("../pages/LandingPage"));
-const Register = lazy(() => import("../pages/Register"));
-const AdminRoute = lazy(() => import("./pageRoutes/AdminRoute"));
-const NotFound = lazy(() => import("../pages/NotFound"));
+// Lazy-load all surfaces for code splitting
+const VisitorApp     = lazy(() => import("../pages/visitor/VisitorApp"));
+const RedeemPortal   = lazy(() => import("../pages/redeem/RedeemPortal"));
+const CmsRoute       = lazy(() => import("./pageRoutes/CmsRoute"));
+const NotFound       = lazy(() => import("../pages/NotFound"));
 
-// Layout component with scroll restoration
+// Thin layout wrapper that restores scroll position on navigation
 const Layout = ({ children }) => (
   <>
     <ScrollRestoration />
@@ -23,36 +36,43 @@ const Layout = ({ children }) => (
 const RootRoutes = () => {
   const router = createBrowserRouter(
     [
+      // ─── Visitor Web App (/mias, /wofex, etc.) ───────────────────────────
       {
-        path: "/",
+        path: "/:eventTag",
         element: (
           <Layout>
             <Suspense fallback={<LoadingFallback />}>
-              <LandingPage />
+              <VisitorApp />
             </Suspense>
           </Layout>
         ),
       },
+
+      // ─── Redeem Portal (prize booth staff) ───────────────────────────────
       {
-        path: "/register",
+        path: "/redeem",
         element: (
           <Layout>
             <Suspense fallback={<LoadingFallback />}>
-              <Register />
+              <RedeemPortal />
             </Suspense>
           </Layout>
         ),
       },
+
+      // ─── Admin CMS (Roulette prizes + pool config + login) ───────────────
       {
         path: "/admin/*",
         element: (
           <Layout>
             <Suspense fallback={<LoadingFallback />}>
-              <AdminRoute />
+              <CmsRoute />
             </Suspense>
           </Layout>
         ),
       },
+
+      // ─── 404 catch-all ────────────────────────────────────────────────────
       {
         path: "*",
         element: (
@@ -66,7 +86,7 @@ const RootRoutes = () => {
     ],
     {
       future: { v7_startTransition: true },
-    },
+    }
   );
 
   return <RouterProvider router={router} />;

@@ -1,114 +1,109 @@
+// ============================================
+// SCAN2WIN — React Query Hooks
+// Worldbex Events "Scan to Win" Platform
+//
+// All hooks respect USE_MOCK from constants.jsx.
+// When mocking, data is returned from MOCK_DATA
+// without any network request.
+// ============================================
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { USE_MOCK, MOCK_DATA } from "../../lib/constants";
 import {
-  registerPublicApi,
-  getItemsApi,
-  getItemByIdApi,
-  createItemApi,
-  updateItemApi,
-  deleteItemApi,
-  getAttendeesApi,
-  getAttendeeByIdApi,
-  exportAttendeesApi,
-  getMeApi,
+  getEventApi,
+  getPrizesApi,
+  createPrizeApi,
+  updatePrizeApi,
+  deletePrizeApi,
+  updatePrizePoolApi,
+  getSurveyQuestionsApi,
+  redeemApi,
 } from "../api/api";
 
 // ============================================
-// PUBLIC HOOKS
+// EVENT — Visitor App
+// Fetches event config + interactions list
 // ============================================
 
-export const usePublicRegister = () => {
-  return useMutation({
-    mutationFn: registerPublicApi,
-  });
-};
-
-// ============================================
-// AUTH - PROFILE
-// ============================================
-
-export const useGetMe = (hashMe) => {
+export const useGetEvent = () => {
   return useQuery({
-    queryKey: ["me", hashMe],
-    queryFn: () => getMeApi(hashMe),
+    queryKey: ["event"],
+    queryFn: () => (USE_MOCK ? MOCK_DATA.event : getEventApi()),
   });
 };
 
 // ============================================
-// ITEMS - CRUD HOOKS TEMPLATE
-// Duplicate this pattern for any new resource.
+// PRIZES — CMS + Redeem Portal
 // ============================================
 
-export const useGetItems = (params) => {
+export const useGetPrizes = () => {
   return useQuery({
-    queryKey: ["items", params],
-    queryFn: () => getItemsApi(params),
+    queryKey: ["prizes"],
+    queryFn: () => (USE_MOCK ? MOCK_DATA.prizes : getPrizesApi()),
   });
 };
 
-export const useGetItemById = (id) => {
-  return useQuery({
-    queryKey: ["item", id],
-    queryFn: () => getItemByIdApi(id),
-    enabled: !!id,
-  });
-};
-
-export const useCreateItem = () => {
+export const useCreatePrize = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: createItemApi,
+    mutationFn: createPrizeApi,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["items"] });
+      queryClient.invalidateQueries({ queryKey: ["prizes"] });
     },
   });
 };
 
-export const useUpdateItem = () => {
+export const useUpdatePrize = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: updateItemApi,
+    mutationFn: updatePrizeApi,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["items"] });
-      queryClient.invalidateQueries({ queryKey: ["item"] });
+      queryClient.invalidateQueries({ queryKey: ["prizes"] });
     },
   });
 };
 
-export const useDeleteItem = () => {
+export const useDeletePrize = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: deleteItemApi,
+    mutationFn: deletePrizeApi,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["items"] });
+      queryClient.invalidateQueries({ queryKey: ["prizes"] });
+    },
+  });
+};
+
+// Bulk-save isPool toggles from the Prize Pool Config page
+// Payload: [{ id, isPool }]
+export const useUpdatePrizePool = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updatePrizePoolApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["prizes"] });
     },
   });
 };
 
 // ============================================
-// ATTENDEES HOOKS
-// Params: page, limit, sortBy, sortOrder, eventId,
-//         transactionId, category, procId, search
-// Response shape: { data: { attendees: [], pagination: { page, limit, total, ... } } }
+// SURVEY — Redeem Portal (Step 2)
 // ============================================
 
-export const useGetAttendees = (params) => {
+export const useGetSurveyQuestions = () => {
   return useQuery({
-    queryKey: ["attendees", params],
-    queryFn: () => getAttendeesApi(params),
+    queryKey: ["survey-questions"],
+    queryFn: () =>
+      USE_MOCK ? MOCK_DATA.surveyQuestions : getSurveyQuestionsApi(),
   });
 };
 
-export const useGetAttendeeById = (id) => {
-  return useQuery({
-    queryKey: ["attendee", id],
-    queryFn: () => getAttendeeByIdApi(id),
-    enabled: !!id,
-  });
-};
+// ============================================
+// REDEEM — Redeem Portal (Step 4)
+// Submits scan data, survey answers, and prize won
+// ============================================
 
-// Returns full attendee list without pagination (for CSV/Excel export)
-export const useExportAttendees = () => {
+export const useRedeem = () => {
   return useMutation({
-    mutationFn: exportAttendeesApi,
+    mutationFn: redeemApi,
   });
 };
