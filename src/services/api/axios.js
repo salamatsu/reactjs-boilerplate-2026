@@ -70,16 +70,16 @@ axiosInstance.interceptors.response.use(
 
       try {
         // Fetch new CSRF token
-        const response = await axiosInstance.get("/api/v1/auth/csrf-token");
-        const newCsrfToken = response.data.csrfToken;
+        // const response = await axiosInstance.get("/api/v1/auth/csrf-token");
+        // const newCsrfToken = response.data.csrfToken;
 
-        // Update the store with the new token
-        useCsrfStore?.getState()?.setCsrfToken(newCsrfToken);
+        // // Update the store with the new token
+        // useCsrfStore?.getState()?.setCsrfToken(newCsrfToken);
 
-        // Update the original request with the new token if applicable
-        if (shouldApplyCsrfToken(originalRequest)) {
-          originalRequest.headers["x-csrf-token"] = newCsrfToken;
-        }
+        // // Update the original request with the new token if applicable
+        // if (shouldApplyCsrfToken(originalRequest)) {
+        //   originalRequest.headers["x-csrf-token"] = newCsrfToken;
+        // }
 
         // Retry the original request
         return axiosInstance(originalRequest);
@@ -135,12 +135,12 @@ export const createAxiosInstanceWithInterceptor = (type = "data") => {
       }
 
       // Add CSRF token for POST, PATCH, PUT, DELETE requests
-      if (shouldApplyCsrfToken(config)) {
-        const csrfToken = useCsrfStore?.getState()?.csrfToken;
-        if (csrfToken) {
-          config.headers["x-csrf-token"] = csrfToken;
-        }
-      }
+      // if (shouldApplyCsrfToken(config)) {
+      //   const csrfToken = useCsrfStore?.getState()?.csrfToken;
+      //   if (csrfToken) {
+      //     config.headers["x-csrf-token"] = csrfToken;
+      //   }
+      // }
 
       return config;
     },
@@ -154,34 +154,34 @@ export const createAxiosInstanceWithInterceptor = (type = "data") => {
       const errMessage = error.response?.data;
       const originalRequest = error.config;
 
-      // Handle CSRF validation failure
-      if (
-        error.response?.status === 403 &&
-        errMessage?.code === "CSRF_VALIDATION_FAILED" &&
-        !originalRequest._retry
-      ) {
-        originalRequest._retry = true;
+      // // Handle CSRF validation failure
+      // if (
+      //   error.response?.status === 403 &&
+      //   errMessage?.code === "CSRF_VALIDATION_FAILED" &&
+      //   !originalRequest._retry
+      // ) {
+      //   originalRequest._retry = true;
 
-        try {
-          // Fetch new CSRF token
-          const response = await axiosInstance.get("/api/v1/auth/csrf-token");
-          const newCsrfToken = response.data.csrfToken;
+      //   try {
+      //     // Fetch new CSRF token
+      //     const response = await axiosInstance.get("/api/v1/auth/csrf-token");
+      //     const newCsrfToken = response.data.csrfToken;
 
-          // Update the store with the new token
-          useCsrfStore?.getState()?.setCsrfToken(newCsrfToken);
+      //     // Update the store with the new token
+      //     useCsrfStore?.getState()?.setCsrfToken(newCsrfToken);
 
-          // Update the original request with the new token if applicable
-          if (shouldApplyCsrfToken(originalRequest)) {
-            originalRequest.headers["x-csrf-token"] = newCsrfToken;
-          }
+      //     // Update the original request with the new token if applicable
+      //     if (shouldApplyCsrfToken(originalRequest)) {
+      //       originalRequest.headers["x-csrf-token"] = newCsrfToken;
+      //     }
 
-          // Retry the original request
-          return instance(originalRequest);
-        } catch (refetchError) {
-          console.error("Failed to refetch CSRF token:", refetchError);
-          return Promise.reject(error);
-        }
-      }
+      //     // Retry the original request
+      //     return instance(originalRequest);
+      //   } catch (refetchError) {
+      //     console.error("Failed to refetch CSRF token:", refetchError);
+      //     return Promise.reject(error);
+      //   }
+      // }
 
       // Handle authentication errors - Try to refresh token first
       const authErrorMessages = [

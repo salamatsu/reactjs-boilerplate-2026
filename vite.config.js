@@ -16,12 +16,12 @@ export default defineConfig(({ mode }) => {
         "/api": {
           target: env.VITE_BASEURL,
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, ""), // /api will be removed when proxying to the target
+          // rewrite: (path) => path.replace(/^\/api/, ""), // /api will be removed when proxying to the target
         },
         "/public": {
           target: env.VITE_BASEURL,
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/public/, ""), // /public will be removed when proxying to the target
+          // rewrite: (path) => path.replace(/^\/public/, ""), // /public will be removed when proxying to the target
         },
       },
     },

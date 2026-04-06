@@ -164,6 +164,78 @@ export const redeemApi = async (payload) => {
 };
 
 // ============================================
+// CAMPAIGN RAFFLE — Participant Flow
+// Base: /api/v1/raffles/campaigns
+//
+// Step 1  GET  /campaigns/event/:eventTag        → load campaign + booth list
+// Step 3  POST /campaigns/:campaignId/generate-raffle-qr → get encrypted QR
+// Step 5  POST /campaigns/:campaignId/validate-raffle    → validate QR, get raffleEntryId
+// Step 7  POST /campaigns/:campaignId/spin-wheel         → record spin outcome
+// ============================================
+
+const RAFFLE_BASE = "/api/v1/raffles";
+
+export const getCampaignByEventTagApi = async (eventTag) => {
+  try {
+    const response = await axiosInstance.get(
+      `${RAFFLE_BASE}/campaigns/event/${eventTag}`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+  }
+};
+
+export const generateRaffleQrApi = async ({
+  campaignId,
+  boothCodes,
+  participantInfo,
+}) => {
+  try {
+    const response = await axiosInstance.post(
+      `${RAFFLE_BASE}/campaigns/${campaignId}/generate-raffle-qr`,
+      { boothCodes, participantInfo },
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const validateRaffleApi = async ({ campaignId, encryptedQr }) => {
+  try {
+    const response = await axiosInstance.post(
+      `${RAFFLE_BASE}/campaigns/${campaignId}/validate-raffle`,
+      { encryptedQr },
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const spinWheelApi = async ({
+  campaignId,
+  raffleEntryId,
+  prizeName,
+  wheelResult,
+  claimedBy,
+}) => {
+  try {
+    const response = await axiosInstance.post(
+      `${RAFFLE_BASE}/campaigns/${campaignId}/spin-wheel`,
+      { raffleEntryId, prizeName, wheelResult, claimedBy },
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+// ============================================
 // FILE UPLOAD — CMS prize images
 // POST /api/upload → multipart form data
 // ============================================

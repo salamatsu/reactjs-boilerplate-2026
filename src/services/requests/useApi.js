@@ -18,6 +18,10 @@ import {
   updatePrizePoolApi,
   getSurveyQuestionsApi,
   redeemApi,
+  getCampaignByEventTagApi,
+  generateRaffleQrApi,
+  validateRaffleApi,
+  spinWheelApi,
 } from "../api/api";
 
 // ============================================
@@ -105,5 +109,39 @@ export const useGetSurveyQuestions = () => {
 export const useRedeem = () => {
   return useMutation({
     mutationFn: redeemApi,
+  });
+};
+
+// ============================================
+// CAMPAIGN RAFFLE — Participant Flow
+// ============================================
+
+export const useGetCampaignByEventTag = (eventTag) => {
+  return useQuery({
+    queryKey: ["campaign", eventTag],
+    queryFn: () =>
+      USE_MOCK ? MOCK_DATA.campaign : getCampaignByEventTagApi(eventTag),
+    enabled: !!eventTag,
+  });
+};
+
+export const useGenerateRaffleQr = () => {
+  return useMutation({
+    mutationFn: (vars) =>
+      USE_MOCK
+        ? Promise.resolve({ success: true, data: MOCK_DATA.raffleQr })
+        : generateRaffleQrApi(vars),
+  });
+};
+
+export const useValidateRaffle = () => {
+  return useMutation({
+    mutationFn: validateRaffleApi,
+  });
+};
+
+export const useSpinWheel = () => {
+  return useMutation({
+    mutationFn: spinWheelApi,
   });
 };

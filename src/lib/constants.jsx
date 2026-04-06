@@ -35,11 +35,11 @@ export const DEFAULT_PAGE = 1;
 // ============================================
 
 export const COLORS = {
-  primary: "#1A1A2E",   // Deep navy background
-  surface: "#16213E",   // Card/surface background
-  accent: "#E94560",    // Vivid red-pink — primary CTA
-  gold: "#F5A623",      // Gold — highlight / points
-  success: "#00D68F",   // Success green
+  primary: "#1A1A2E", // Deep navy background
+  surface: "#16213E", // Card/surface background
+  accent: "#E94560", // Vivid red-pink — primary CTA
+  gold: "#F5A623", // Gold — highlight / points
+  success: "#00D68F", // Success green
   text: "#FFFFFF",
   muted: "#8892A4",
 };
@@ -49,7 +49,7 @@ export const COLORS = {
 // Set to false once the live API is wired up
 // ============================================
 
-export const USE_MOCK = true;
+export const USE_MOCK = false;
 
 // ============================================
 // UPCOMING WORLDBEX EVENTS (hardcoded)
@@ -87,6 +87,76 @@ export const UPCOMING_EVENTS = [
 // ============================================
 
 export const MOCK_DATA = {
+  // ── Campaign Raffle API mock (new flow) ──────────────────────────────────────
+  campaign: {
+    campaign: {
+      id: 1,
+      campaignCode: "RFFL-MIAS-2025",
+      campaignName: "MIAS 2025 Raffle Campaign",
+      eventTag: "mias",
+      description:
+        "Collect points from all booths and join the grand raffle draw.",
+      thresholdPoints: 300,
+      startDate: "2025-04-03T00:00:00.000Z",
+      endDate: "2025-04-06T23:59:59.000Z",
+      status: "active",
+    },
+    booths: [
+      {
+        id: 1,
+        boothCode: "BOOTH-HONDA-01",
+        boothName: "Honda Booth",
+        points: 100,
+        maxScanPerUser: 1,
+        sortOrder: 1,
+      },
+      {
+        id: 2,
+        boothCode: "BOOTH-TOYOTA-01",
+        boothName: "Toyota Booth",
+        points: 75,
+        maxScanPerUser: 1,
+        sortOrder: 2,
+      },
+      {
+        id: 3,
+        boothCode: "BOOTH-MITS-01",
+        boothName: "Mitsubishi Booth",
+        points: 50,
+        maxScanPerUser: 1,
+        sortOrder: 3,
+      },
+      {
+        id: 4,
+        boothCode: "BOOTH-FORD-01",
+        boothName: "Ford Booth",
+        points: 75,
+        maxScanPerUser: 1,
+        sortOrder: 4,
+      },
+      {
+        id: 5,
+        boothCode: "BOOTH-GEELY-01",
+        boothName: "Geely Booth",
+        points: 50,
+        maxScanPerUser: 1,
+        sortOrder: 5,
+      },
+    ],
+    thresholdPoints: 300,
+    totalBoothPoints: 350,
+  },
+  raffleQr: {
+    raffleQrId: 1,
+    encryptedQr: "MOCK_ENCRYPTED_QR_A1B2C3D4E5F6",
+    participantId: 1,
+    participantCode: "CLIENT-DEVICE-MOCK",
+    totalPoints: 350,
+    thresholdPoints: 300,
+    boothCount: 5,
+    generatedAt: "2025-04-03T08:00:00.000Z",
+  },
+  // ── Legacy event mock (old flow, kept for reference) ─────────────────────────
   event: {
     eventTag: "mias",
     name: "Manila International Auto Show (MIAS) 2025",
@@ -154,7 +224,13 @@ export const MOCK_DATA = {
       id: "sq1",
       question: "How did you hear about MIAS 2025?",
       type: "multiple_choice",
-      options: ["Social Media", "Friend/Family", "TV/Radio", "Billboard", "Other"],
+      options: [
+        "Social Media",
+        "Friend/Family",
+        "TV/Radio",
+        "Billboard",
+        "Other",
+      ],
     },
     {
       id: "sq2",

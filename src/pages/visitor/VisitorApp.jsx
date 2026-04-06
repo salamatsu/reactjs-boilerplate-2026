@@ -5,23 +5,17 @@
 // Route: /:eventTag  (e.g. /mias)
 // Target: Mobile & tablet only
 //
-// Features:
-//   1. Goal Progress (arc progress bar)
-//   2. Scans List (interactions + status)
-//   3. Save Link to Clipboard
-//   4. Scan-to-Win deep link handler (URL params ?i=&p=)
-//   5. Camera QR Scanner (jsQR via canvas)
-//   6. Digital Event Map
-//   7. Event Details card
-//   8. Shareable Event Link (Web Share API)
-//   9. Upcoming Events Showcase
+// Campaign Raffle API flow:
+//   Step 1  Load campaign + booth list (GET /campaigns/event/:eventTag)
+//   Step 2  Client scans booth QRs locally (no API call per scan)
+//   Step 3  Generate raffle QR when threshold reached (POST /campaigns/:id/generate-raffle-qr)
+//   Step 4  Visitor presents QR at raffle station
 // ============================================
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useParams, useSearchParams } from "react-router";
+import { useParams } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
-import CryptoJS from "crypto-js";
 import confetti from "canvas-confetti";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -36,14 +30,13 @@ import {
   ChevronRight,
   Zap,
   Gift,
+  Loader2,
 } from "lucide-react";
+import { APP_BASE_URL, UPCOMING_EVENTS } from "../../lib/constants";
 import {
-  APP_BASE_URL,
-  SECRET_KEY,
-  UPCOMING_EVENTS,
-  USE_MOCK,
-  MOCK_DATA,
-} from "../../lib/constants";
+  useGetCampaignByEventTag,
+  useGenerateRaffleQr,
+} from "../../services/requests/useApi";
 
 // ─── localStorage helpers ─────────────────────────────────────────────────────
 
@@ -62,11 +55,6 @@ const saveEntry = (entry) => {
   localStorage.setItem(ENTRY_KEY, JSON.stringify(entry));
 };
 
-// ─── Encryption helpers ───────────────────────────────────────────────────────
-
-const encryptPayload = (payload) =>
-  CryptoJS.AES.encrypt(JSON.stringify(payload), SECRET_KEY).toString();
-
 // ─── Desktop guard ────────────────────────────────────────────────────────────
 
 const DesktopGuard = () => (
@@ -84,8 +72,8 @@ const DesktopGuard = () => (
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 /** Arc / circular progress bar */
-const GoalProgress = ({ points, goal }) => {
-  const pct = Math.min((points / goal) * 100, 100);
+const GoalProgress = ({ points, threshold }) => {
+  const pct = Math.min((points / threshold) * 100, 100);
   const radius = 70;
   const stroke = 10;
   const normalizedR = radius - stroke / 2;
@@ -96,7 +84,6 @@ const GoalProgress = ({ points, goal }) => {
     <div className="flex flex-col items-center py-6">
       <div className="relative">
         <svg width={radius * 2} height={radius * 2} className="-rotate-90">
-          {/* Background track */}
           <circle
             cx={radius}
             cy={radius}
@@ -105,7 +92,6 @@ const GoalProgress = ({ points, goal }) => {
             stroke="#16213E"
             strokeWidth={stroke}
           />
-          {/* Progress arc */}
           <motion.circle
             cx={radius}
             cy={radius}
@@ -120,14 +106,13 @@ const GoalProgress = ({ points, goal }) => {
             transition={{ duration: 0.8, ease: "easeOut" }}
           />
         </svg>
-        {/* Center label */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-2xl font-bold text-white">{points}</span>
           <span className="text-xs text-[#8892A4]">pts</span>
         </div>
       </div>
       <p className="mt-2 text-sm text-[#8892A4]">
-        <span className="text-[#F5A623] font-semibold">{points}</span> / {goal} pts
+        <span className="text-[#F5A623] font-semibold">{points}</span> / {threshold} pts
       </p>
       <div className="w-full mt-3 bg-[#16213E] rounded-full h-2">
         <motion.div
@@ -142,14 +127,14 @@ const GoalProgress = ({ points, goal }) => {
   );
 };
 
-/** List of all event interactions with scan status */
-const InteractionList = ({ interactions, scannedIds }) => (
+/** List of booths with scan status */
+const BoothList = ({ booths, scannedCodes }) => (
   <div className="space-y-2">
-    {interactions.map((item) => {
-      const scanned = scannedIds.includes(item.id);
+    {booths.map((booth) => {
+      const scanned = scannedCodes.includes(booth.boothCode);
       return (
         <div
-          key={item.id}
+          key={booth.id}
           className={`flex items-center justify-between rounded-xl px-4 py-3 transition-all ${
             scanned
               ? "bg-[#16213E] opacity-60"
@@ -167,7 +152,7 @@ const InteractionList = ({ interactions, scannedIds }) => (
                 scanned ? "line-through text-[#8892A4]" : "text-white"
               }`}
             >
-              {item.name}
+              {booth.boothName}
             </span>
           </div>
           <span
@@ -177,7 +162,7 @@ const InteractionList = ({ interactions, scannedIds }) => (
                 : "bg-[#E94560]/10 text-[#E94560]"
             }`}
           >
-            +{item.points} pts
+            +{booth.points} pts
           </span>
         </div>
       );
@@ -185,23 +170,30 @@ const InteractionList = ({ interactions, scannedIds }) => (
   </div>
 );
 
-/** Event details card */
-const EventHeader = ({ event }) => (
+/** Event/campaign details card */
+const CampaignHeader = ({ campaign }) => (
   <div className="rounded-2xl bg-gradient-to-br from-[#16213E] to-[#1A1A2E] border border-[#E94560]/20 p-5 mb-4">
-    <h1 className="text-lg font-bold text-white leading-tight">{event.name}</h1>
+    <h1 className="text-lg font-bold text-white leading-tight">
+      {campaign.campaignName}
+    </h1>
     <div className="mt-3 space-y-2">
       <div className="flex items-center gap-2 text-[#8892A4] text-sm">
         <Calendar size={14} className="text-[#F5A623]" />
-        <span>{event.date}</span>
+        <span>
+          {new Date(campaign.startDate).toLocaleDateString()} –{" "}
+          {new Date(campaign.endDate).toLocaleDateString()}
+        </span>
       </div>
       <div className="flex items-center gap-2 text-[#8892A4] text-sm">
-        <MapPin size={14} className="text-[#E94560]" />
-        <span>{event.location}</span>
+        <Zap size={14} className="text-[#E94560]" />
+        <span>Threshold: {campaign.thresholdPoints} pts</span>
       </div>
     </div>
-    <p className="mt-3 text-xs text-[#8892A4] leading-relaxed">
-      {event.description}
-    </p>
+    {campaign.description && (
+      <p className="mt-3 text-xs text-[#8892A4] leading-relaxed">
+        {campaign.description}
+      </p>
+    )}
   </div>
 );
 
@@ -253,7 +245,6 @@ const CameraScanner = ({ onScan, onClose }) => {
     };
   }, [stopCamera]);
 
-  // Decode frames with jsQR
   useEffect(() => {
     if (!scanning) return;
 
@@ -271,7 +262,6 @@ const CameraScanner = ({ onScan, onClose }) => {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      // Dynamically import jsQR to keep initial bundle lean
       const { default: jsQR } = await import("jsqr");
       const code = jsQR(imageData.data, imageData.width, imageData.height, {
         inversionAttempts: "dontInvert",
@@ -295,7 +285,7 @@ const CameraScanner = ({ onScan, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black/90 z-50 flex flex-col">
       <div className="flex justify-between items-center p-4 text-white">
-        <span className="font-bold">Scan QR Code</span>
+        <span className="font-bold">Scan Booth QR</span>
         <button
           onClick={() => {
             stopCamera();
@@ -319,7 +309,6 @@ const CameraScanner = ({ onScan, onClose }) => {
             playsInline
             muted
           />
-          {/* Scan frame overlay */}
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-64 h-64 border-2 border-[#E94560] rounded-2xl relative">
               <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-[#E94560] rounded-tl-xl" />
@@ -333,13 +322,35 @@ const CameraScanner = ({ onScan, onClose }) => {
 
       <canvas ref={canvasRef} className="hidden" />
       <p className="text-center text-[#8892A4] text-xs py-4 px-8">
-        Point your camera at the Scan to Win QR code at the booth.
+        Point your camera at the booth QR code.
       </p>
     </div>
   );
 };
 
-/** Share panel — copy link + Web Share API + social buttons */
+/** Inline SVG icons for social platforms */
+const FacebookIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+  </svg>
+);
+const XIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
+const ViberIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+    <path d="M11.4 1.1C7.4.5 3.9 2.6 2.5 6.1c-.5 1.3-.6 2.7-.3 4.2.4 2.4 1.8 4.5 3.8 5.9l.3 4.2 3.3-2.2c.6.1 1.1.1 1.7.1 5.2 0 9.5-3.8 9.5-8.5S16.6 1.1 11.4 1.1zm4.5 11.1c-.3.8-1.6 1.5-2.2 1.6-.6.1-1.2.3-4-1.3-3.3-1.8-5.4-5.2-5.6-5.5-.1-.3-.9-1.3-.9-2.4s.6-1.7 1-2.1c.3-.3.7-.4 1-.4s.5 0 .7.1c.2 0 .5.1.7.6l.9 2.2c.1.3.2.7 0 1L7 7c-.2.3-.4.5-.3.8.6 1.1 1.4 2 2.3 2.7 1 .7 2.1 1.2 3.3 1.5.4.1.6 0 .9-.3l.5-.7c.3-.4.6-.3 1-.2l2 .9c.2.1.4.2.5.4.1.3 0 1-.6 1.8z" />
+  </svg>
+);
+const WhatsAppIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z" />
+  </svg>
+);
+
+/** Share panel */
 const SharePanel = ({ eventTag }) => {
   const url = `${APP_BASE_URL}/${eventTag}`;
   const [copied, setCopied] = useState(false);
@@ -350,7 +361,7 @@ const SharePanel = ({ eventTag }) => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback: select the text
+      // ignore
     }
   };
 
@@ -365,93 +376,153 @@ const SharePanel = ({ eventTag }) => {
   const socials = [
     {
       label: "Facebook",
-      color: "#1877F2",
+      icon: <FacebookIcon />,
+      bg: "bg-[#1877F2]",
       url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
     },
     {
-      label: "X",
-      color: "#000",
-      url: `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=Join+me+at+the+Worldbex+Scan+to+Win!`,
+      label: "X (Twitter)",
+      icon: <XIcon />,
+      bg: "bg-[#14171A]",
+      url: `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=Join+me+at+Worldbex+Scan+to+Win!`,
     },
     {
       label: "Viber",
-      color: "#7360F2",
+      icon: <ViberIcon />,
+      bg: "bg-[#7360F2]",
       url: `viber://forward?text=${encodeURIComponent(url)}`,
     },
     {
       label: "WhatsApp",
-      color: "#25D366",
+      icon: <WhatsAppIcon />,
+      bg: "bg-[#25D366]",
       url: `https://api.whatsapp.com/send?text=${encodeURIComponent("Join me at Worldbex Scan to Win! " + url)}`,
     },
   ];
 
   return (
-    <div className="rounded-2xl bg-[#16213E] p-5 space-y-4">
-      <h2 className="text-white font-bold text-sm">Share This Event</h2>
-      <div className="flex gap-2">
+    <div className="space-y-5">
+      {/* Header */}
+      <div>
+        <h2 className="text-white font-black text-xl">Invite Friends</h2>
+        <p className="text-[#8892A4] text-sm mt-1">
+          Share this event and let others join the fun!
+        </p>
+      </div>
+
+      {/* URL row */}
+      <div className="flex items-center gap-2 bg-[#16213E] border border-[#E94560]/20 rounded-2xl px-4 py-3">
+        <span className="flex-1 text-[#8892A4] text-xs truncate">{url}</span>
         <button
           onClick={copyLink}
-          className="flex-1 flex items-center justify-center gap-2 bg-[#1A1A2E] border border-[#E94560]/30 rounded-xl py-2.5 text-sm text-white"
+          className={`shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all active:scale-95 ${
+            copied
+              ? "bg-[#00D68F]/20 text-[#00D68F]"
+              : "bg-[#E94560]/15 text-[#E94560]"
+          }`}
           aria-label="Copy event link"
         >
-          <Copy size={14} className="text-[#E94560]" />
-          {copied ? "Copied!" : "Copy Link"}
-        </button>
-        <button
-          onClick={shareNative}
-          className="flex-1 flex items-center justify-center gap-2 bg-[#E94560] rounded-xl py-2.5 text-sm text-white font-semibold"
-          aria-label="Share event"
-        >
-          <Share2 size={14} />
-          Share
+          <Copy size={12} />
+          {copied ? "Copied!" : "Copy"}
         </button>
       </div>
-      <div className="flex gap-2">
-        {socials.map((s) => (
-          <a
-            key={s.label}
-            href={s.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 text-center text-xs py-2 rounded-lg text-white font-medium"
-            style={{ backgroundColor: s.color }}
-            aria-label={`Share on ${s.label}`}
-          >
-            {s.label}
-          </a>
-        ))}
+
+      {/* Native share button */}
+      <button
+        onClick={shareNative}
+        className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-[#E94560] to-[#F5A623] text-white rounded-2xl py-4 font-bold text-base shadow-lg shadow-[#E94560]/25 active:scale-95 transition-transform"
+        aria-label="Share event"
+      >
+        <Share2 size={20} />
+        Share This Event
+      </button>
+
+      {/* Social platforms */}
+      <div>
+        <p className="text-[#8892A4] text-xs font-semibold uppercase tracking-widest mb-3">
+          Share on
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          {socials.map((s) => (
+            <a
+              key={s.label}
+              href={s.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${s.bg} flex items-center gap-3 rounded-2xl px-4 py-4 active:scale-95 transition-transform no-underline`}
+              style={{ color: "white", textDecoration: "none" }}
+              aria-label={`Share on ${s.label}`}
+            >
+              <span className="shrink-0">{s.icon}</span>
+              <span className="text-sm font-semibold leading-tight" style={{ color: "white" }}>
+                {s.label}
+              </span>
+            </a>
+          ))}
+        </div>
       </div>
     </div>
   );
 };
 
-/** Upcoming Worldbex events horizontal scroll */
+/** Upcoming Worldbex events */
+const EVENT_ACCENTS = ["#E94560", "#F5A623", "#00D68F", "#7360F2"];
+
 const UpcomingEvents = () => (
   <div>
-    <h2 className="text-white font-bold text-sm mb-3">Upcoming Events</h2>
-    <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
-      {UPCOMING_EVENTS.map((ev) => (
-        <div
-          key={ev.tag}
-          className="shrink-0 snap-start w-48 rounded-2xl bg-[#16213E] border border-[#E94560]/10 p-4 flex flex-col justify-between"
-        >
-          <div>
-            <p className="text-white text-xs font-bold leading-tight line-clamp-2">
-              {ev.name}
-            </p>
-            <p className="text-[#F5A623] text-xs mt-1">{ev.date}</p>
-          </div>
-          <a
-            href={ev.registrationUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 block text-center text-xs bg-[#E94560] text-white rounded-lg py-1.5 font-semibold"
-            aria-label={`Register for ${ev.name}`}
+    <div className="mb-5">
+      <h2 className="text-white font-black text-xl">Upcoming Events</h2>
+      <p className="text-[#8892A4] text-sm mt-1">
+        Scan. Collect points. Win prizes.
+      </p>
+    </div>
+    <div className="space-y-3">
+      {UPCOMING_EVENTS.map((ev, i) => {
+        const accent = EVENT_ACCENTS[i % EVENT_ACCENTS.length];
+        return (
+          <div
+            key={ev.tag}
+            className="rounded-2xl bg-[#16213E] overflow-hidden"
           >
-            Register
-          </a>
-        </div>
-      ))}
+            {/* Top accent strip */}
+            <div className="h-1" style={{ backgroundColor: accent }} />
+
+            <div className="p-4">
+              {/* Tag badge + name */}
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <p className="text-white text-sm font-bold leading-snug flex-1">
+                  {ev.name}
+                </p>
+                <span
+                  className="shrink-0 text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider"
+                  style={{ backgroundColor: `${accent}22`, color: accent }}
+                >
+                  {ev.tag}
+                </span>
+              </div>
+
+              {/* Date */}
+              <div className="flex items-center gap-1.5 mb-4">
+                <Calendar size={12} style={{ color: accent }} />
+                <span className="text-[#8892A4] text-xs">{ev.date}</span>
+              </div>
+
+              {/* CTA */}
+              <a
+                href={ev.registrationUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full rounded-xl py-3 text-sm font-bold active:scale-95 transition-transform"
+                style={{ backgroundColor: accent, color: "white", textDecoration: "none" }}
+                aria-label={`Register for ${ev.name}`}
+              >
+                Register Now
+                <ChevronRight size={14} />
+              </a>
+            </div>
+          </div>
+        );
+      })}
     </div>
   </div>
 );
@@ -481,8 +552,8 @@ const ErrorModal = ({ message, onClose }) => (
   </div>
 );
 
-/** Success modal shown after scanning a valid interaction */
-const SuccessModal = ({ points, totalPoints, goal, onClose }) => (
+/** Success modal after scanning a booth */
+const SuccessModal = ({ points, totalPoints, threshold, onClose }) => (
   <div className="fixed inset-0 bg-black/70 z-50 flex items-end justify-center p-4">
     <motion.div
       initial={{ y: 100, opacity: 0 }}
@@ -498,7 +569,7 @@ const SuccessModal = ({ points, totalPoints, goal, onClose }) => (
       <p className="text-[#8892A4] text-sm mb-1">
         Running total:{" "}
         <span className="text-white font-semibold">{totalPoints}</span> /{" "}
-        {goal} pts
+        {threshold} pts
       </p>
       <button
         onClick={onClose}
@@ -511,25 +582,130 @@ const SuccessModal = ({ points, totalPoints, goal, onClose }) => (
   </div>
 );
 
-/** Goal modal — shown when visitor hits the points goal */
-const GoalModal = ({ entry, onClose }) => {
-  const payload = {
-    id: entry.id,
-    scans: entry.scans,
-    eventTag: entry.eventTag,
-  };
-  const encrypted = encryptPayload(payload);
+/**
+ * Goal modal — two phases:
+ *   "form"  → collect optional participant info + call generate-raffle-qr API
+ *   "qr"    → display server-returned encryptedQr
+ */
+const GoalModal = ({ entry, campaignId, boothCodes, onClose, onQrGenerated }) => {
+  const [phase, setPhase] = useState(entry.encryptedQr ? "qr" : "form");
+  const [form, setForm] = useState({ fullName: "", mobileNumber: "", email: "" });
+  const [encryptedQr, setEncryptedQr] = useState(entry.encryptedQr ?? null);
+  const { mutateAsync: generateQr, isPending, error } = useGenerateRaffleQr();
 
-  // Fire confetti on mount
   useEffect(() => {
-    confetti({
-      particleCount: 150,
-      spread: 90,
-      origin: { y: 0.4 },
-      colors: ["#E94560", "#F5A623", "#00D68F", "#FFFFFF"],
-    });
-  }, []);
+    if (phase === "qr") {
+      confetti({
+        particleCount: 150,
+        spread: 90,
+        origin: { y: 0.4 },
+        colors: ["#E94560", "#F5A623", "#00D68F", "#FFFFFF"],
+      });
+    }
+  }, [phase]);
 
+  const handleGenerate = async () => {
+    const participantInfo = {
+      participantCode: entry.participantCode,
+      ...(form.fullName.trim() && { fullName: form.fullName.trim() }),
+      ...(form.mobileNumber.trim() && { mobileNumber: form.mobileNumber.trim() }),
+      ...(form.email.trim() && { email: form.email.trim() }),
+    };
+
+    try {
+      const res = await generateQr({ campaignId, boothCodes, participantInfo });
+      const qr = res.data.encryptedQr;
+      setEncryptedQr(qr);
+      onQrGenerated(qr, res.data.raffleQrId);
+      setPhase("qr");
+    } catch {
+      // error shown via `error` state
+    }
+  };
+
+  if (phase === "form") {
+    return (
+      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          className="w-full max-w-sm bg-[#16213E] rounded-3xl p-6 my-auto"
+        >
+          <motion.div
+            animate={{ rotate: [0, -10, 10, -10, 10, 0] }}
+            transition={{ duration: 0.6 }}
+            className="text-4xl text-center mb-3"
+            aria-hidden
+          >
+            🎉
+          </motion.div>
+          <h2 className="text-white font-black text-xl text-center mb-1">
+            Threshold Reached!
+          </h2>
+          <p className="text-[#8892A4] text-sm text-center mb-5">
+            Fill in your details (optional) and generate your raffle QR code.
+          </p>
+
+          <div className="space-y-3 mb-4">
+            <input
+              value={form.fullName}
+              onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
+              placeholder="Full name (optional)"
+              className="w-full bg-[#1A1A2E] border border-[#E94560]/20 rounded-xl px-4 py-3 text-white text-sm placeholder-[#8892A4] outline-none focus:border-[#E94560]"
+            />
+            <input
+              value={form.mobileNumber}
+              onChange={(e) => setForm((f) => ({ ...f, mobileNumber: e.target.value }))}
+              placeholder="Mobile number (optional)"
+              type="tel"
+              className="w-full bg-[#1A1A2E] border border-[#E94560]/20 rounded-xl px-4 py-3 text-white text-sm placeholder-[#8892A4] outline-none focus:border-[#E94560]"
+            />
+            <input
+              value={form.email}
+              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              placeholder="Email address (optional)"
+              type="email"
+              className="w-full bg-[#1A1A2E] border border-[#E94560]/20 rounded-xl px-4 py-3 text-white text-sm placeholder-[#8892A4] outline-none focus:border-[#E94560]"
+            />
+          </div>
+
+          {error && (
+            <p className="text-[#E94560] text-xs text-center mb-3">
+              {error?.message || "Failed to generate QR. Please try again."}
+            </p>
+          )}
+
+          <button
+            onClick={handleGenerate}
+            disabled={isPending}
+            className="w-full bg-[#E94560] text-white rounded-xl py-3 font-bold flex items-center justify-center gap-2 disabled:opacity-60"
+            aria-label="Generate raffle QR"
+          >
+            {isPending ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                Generating…
+              </>
+            ) : (
+              <>
+                Generate Raffle QR <ChevronRight size={18} />
+              </>
+            )}
+          </button>
+          <button
+            onClick={onClose}
+            className="w-full mt-2 text-[#8892A4] text-sm py-2"
+            aria-label="Close"
+          >
+            Later
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // phase === "qr"
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 overflow-y-auto">
       <motion.div
@@ -547,16 +723,13 @@ const GoalModal = ({ entry, onClose }) => {
         >
           🎉
         </motion.div>
-        <h2 className="text-white font-black text-xl mb-1">
-          Goal Reached!
-        </h2>
+        <h2 className="text-white font-black text-xl mb-1">You're In!</h2>
         <p className="text-[#8892A4] text-sm mb-4">
-          Show this QR code at the prize booth to redeem your reward.
+          Show this QR code at the raffle station to spin the wheel.
         </p>
 
-        {/* Encrypted redemption QR code */}
         <div className="bg-white rounded-2xl p-4 inline-block mb-4">
-          <QRCodeSVG value={encrypted} size={180} level="H" />
+          <QRCodeSVG value={encryptedQr} size={180} level="H" />
         </div>
 
         <p className="text-[#8892A4] text-xs mb-5">
@@ -565,7 +738,7 @@ const GoalModal = ({ entry, onClose }) => {
         <button
           onClick={onClose}
           className="w-full bg-[#E94560] text-white rounded-xl py-3 font-bold"
-          aria-label="Dismiss goal modal"
+          aria-label="Done"
         >
           Done
         </button>
@@ -578,119 +751,86 @@ const GoalModal = ({ entry, onClose }) => {
 
 const VisitorApp = () => {
   const { eventTag } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
 
-  // ── State ──
-  const [event, setEvent] = useState(null);
+  // ── Campaign data ──
+  const {
+    data: campaignData,
+    isLoading: campaignLoading,
+    isError: campaignError,
+  } = useGetCampaignByEventTag(eventTag);
+
+  const campaign = campaignData?.data?.campaign ?? null;
+  const booths = campaignData?.data?.booths ?? [];
+  const thresholdPoints = campaignData?.data?.thresholdPoints ?? 0;
+
+  // ── Local entry (tracks scanned booth codes + progress) ──
   const [entry, setEntry] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null); // { type: "error"|"success"|"goal", ... }
   const [showScanner, setShowScanner] = useState(false);
-  const [activeTab, setActiveTab] = useState("home"); // "home"|"map"|"share"|"events"
+  const [activeTab, setActiveTab] = useState("home");
 
-  // ── Derived state ──
-  const totalPoints = entry?.scans?.reduce((s, r) => s + r.points, 0) ?? 0;
-  const scannedIds = entry?.scans?.map((r) => r.interactionId) ?? [];
+  // ── Derived ──
+  const scannedCodes = entry?.scannedCodes ?? [];
+  const currentPoints = entry?.currentPoints ?? 0;
 
-  // ── Load or create entry on mount ──
+  // ── Init / sync entry with campaign on load ──
   useEffect(() => {
-    const init = async () => {
-      setLoading(true);
-      try {
-        // Fetch event data (mock or API)
-        const eventData = USE_MOCK
-          ? MOCK_DATA.event
-          : await fetch("/api/events").then((r) => r.json());
+    if (!campaign) return;
 
-        if (!eventData) {
-          setModal({
-            type: "error",
-            message: "No event available right now. Please check back later.",
-          });
-          setLoading(false);
-          return;
-        }
+    const existing = loadEntry();
+    if (existing && existing.eventTag === campaign.eventTag) {
+      setEntry(existing);
+    } else {
+      const newEntry = {
+        participantCode: uuidv4(),
+        eventTag: campaign.eventTag,
+        campaignId: campaign.id,
+        thresholdPoints: campaign.thresholdPoints,
+        scannedCodes: [],
+        currentPoints: 0,
+        encryptedQr: null,
+        raffleQrId: null,
+      };
+      saveEntry(newEntry);
+      setEntry(newEntry);
+    }
+  }, [campaign]);
 
-        setEvent(eventData);
-
-        // Check for existing localStorage entry
-        const existing = loadEntry();
-        if (existing && existing.eventTag === eventData.eventTag) {
-          setEntry(existing);
-        } else {
-          // First visit — create a new entry
-          const newEntry = {
-            id: uuidv4(),
-            eventTag: eventData.eventTag,
-            goal: eventData.goal,
-            scans: [],
-          };
-          saveEntry(newEntry);
-          setEntry(newEntry);
-        }
-      } catch {
-        setModal({
-          type: "error",
-          message: "No event available right now. Please check back later.",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    init();
-  }, []);
-
-  // ── Handle deep link scan params (?i=interactionId&p=points) ──
-  useEffect(() => {
-    const interactionId = searchParams.get("i");
-    const points = searchParams.get("p");
-
-    if (!interactionId || !points || !entry || !event) return;
-
-    // Clear URL params immediately to prevent re-trigger on back navigation
-    setSearchParams({}, { replace: true });
-
-    processScan(interactionId, parseInt(points, 10), entry, event);
-  }, [searchParams, entry, event]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Core scan validation & storage logic ──
+  // ── Core scan logic ──
   const processScan = useCallback(
-    (rawInteractionId, rawPoints, currentEntry, currentEvent) => {
-      const interactionId = parseInt(rawInteractionId, 10);
-      const points = parseInt(rawPoints, 10);
+    (boothCode, currentEntry, currentBooths, currentThreshold) => {
+      const booth = currentBooths.find((b) => b.boothCode === boothCode);
 
-      // Validate event tag match
-      if (currentEntry.eventTag !== currentEvent.eventTag) {
-        setModal({
-          type: "error",
-          message: "This QR code is not valid for this event.",
-        });
+      if (!booth) {
+        setModal({ type: "error", message: "Invalid QR code. This booth is not part of the event." });
         return;
       }
 
-      // Check for duplicate scan
-      if (currentEntry.scans.some((s) => s.interactionId === interactionId)) {
-        setModal({
-          type: "error",
-          message: "You have already scanned this interaction.",
-        });
+      if (currentEntry.scannedCodes.includes(boothCode)) {
+        setModal({ type: "error", message: "You have already scanned this booth." });
         return;
       }
 
-      // Add scan and persist
-      const updatedScans = [...currentEntry.scans, { interactionId, points }];
-      const updatedEntry = { ...currentEntry, scans: updatedScans };
+      if (booth.maxScanPerUser > 0 &&
+          currentEntry.scannedCodes.filter((c) => c === boothCode).length >= booth.maxScanPerUser) {
+        setModal({ type: "error", message: "Maximum scans reached for this booth." });
+        return;
+      }
+
+      const updatedCodes = [...currentEntry.scannedCodes, boothCode];
+      const updatedPoints = currentEntry.currentPoints + booth.points;
+      const updatedEntry = {
+        ...currentEntry,
+        scannedCodes: updatedCodes,
+        currentPoints: updatedPoints,
+      };
       saveEntry(updatedEntry);
       setEntry(updatedEntry);
 
-      const newTotal = updatedScans.reduce((s, r) => s + r.points, 0);
-
-      // Check if goal is reached
-      if (newTotal >= currentEntry.goal) {
-        setModal({ type: "goal", entry: updatedEntry });
+      if (updatedPoints >= currentThreshold) {
+        setModal({ type: "goal" });
       } else {
-        setModal({ type: "success", points, totalPoints: newTotal });
+        setModal({ type: "success", points: booth.points, totalPoints: updatedPoints });
       }
     },
     []
@@ -700,41 +840,27 @@ const VisitorApp = () => {
   const handleCameraScan = useCallback(
     (decoded) => {
       setShowScanner(false);
-      try {
-        const url = new URL(decoded);
-        const scannedTag = url.pathname.replace("/", "");
-        const i = url.searchParams.get("i");
-        const p = url.searchParams.get("p");
+      if (!entry || !booths.length) return;
 
-        if (!i || !p) {
-          setModal({
-            type: "error",
-            message: "Invalid QR code. Please scan a Scan to Win booth QR.",
-          });
-          return;
-        }
-
-        if (scannedTag !== entry?.eventTag) {
-          setModal({
-            type: "error",
-            message: "This QR code is not valid for this event.",
-          });
-          return;
-        }
-
-        processScan(i, parseInt(p, 10), entry, event);
-      } catch {
-        setModal({
-          type: "error",
-          message: "Could not read QR code. Please try again.",
-        });
-      }
+      // The booth QR contains the raw boothCode string
+      const boothCode = decoded.trim();
+      processScan(boothCode, entry, booths, thresholdPoints);
     },
-    [entry, event, processScan]
+    [entry, booths, thresholdPoints, processScan]
   );
 
-  // ── Loading screen ──
-  if (loading) {
+  // ── QR generated callback ──
+  const handleQrGenerated = useCallback(
+    (encryptedQr, raffleQrId) => {
+      const updatedEntry = { ...entry, encryptedQr, raffleQrId };
+      saveEntry(updatedEntry);
+      setEntry(updatedEntry);
+    },
+    [entry]
+  );
+
+  // ── Loading / error screens ──
+  if (campaignLoading) {
     return (
       <div className="md:hidden flex items-center justify-center h-screen bg-[#1A1A2E]">
         <motion.div
@@ -746,35 +872,55 @@ const VisitorApp = () => {
     );
   }
 
-  // ── Bottom nav tab content ──
+  if (campaignError || !campaign) {
+    return (
+      <div className="md:hidden flex flex-col items-center justify-center h-screen bg-[#1A1A2E] px-8 text-center">
+        <X size={40} className="text-[#E94560] mb-4" />
+        <h2 className="text-white font-bold text-lg mb-2">Event Not Found</h2>
+        <p className="text-[#8892A4] text-sm">
+          No active campaign found for <span className="text-white font-semibold">{eventTag}</span>.
+        </p>
+      </div>
+    );
+  }
+
+  // ── Tab content ──
   const renderTab = () => {
     switch (activeTab) {
       case "home":
         return (
           <div className="space-y-5 px-4 pb-24 pt-4">
-            <EventHeader event={event} />
-            <GoalProgress points={totalPoints} goal={entry?.goal ?? 100} />
+            <CampaignHeader campaign={campaign} />
+            <GoalProgress points={currentPoints} threshold={thresholdPoints} />
 
-            {/* Scan button */}
-            <button
-              onClick={() => setShowScanner(true)}
-              className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-[#E94560] to-[#F5A623] text-white rounded-2xl py-4 text-base font-black shadow-lg shadow-[#E94560]/30"
-              aria-label="Open camera QR scanner"
-            >
-              <Camera size={22} />
-              Scan QR Code
-            </button>
+            {/* Show "Generate QR" if threshold reached, else show scan button */}
+            {currentPoints >= thresholdPoints ? (
+              <button
+                onClick={() => setModal({ type: "goal" })}
+                className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-[#00D68F] to-[#F5A623] text-white rounded-2xl py-4 text-base font-black shadow-lg shadow-[#00D68F]/30"
+                aria-label="Generate raffle QR"
+              >
+                <Gift size={22} />
+                {entry?.encryptedQr ? "Show My Raffle QR" : "Generate Raffle QR"}
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowScanner(true)}
+                className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-[#E94560] to-[#F5A623] text-white rounded-2xl py-4 text-base font-black shadow-lg shadow-[#E94560]/30"
+                aria-label="Open camera QR scanner"
+              >
+                <Camera size={22} />
+                Scan Booth QR
+              </button>
+            )}
 
-            {/* Interactions list */}
+            {/* Booths list */}
             <div>
               <h2 className="text-white font-bold text-sm mb-3">
-                Scan Interactions ({scannedIds.length}/{event?.interactions?.length})
+                Booths ({scannedCodes.length}/{booths.length})
               </h2>
-              {event?.interactions && (
-                <InteractionList
-                  interactions={event.interactions}
-                  scannedIds={scannedIds}
-                />
+              {booths.length > 0 && (
+                <BoothList booths={booths} scannedCodes={scannedCodes} />
               )}
             </div>
           </div>
@@ -785,12 +931,10 @@ const VisitorApp = () => {
           <div className="px-4 pb-24 pt-4">
             <h2 className="text-white font-bold text-sm mb-3">Event Map</h2>
             <div className="rounded-2xl overflow-hidden bg-[#16213E] border border-[#E94560]/10">
-              {/* Static map placeholder — replace src with actual venue map image */}
               <div className="w-full aspect-square flex items-center justify-center text-[#8892A4] text-sm p-8 text-center">
                 <div>
                   <MapPin size={40} className="mx-auto mb-3 text-[#E94560]" />
-                  <p className="font-bold text-white">SM Mall of Asia</p>
-                  <p>Concert Grounds, Pasay City</p>
+                  <p className="font-bold text-white">Event Venue</p>
                   <p className="mt-2 text-xs">
                     Interactive venue map coming soon.
                     {"\n"}Ask staff for a printed copy.
@@ -803,14 +947,14 @@ const VisitorApp = () => {
 
       case "share":
         return (
-          <div className="px-4 pb-24 pt-4 space-y-5">
+          <div className="px-4 pb-24 pt-6">
             <SharePanel eventTag={eventTag} />
           </div>
         );
 
       case "events":
         return (
-          <div className="px-4 pb-24 pt-4">
+          <div className="px-4 pb-24 pt-6">
             <UpcomingEvents />
           </div>
         );
@@ -822,10 +966,8 @@ const VisitorApp = () => {
 
   return (
     <>
-      {/* Mobile-only guard — show message on md+ screens */}
       <DesktopGuard />
 
-      {/* App shell — visible on mobile/tablet only */}
       <div className="md:hidden min-h-screen bg-[#1A1A2E] text-white font-sans">
         {/* Top bar */}
         <div className="sticky top-0 z-30 bg-[#1A1A2E]/95 backdrop-blur border-b border-[#16213E] px-4 py-3 flex items-center justify-between">
@@ -838,7 +980,6 @@ const VisitorApp = () => {
           </span>
         </div>
 
-        {/* Page content */}
         <div className="relative">{renderTab()}</div>
 
         {/* Bottom navigation */}
@@ -853,9 +994,7 @@ const VisitorApp = () => {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex-1 flex flex-col items-center py-3 gap-0.5 text-xs transition-colors ${
-                activeTab === tab.id
-                  ? "text-[#E94560]"
-                  : "text-[#8892A4]"
+                activeTab === tab.id ? "text-[#E94560]" : "text-[#8892A4]"
               }`}
               aria-label={tab.label}
             >
@@ -866,7 +1005,7 @@ const VisitorApp = () => {
         </nav>
       </div>
 
-      {/* Camera QR scanner overlay */}
+      {/* Camera scanner */}
       <AnimatePresence>
         {showScanner && (
           <CameraScanner
@@ -879,21 +1018,24 @@ const VisitorApp = () => {
       {/* Modals */}
       <AnimatePresence>
         {modal?.type === "error" && (
-          <ErrorModal
-            message={modal.message}
-            onClose={() => setModal(null)}
-          />
+          <ErrorModal message={modal.message} onClose={() => setModal(null)} />
         )}
         {modal?.type === "success" && (
           <SuccessModal
             points={modal.points}
             totalPoints={modal.totalPoints}
-            goal={entry?.goal ?? 100}
+            threshold={thresholdPoints}
             onClose={() => setModal(null)}
           />
         )}
-        {modal?.type === "goal" && (
-          <GoalModal entry={modal.entry} onClose={() => setModal(null)} />
+        {modal?.type === "goal" && entry && (
+          <GoalModal
+            entry={entry}
+            campaignId={campaign.id}
+            boothCodes={scannedCodes}
+            onClose={() => setModal(null)}
+            onQrGenerated={handleQrGenerated}
+          />
         )}
       </AnimatePresence>
     </>

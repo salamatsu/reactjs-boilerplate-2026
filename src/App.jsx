@@ -21,8 +21,8 @@ const queryClient = new QueryClient({
 });
 
 const App = () => {
-  // Initialize CSRF token for admin CMS API calls
-  useCsrfToken();
+  // // Initialize CSRF token for admin CMS API calls
+  // useCsrfToken();
 
   return (
     <QueryClientProvider client={queryClient}>
