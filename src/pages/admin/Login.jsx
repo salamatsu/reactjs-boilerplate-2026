@@ -65,7 +65,8 @@ const Login = () => {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(135deg, #1A1A2E 0%, #16213E 60%, #E94560 200%)",
+        background:
+          "linear-gradient(135deg, #1A1A2E 0%, #16213E 60%, #E94560 200%)",
         padding: "20px",
       }}
     >
@@ -128,7 +129,11 @@ const Login = () => {
                 placeholder="Username"
                 size="large"
                 onChange={() => setErrorMsg(null)}
-                style={{ background: "#1A1A2E", borderColor: "#E94560", color: "#fff" }}
+                style={{
+                  background: "#1A1A2E",
+                  borderColor: "#E94560",
+                  color: "#fff",
+                }}
               />
             </Form.Item>
 
@@ -141,7 +146,11 @@ const Login = () => {
                 placeholder="Password"
                 size="large"
                 onChange={() => setErrorMsg(null)}
-                style={{ background: "#1A1A2E", borderColor: "#E94560", color: "#fff" }}
+                style={{
+                  background: "#1A1A2E",
+                  borderColor: "#E94560",
+                  color: "#fff",
+                }}
               />
             </Form.Item>
 
@@ -152,7 +161,11 @@ const Login = () => {
                 size="large"
                 block
                 loading={isPending}
-                style={{ background: "#E94560", borderColor: "#E94560", fontWeight: 700 }}
+                style={{
+                  background: "#E94560",
+                  borderColor: "#E94560",
+                  fontWeight: 700,
+                }}
                 aria-label="Sign in to admin CMS"
               >
                 Sign In

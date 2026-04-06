@@ -28,7 +28,12 @@ import {
   updateCampaignApi,
   deleteCampaignApi,
   getCampaignBoothsApi,
+  getBoothByIdApi,
+  createBoothApi,
+  updateBoothApi,
+  deleteBoothApi,
   getCampaignPrizesApi,
+  getParticipantProgressApi,
 } from "../api/api";
 
 // ============================================
@@ -210,10 +215,56 @@ export const useGetCampaignBooths = (campaignId) => {
   });
 };
 
+export const useGetBoothById = ({ campaignId, boothId }) => {
+  return useQuery({
+    queryKey: ["booth", campaignId, boothId],
+    queryFn: () => getBoothByIdApi({ campaignId, boothId }),
+    enabled: !!campaignId && !!boothId,
+  });
+};
+
+export const useCreateBooth = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createBoothApi,
+    onSuccess: (_, { campaignId }) => {
+      queryClient.invalidateQueries({ queryKey: ["campaign-booths", campaignId] });
+    },
+  });
+};
+
+export const useUpdateBooth = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateBoothApi,
+    onSuccess: (_, { campaignId }) => {
+      queryClient.invalidateQueries({ queryKey: ["campaign-booths", campaignId] });
+    },
+  });
+};
+
+export const useDeleteBooth = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteBoothApi,
+    onSuccess: (_, { campaignId }) => {
+      queryClient.invalidateQueries({ queryKey: ["campaign-booths", campaignId] });
+    },
+  });
+};
+
 export const useGetCampaignPrizes = (campaignId) => {
   return useQuery({
     queryKey: ["campaign-prizes", campaignId],
     queryFn: () => getCampaignPrizesApi(campaignId),
     enabled: !!campaignId,
+  });
+};
+
+export const useGetParticipantProgress = ({ campaignId, participantId }) => {
+  return useQuery({
+    queryKey: ["participant-progress", campaignId, participantId],
+    queryFn: () => getParticipantProgressApi({ campaignId, participantId }),
+    enabled: !!campaignId && !!participantId,
   });
 };

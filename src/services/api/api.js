@@ -15,6 +15,9 @@ import { handleApiError } from "../../utils/handlers";
 const axios = createAxiosInstanceWithInterceptor("data");
 const axiosMultipart = createAxiosInstanceWithInterceptor("multipart");
 
+// Base for all campaign-raffle endpoints
+const RAFFLE_BASE = "/api/v1/raffles";
+
 // ============================================
 // CSRF TOKEN — Required for admin CMS calls
 // ============================================
@@ -29,33 +32,26 @@ export const getCsrfToken = async () => {
 };
 
 // ============================================
-// AUTH — Admin CMS login / refresh / logout
+// AUTH — Admin CMS login
+// POST /api/v1/raffles/auth/login
+// GET  /api/v1/raffles/auth/me
+//
+// Response: { success, data: { admin, accessToken, tokenType, expiresIn, expiresAt } }
+// No refresh token — accessToken is valid for 24h.
 // ============================================
 
 export const loginApi = async (credentials) => {
   try {
-    const response = await axiosInstance.post("/api/v1/auth/login", credentials);
+    const response = await axiosInstance.post(`${RAFFLE_BASE}/auth/login`, credentials);
     return response.data;
   } catch (error) {
     handleApiError(error);
   }
 };
 
-// refreshToken must be passed by the caller (read fresh from the store)
-export const refreshTokenApi = async (refreshToken) => {
+export const getMeApi = async () => {
   try {
-    const response = await axiosInstance.post("/api/v1/auth/refresh", {
-      refreshToken,
-    });
-    return response.data;
-  } catch (error) {
-    handleApiError(error);
-  }
-};
-
-export const logoutApi = async (refreshToken) => {
-  try {
-    const response = await axios.post("/api/v1/auth/logout", { refreshToken });
+    const response = await axios.get(`${RAFFLE_BASE}/auth/me`);
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -165,15 +161,13 @@ export const redeemApi = async (payload) => {
 
 // ============================================
 // CAMPAIGN RAFFLE — Participant Flow
-// Base: /api/v1/raffles/campaigns
+// Base: /api/v1/raffles/campaigns  (public, no auth)
 //
-// Step 1  GET  /campaigns/event/:eventTag        → load campaign + booth list
+// Step 1  GET  /campaigns/event/:eventTag              → load campaign + booth list
 // Step 3  POST /campaigns/:campaignId/generate-raffle-qr → get encrypted QR
 // Step 5  POST /campaigns/:campaignId/validate-raffle    → validate QR, get raffleEntryId
 // Step 7  POST /campaigns/:campaignId/spin-wheel         → record spin outcome
 // ============================================
-
-const RAFFLE_BASE = "/api/v1/raffles";
 
 export const getCampaignByEventTagApi = async (eventTag) => {
   try {
@@ -237,20 +231,18 @@ export const spinWheelApi = async ({
 
 // ============================================
 // CAMPAIGN MANAGEMENT — Admin CMS
-// Base: /api/v1/raffles/campaigns
+// Base: /api/v1/raffles/admin/campaigns  (requires Bearer token)
 //
-// GET    /campaigns              → list all
-// GET    /campaigns/:id          → get by id
-// POST   /campaigns              → create
-// PATCH  /campaigns/:id          → update
-// DELETE /campaigns/:id          → delete (draft only)
-// GET    /campaigns/:id/booths   → all booths incl. inactive
-// GET    /campaigns/:id/prizes   → prize claim stats
+// GET    /admin/campaigns              → list all
+// GET    /admin/campaigns/:id          → get by id
+// POST   /admin/campaigns              → create
+// PATCH  /admin/campaigns/:id          → update
+// DELETE /admin/campaigns/:id          → delete (draft only)
 // ============================================
 
 export const listCampaignsApi = async () => {
   try {
-    const response = await axios.get(`${RAFFLE_BASE}/campaigns`);
+    const response = await axios.get(`${RAFFLE_BASE}/admin/campaigns`);
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -260,7 +252,7 @@ export const listCampaignsApi = async () => {
 
 export const getCampaignByIdApi = async (campaignId) => {
   try {
-    const response = await axios.get(`${RAFFLE_BASE}/campaigns/${campaignId}`);
+    const response = await axios.get(`${RAFFLE_BASE}/admin/campaigns/${campaignId}`);
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -270,7 +262,7 @@ export const getCampaignByIdApi = async (campaignId) => {
 
 export const createCampaignApi = async (data) => {
   try {
-    const response = await axios.post(`${RAFFLE_BASE}/campaigns`, data);
+    const response = await axios.post(`${RAFFLE_BASE}/admin/campaigns`, data);
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -280,7 +272,7 @@ export const createCampaignApi = async (data) => {
 
 export const updateCampaignApi = async ({ id, ...data }) => {
   try {
-    const response = await axios.patch(`${RAFFLE_BASE}/campaigns/${id}`, data);
+    const response = await axios.patch(`${RAFFLE_BASE}/admin/campaigns/${id}`, data);
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -290,17 +282,30 @@ export const updateCampaignApi = async ({ id, ...data }) => {
 
 export const deleteCampaignApi = async (id) => {
   try {
-    const response = await axios.delete(`${RAFFLE_BASE}/campaigns/${id}`);
+    const response = await axios.delete(`${RAFFLE_BASE}/admin/campaigns/${id}`);
     return response.data;
   } catch (error) {
     handleApiError(error);
     throw error;
   }
 };
+
+// ============================================
+// BOOTH MANAGEMENT — Admin CMS
+// Base: /api/v1/raffles/admin/campaigns/:campaignId/booths
+//
+// GET    /booths           → list all (incl. inactive), sorted by sortOrder
+// GET    /booths/:boothId  → get single booth
+// POST   /booths           → create booth
+// PATCH  /booths/:boothId  → partial update
+// DELETE /booths/:boothId  → delete (blocked if scan logs exist)
+// ============================================
 
 export const getCampaignBoothsApi = async (campaignId) => {
   try {
-    const response = await axios.get(`${RAFFLE_BASE}/campaigns/${campaignId}/booths`);
+    const response = await axios.get(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/booths`,
+    );
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -308,9 +313,81 @@ export const getCampaignBoothsApi = async (campaignId) => {
   }
 };
 
+export const getBoothByIdApi = async ({ campaignId, boothId }) => {
+  try {
+    const response = await axios.get(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/booths/${boothId}`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const createBoothApi = async ({ campaignId, ...data }) => {
+  try {
+    const response = await axios.post(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/booths`,
+      data,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const updateBoothApi = async ({ campaignId, boothId, ...data }) => {
+  try {
+    const response = await axios.patch(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/booths/${boothId}`,
+      data,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const deleteBoothApi = async ({ campaignId, boothId }) => {
+  try {
+    const response = await axios.delete(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/booths/${boothId}`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+// ============================================
+// ADMIN STATS
+// GET /admin/campaigns/:campaignId/prizes
+//   → prize claim history (summary + recentClaims)
+// GET /admin/campaigns/:campaignId/participant/:participantId/progress
+//   → full participant view: points, scans, claims
+// ============================================
+
 export const getCampaignPrizesApi = async (campaignId) => {
   try {
-    const response = await axios.get(`${RAFFLE_BASE}/campaigns/${campaignId}/prizes`);
+    const response = await axios.get(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/prizes`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const getParticipantProgressApi = async ({ campaignId, participantId }) => {
+  try {
+    const response = await axios.get(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/participant/${participantId}/progress`,
+    );
     return response.data;
   } catch (error) {
     handleApiError(error);

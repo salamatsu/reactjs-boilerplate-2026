@@ -16,10 +16,27 @@ import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import BasicLayout from "../../components/layout/BasicLayout";
 import { ComponentLoader } from "../../components/LoadingFallback";
+import { Auth, UnAuth } from "../ValidateAuth";
+import { useAdminAuthStore, useCurrentActiveUserToken } from "../../store/useAdminAuthStore";
 
+const Login           = lazy(() => import("../../pages/admin/Login"));
 const RouletteprizesCMS = lazy(() => import("../../pages/admin/RouletteprizesCMS"));
 const PrizePoolConfig   = lazy(() => import("../../pages/admin/PrizePoolConfig"));
 const CampaignManager   = lazy(() => import("../../pages/admin/CampaignManager"));
+
+// Combined store passed to BasicLayout — merges userData from admin store
+// with a reset that clears both auth stores.
+const useCmsStore = () => {
+  const { userData, reset: resetAdmin } = useAdminAuthStore();
+  const { reset: resetActiveUser } = useCurrentActiveUserToken();
+  return {
+    userData,
+    reset: () => {
+      resetAdmin();
+      resetActiveUser();
+    },
+  };
+};
 
 const CmsRoute = () => {
   const navigations = [
@@ -60,27 +77,27 @@ const CmsRoute = () => {
 
   return (
     <Routes>
-      {/* Redirect /admin root to first page */}
-      <Route
-        path="/"
-        index
-        element={<Navigate to={navigations[0]?.route || "/admin/campaigns"} replace />}
-      />
+      {/* Login — unauthenticated only; redirects to CMS if already logged in */}
+      <Route element={<UnAuth store={useAdminAuthStore} redirect="/admin/campaigns" />}>
+        <Route index element={<Suspense fallback={<ComponentLoader />}><Login /></Suspense>} />
+      </Route>
 
-      {/* CMS pages — no auth required */}
-      <Route element={<BasicLayout navigations={navigations} />}>
-        {navigations.map((page) => {
-          const routePath = page.route.replace("/admin/", "");
-          return (
-            <Route key={page.route} path={routePath} element={page.component} />
-          );
-        })}
+      {/* CMS pages — authenticated only; redirects to login if not */}
+      <Route element={<Auth store={useAdminAuthStore} redirect="/admin" />}>
+        <Route element={<BasicLayout navigations={navigations} store={useCmsStore} />}>
+          {navigations.map((page) => {
+            const routePath = page.route.replace("/admin/", "");
+            return (
+              <Route key={page.route} path={routePath} element={page.component} />
+            );
+          })}
 
-        {/* Catch-all → first page */}
-        <Route
-          path="*"
-          element={<Navigate to={navigations[0]?.route || "/admin/campaigns"} replace />}
-        />
+          {/* Catch-all → first CMS page */}
+          <Route
+            path="*"
+            element={<Navigate to={navigations[0]?.route || "/admin/campaigns"} replace />}
+          />
+        </Route>
       </Route>
     </Routes>
   );

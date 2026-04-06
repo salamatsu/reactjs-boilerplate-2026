@@ -183,7 +183,8 @@ export const createAxiosInstanceWithInterceptor = (type = "data") => {
       //   }
       // }
 
-      // Handle authentication errors - Try to refresh token first
+      // Handle authentication errors — token is valid for 24h, no refresh endpoint.
+      // On expiry, clear auth state and prompt re-login.
       const authErrorMessages = [
         "Invalid or expired token.",
         "Invalid token.",
@@ -193,59 +194,15 @@ export const createAxiosInstanceWithInterceptor = (type = "data") => {
       ];
 
       if (
-        (authErrorMessages.includes(errMessage?.message) ||
-          errMessage?.code === 300 ||
-          errMessage?.code === "TOKEN_EXPIRED") &&
-        !originalRequest._retryAuth
+        authErrorMessages.includes(errMessage?.message) ||
+        errMessage?.code === 300 ||
+        errMessage?.code === "TOKEN_EXPIRED"
       ) {
-        originalRequest._retryAuth = true; // Prevent infinite loop
+        message.warning("Your session has expired. Please login again.");
 
-        try {
-          // Get the refresh token from the store
-          const { user } = useCurrentActiveUserToken?.getState() || {};
-          const userTokenState = getUserToken(user);
-          const refreshToken = userTokenState?.refreshToken;
-
-          if (!refreshToken) {
-            throw new Error("No refresh token available");
-          }
-
-          // Try to refresh the access token
-          const refreshResponse = await axiosInstance.post(
-            "/api/v1/auth/refresh",
-            { refreshToken },
-          );
-
-          // Store the new access token
-          const newToken = refreshResponse.data?.data?.accessToken?.token;
-          if (newToken) {
-            userTokenState?.setToken(newToken);
-
-            // Update refresh token if returned in response
-            if (refreshResponse.data?.data?.refreshToken?.token) {
-              userTokenState?.setRefreshToken(
-                refreshResponse.data.data.refreshToken.token,
-              );
-            }
-
-            // Update the original request with new token
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-
-            // Retry the original request
-            return instance(originalRequest);
-          }
-        } catch (refreshError) {
-          // Refresh failed - logout the user
-          console.error("Token refresh failed:", refreshError);
-          message.warning("Your session has expired. Please login again.");
-
-          // Get fresh user state and logout
-          const { user } = useCurrentActiveUserToken?.getState() || {};
-          const userTokenState = getUserToken(user);
-          userTokenState?.reset();
-
-          return Promise.reject(error);
-        }
+        const { user } = useCurrentActiveUserToken?.getState() || {};
+        const userTokenState = getUserToken(user);
+        userTokenState?.reset();
       }
 
       return Promise.reject(error);

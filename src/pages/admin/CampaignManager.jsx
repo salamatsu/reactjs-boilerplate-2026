@@ -16,6 +16,7 @@ import {
   InputNumber,
   Modal,
   Popconfirm,
+  QRCode,
   Select,
   Space,
   Spin,
@@ -34,7 +35,6 @@ import {
   QrcodeOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
-import { QRCodeCanvas } from "qrcode.react";
 import {
   Activity,
   CheckCircle2,
@@ -50,6 +50,9 @@ import {
   useUpdateCampaign,
   useDeleteCampaign,
   useGetCampaignBooths,
+  useCreateBooth,
+  useUpdateBooth,
+  useDeleteBooth,
   useGetCampaignPrizes,
 } from "../../services/requests/useApi";
 
@@ -98,12 +101,26 @@ const StatCard = ({ icon, label, value, accent }) => (
 const CARD_ACCENTS = ["#E94560", "#F5A623", "#00D68F", "#7360F2", "#4096ff"];
 
 const downloadBoothQR = (boothCode) => {
-  const canvas = document.getElementById(`qr-${boothCode}`);
-  if (!canvas) return;
-  const a = document.createElement("a");
-  a.download = `${boothCode}.png`;
-  a.href = canvas.toDataURL("image/png");
-  a.click();
+  const container = document.getElementById(`qr-${boothCode}`);
+  const svg = container?.querySelector("svg");
+  if (!svg) return;
+  const SIZE = 1000;
+  const svgData = new XMLSerializer().serializeToString(svg);
+  const canvas = document.createElement("canvas");
+  canvas.width = SIZE;
+  canvas.height = SIZE;
+  const ctx = canvas.getContext("2d");
+  const img = new Image();
+  img.onload = () => {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, SIZE, SIZE);
+    ctx.drawImage(img, 0, 0, SIZE, SIZE);
+    const a = document.createElement("a");
+    a.download = `${boothCode}.png`;
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+  };
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData);
 };
 
 const downloadAllQRs = (booths) => {
@@ -208,19 +225,22 @@ const BoothQrModal = ({ open, onClose, campaign, booths }) => {
                   {/* QR area */}
                   <div className="flex items-center justify-center p-5 pb-4">
                     <div
+                      id={`qr-${booth.boothCode}`}
                       className="rounded-xl p-2.5"
                       style={{ background: "#fff" }}
                     >
-                      <QRCodeCanvas
-                        id={`qr-${booth.boothCode}`}
+                      <QRCode
                         value={boothQrUrl(
                           campaign.eventTag,
                           booth.boothCode,
                           booth.points,
                         )}
+                        type="svg"
                         size={150}
-                        level="H"
-                        fgColor="#0F1629"
+                        errorLevel="H"
+                        color="#0F1629"
+                        bgColor="#ffffff"
+                        bordered={false}
                       />
                     </div>
                   </div>
@@ -425,11 +445,122 @@ const CampaignFormModal = ({ open, onClose, initialValues }) => {
 
 // ─── Drawer Tabs ──────────────────────────────────────────────────────────────
 
+const BoothFormModal = ({ open, onClose, campaignId, initialValues }) => {
+  const [form] = Form.useForm();
+  const { message } = App.useApp();
+  const { mutateAsync: createBooth, isPending: creating } = useCreateBooth();
+  const { mutateAsync: updateBooth, isPending: updating } = useUpdateBooth();
+  const isEditing = !!initialValues;
+  const saving = creating || updating;
+
+  const handleSubmit = async () => {
+    const values = await form.validateFields();
+    try {
+      if (isEditing) {
+        await updateBooth({ campaignId, boothId: initialValues.id, ...values });
+        message.success("Booth updated.");
+      } else {
+        await createBooth({ campaignId, ...values });
+        message.success("Booth created.");
+      }
+      onClose();
+    } catch (err) {
+      message.error(err?.message || "Failed to save booth.");
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      title={isEditing ? "Edit Booth" : "New Booth"}
+      onCancel={onClose}
+      afterOpenChange={(v) => {
+        if (v) isEditing ? form.setFieldsValue(initialValues) : form.resetFields();
+      }}
+      footer={[
+        <Button key="cancel" onClick={onClose} disabled={saving}>
+          Cancel
+        </Button>,
+        <Button
+          key="save"
+          type="primary"
+          loading={saving}
+          onClick={handleSubmit}
+          style={{ background: "#E94560", borderColor: "#E94560" }}
+        >
+          {isEditing ? "Save Changes" : "Add Booth"}
+        </Button>,
+      ]}
+      width={480}
+      destroyOnHidden
+    >
+      <Form form={form} layout="vertical" className="pt-2">
+        <div className="grid grid-cols-2 gap-x-4">
+          <Form.Item
+            label="Booth Code"
+            name="boothCode"
+            rules={[{ required: true, message: "Required" }]}
+          >
+            <Input placeholder="BOOTH-MAIN-01" disabled={isEditing} />
+          </Form.Item>
+          <Form.Item
+            label="Booth Name"
+            name="boothName"
+            rules={[{ required: true, message: "Required" }]}
+          >
+            <Input placeholder="Main Stage" />
+          </Form.Item>
+        </div>
+        <div className="grid grid-cols-3 gap-x-4">
+          <Form.Item
+            label="Points"
+            name="points"
+            rules={[{ required: true, message: "Required" }]}
+          >
+            <InputNumber min={1} className="w-full" placeholder="100" />
+          </Form.Item>
+          <Form.Item label="Max Scans" name="maxScanPerUser" initialValue={1}>
+            <InputNumber min={0} className="w-full" placeholder="1 (0=∞)" />
+          </Form.Item>
+          <Form.Item label="Sort Order" name="sortOrder" initialValue={1}>
+            <InputNumber min={1} className="w-full" />
+          </Form.Item>
+        </div>
+        <Form.Item label="Status" name="isActive" initialValue={true}>
+          <Select
+            options={[
+              { value: true, label: "Active" },
+              { value: false, label: "Inactive" },
+            ]}
+          />
+        </Form.Item>
+      </Form>
+    </Modal>
+  );
+};
+
 const BoothsTab = ({ campaign }) => {
+  const { message } = App.useApp();
   const { data, isLoading } = useGetCampaignBooths(campaign.id);
+  const { mutateAsync: deleteBooth, isPending: deleting } = useDeleteBooth();
   const booths = data?.data?.booths ?? [];
   const [qrOpen, setQrOpen] = useState(false);
-  const activeBooths = booths.filter((b) => b.isActive !== 0);
+  const [boothModal, setBoothModal] = useState({ open: false, record: null });
+  const activeBooths = booths.filter((b) => b.isActive !== false && b.isActive !== 0);
+
+  const handleDelete = async (booth) => {
+    try {
+      await deleteBooth({ campaignId: campaign.id, boothId: booth.id });
+      message.success("Booth deleted.");
+    } catch (err) {
+      // 409 means scan logs exist — suggest deactivating instead
+      if (err?.response?.status === 409) {
+        message.warning(err?.response?.data?.message || "Cannot delete — scan records exist. Deactivate instead.");
+      } else {
+        message.error(err?.message || "Delete failed.");
+      }
+    }
+  };
 
   if (isLoading)
     return (
@@ -437,69 +568,122 @@ const BoothsTab = ({ campaign }) => {
         <Spin />
       </div>
     );
-  if (!booths.length) return <Empty description="No booths found" />;
 
   return (
     <>
-      <div className="flex justify-end mb-3">
+      <div className="flex justify-between mb-3">
         <Button
           type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => setBoothModal({ open: true, record: null })}
+          style={{ background: "#E94560", borderColor: "#E94560" }}
+        >
+          Add Booth
+        </Button>
+        <Button
           icon={<QrcodeOutlined />}
           onClick={() => setQrOpen(true)}
           disabled={activeBooths.length === 0}
-          style={{ background: "#E94560", borderColor: "#E94560" }}
         >
-          Generate QR Codes ({activeBooths.length})
+          QR Codes ({activeBooths.length})
         </Button>
       </div>
-      <Table
-        dataSource={booths}
-        columns={[
-          {
-            title: "Code",
-            dataIndex: "boothCode",
-            key: "boothCode",
-            render: (v) => (
-              <Text code className="text-xs">
-                {v}
-              </Text>
-            ),
-          },
-          { title: "Name", dataIndex: "boothName", key: "boothName" },
-          {
-            title: "Points",
-            dataIndex: "points",
-            key: "points",
-            width: 85,
-            render: (v) => (
-              <span className="font-bold text-[#E94560]">{v} pts</span>
-            ),
-          },
-          {
-            title: "Max Scans",
-            dataIndex: "maxScanPerUser",
-            key: "maxScanPerUser",
-            width: 100,
-            render: (v) => (v === 0 ? "Unlimited" : v),
-          },
-          {
-            title: "Status",
-            dataIndex: "isActive",
-            key: "isActive",
-            width: 90,
-            render: (v) =>
-              v !== 0 ? <Tag color="success">Active</Tag> : <Tag>Inactive</Tag>,
-          },
-        ]}
-        rowKey="id"
-        size="small"
-        pagination={false}
-      />
+
+      {booths.length === 0 ? (
+        <Empty description="No booths yet" />
+      ) : (
+        <Table
+          dataSource={booths}
+          columns={[
+            {
+              title: "Code",
+              dataIndex: "boothCode",
+              key: "boothCode",
+              render: (v) => <Text code className="text-xs">{v}</Text>,
+            },
+            { title: "Name", dataIndex: "boothName", key: "boothName" },
+            {
+              title: "Points",
+              dataIndex: "points",
+              key: "points",
+              width: 85,
+              render: (v) => <span className="font-bold text-[#E94560]">{v} pts</span>,
+            },
+            {
+              title: "Max Scans",
+              dataIndex: "maxScanPerUser",
+              key: "maxScanPerUser",
+              width: 100,
+              render: (v) => (v === 0 ? "Unlimited" : v),
+            },
+            {
+              title: "Order",
+              dataIndex: "sortOrder",
+              key: "sortOrder",
+              width: 70,
+            },
+            {
+              title: "Status",
+              dataIndex: "isActive",
+              key: "isActive",
+              width: 90,
+              render: (v) =>
+                v !== false && v !== 0 ? (
+                  <Tag color="success">Active</Tag>
+                ) : (
+                  <Tag>Inactive</Tag>
+                ),
+            },
+            {
+              title: "Actions",
+              key: "actions",
+              width: 90,
+              render: (_, record) => (
+                <Space size={2}>
+                  <Tooltip title="Edit">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<EditOutlined style={{ color: "#8892A4" }} />}
+                      onClick={() => setBoothModal({ open: true, record })}
+                    />
+                  </Tooltip>
+                  <Tooltip title="Delete">
+                    <Popconfirm
+                      title="Delete this booth?"
+                      description="Blocked if scan records exist. Deactivate instead."
+                      okText="Delete"
+                      okButtonProps={{ danger: true, loading: deleting }}
+                      onConfirm={() => handleDelete(record)}
+                    >
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<DeleteOutlined style={{ color: "#E94560" }} />}
+                      />
+                    </Popconfirm>
+                  </Tooltip>
+                </Space>
+              ),
+            },
+          ]}
+          rowKey="id"
+          size="small"
+          pagination={false}
+        />
+      )}
+
       <BoothQrModal
         open={qrOpen}
         onClose={() => setQrOpen(false)}
         campaign={campaign}
         booths={activeBooths}
+      />
+      <BoothFormModal
+        open={boothModal.open}
+        onClose={() => setBoothModal({ open: false, record: null })}
+        campaignId={campaign.id}
+        initialValues={boothModal.record}
       />
     </>
   );
