@@ -39,11 +39,12 @@ import {
   Trophy,
   ScanLine,
 } from "lucide-react";
-import { APP_BASE_URL, UPCOMING_EVENTS } from "../../lib/constants";
+import { APP_BASE_URL } from "../../lib/constants";
 import { formatDateTime, DATE_FORMATS } from "../../utils/formatDate";
 import {
   useGetCampaignByEventTag,
   useGenerateRaffleQr,
+  useGetEventsList,
 } from "../../services/requests/useApi";
 
 // ─── localStorage helpers ─────────────────────────────────────────────────────
@@ -516,70 +517,164 @@ const SharePanel = ({ eventTag }) => {
 };
 
 /** Upcoming Worldbex events */
-const EVENT_ACCENTS = ["#E94560", "#F5A623", "#00D68F", "#7360F2"];
+const VITE_BASEURL_APP = import.meta.env.VITE_BASEURL_APP;
+const REGISTER_URL = "https://register.worldbexevents.com/";
 
-const UpcomingEvents = () => (
-  <div>
-    <div className="mb-5">
-      <h2 className="text-white font-black text-xl">Upcoming Events</h2>
-      <p className="text-[#8892A4] text-sm mt-1">
-        Scan. Collect points. Win prizes.
-      </p>
-    </div>
-    <div className="space-y-3">
-      {UPCOMING_EVENTS.map((ev, i) => {
-        const accent = EVENT_ACCENTS[i % EVENT_ACCENTS.length];
-        return (
-          <div
-            key={ev.tag}
-            className="rounded-2xl bg-[#16213E] overflow-hidden"
+const EventDetailModal = ({ event, onClose }) => {
+  const from = event.dateFrom ? new Date(event.dateFrom).toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" }) : null;
+  const to   = event.dateTo   ? new Date(event.dateTo).toLocaleDateString("en-PH",   { month: "long", day: "numeric", year: "numeric" }) : null;
+
+  return (
+    <div className="fixed inset-0 bg-black/80 z-50 flex items-end justify-center p-4" onClick={onClose}>
+      <motion.div
+        initial={{ y: 140, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 140, opacity: 0 }}
+        transition={{ type: "spring", damping: 24, stiffness: 280 }}
+        className="w-full max-w-sm bg-[#16213E] rounded-3xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Cover image */}
+        <div className="relative bg-[#0f1729] flex items-center justify-center" style={{ height: 200 }}>
+          <img
+            src={`${VITE_BASEURL_APP}${event.imgSrc}`}
+            alt={event.name}
+            className="h-full w-full object-contain p-6"
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
+          />
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center"
+            aria-label="Close"
           >
-            {/* Top accent strip */}
-            <div className="h-1" style={{ backgroundColor: accent }} />
+            <X size={16} className="text-white" />
+          </button>
+          <span className="absolute bottom-3 left-4 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest bg-white/10 text-[#8892A4] border border-white/10">
+            {event.eventName}
+          </span>
+        </div>
 
-            <div className="p-4">
-              {/* Tag badge + name */}
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <p className="text-white text-sm font-bold leading-snug flex-1">
-                  {ev.name}
-                </p>
-                <span
-                  className="shrink-0 text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider"
-                  style={{ backgroundColor: `${accent}22`, color: accent }}
-                >
-                  {ev.tag}
-                </span>
-              </div>
+        <div className="p-5 space-y-3">
+          <h2 className="text-white font-black text-lg leading-snug">{event.name}</h2>
 
-              {/* Date */}
-              <div className="flex items-center gap-1.5 mb-4">
-                <Calendar size={12} style={{ color: accent }} />
-                <span className="text-[#8892A4] text-xs">{ev.date}</span>
-              </div>
-
-              {/* CTA */}
-              <a
-                href={ev.registrationUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full rounded-xl py-3 text-sm font-bold active:scale-95 transition-transform"
-                style={{
-                  backgroundColor: accent,
-                  color: "white",
-                  textDecoration: "none",
-                }}
-                aria-label={`Register for ${ev.name}`}
-              >
-                Register Now
-                <ChevronRight size={14} />
-              </a>
+          {/* Date */}
+          <div className="flex items-start gap-3 bg-[#1A1A2E] rounded-xl px-3 py-3">
+            <Calendar size={14} className="text-[#8892A4] shrink-0 mt-0.5" />
+            <div>
+              <p className="text-white text-sm font-bold">{event.date}</p>
+              {from && to && (
+                <p className="text-[#8892A4] text-xs mt-0.5">{from} — {to}</p>
+              )}
             </div>
           </div>
-        );
-      })}
+
+          {/* Scan to Win info */}
+          <div className="flex items-start gap-3 bg-[#1A1A2E] rounded-xl px-3 py-3">
+            <Zap size={14} className="text-[#8892A4] shrink-0 mt-0.5" />
+            <p className="text-[#8892A4] text-xs leading-relaxed">
+              Scan exhibitor booths, collect points, and qualify for the raffle draw at this event.
+            </p>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="w-full rounded-2xl py-3 text-sm font-semibold text-[#8892A4] bg-[#1A1A2E] active:scale-95 transition-transform"
+          >
+            Close
+          </button>
+        </div>
+      </motion.div>
     </div>
-  </div>
-);
+  );
+};
+
+const UpcomingEvents = () => {
+  const { data: events, isLoading } = useGetEventsList();
+  const [selectedEvent, setSelectedEvent] = useState(null);
+
+  return (
+    <div>
+      {/* Sticky register CTA */}
+      <div className="sticky top-13 z-20 -mx-4 px-4 pt-1 pb-3 bg-[#1A1A2E]">
+        <a
+          href={REGISTER_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ textDecoration: "none" }}
+          className="flex items-center gap-3 rounded-2xl p-4 bg-[#16213E] border border-[#E94560]/30 active:scale-[0.98] transition-transform"
+          aria-label="Register or Login to Worldbex Events"
+        >
+          <div className="w-10 h-10 rounded-xl bg-[#E94560]/15 flex items-center justify-center shrink-0">
+            <Star size={18} className="text-[#E94560]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-black text-sm leading-tight">Register / Login</p>
+            <p className="text-[#8892A4] text-xs mt-0.5 truncate">worldbexevents.com — access all events</p>
+          </div>
+          <div className="shrink-0 w-8 h-8 rounded-xl bg-[#E94560] flex items-center justify-center">
+            <ChevronRight size={15} className="text-white" />
+          </div>
+        </a>
+      </div>
+
+      <div className="mb-4 mt-2">
+        <h2 className="text-white font-black text-xl">Upcoming Events</h2>
+        <p className="text-[#8892A4] text-sm mt-1">Scan. Collect points. Win prizes.</p>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="animate-spin text-[#E94560]" size={28} />
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {(events ?? []).map((ev) => (
+            <button
+              key={ev.eventId}
+              onClick={() => setSelectedEvent(ev)}
+              className="w-full rounded-2xl bg-[#16213E] overflow-hidden text-left active:scale-[0.98] transition-transform border border-white/5"
+            >
+              <div className="p-3.5 flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl overflow-hidden bg-[#0f1729] shrink-0 flex items-center justify-center">
+                  <img
+                    src={`${VITE_BASEURL_APP}${ev.imgSrc}`}
+                    alt={ev.name}
+                    className="w-full h-full object-contain"
+                    onError={(e) => { e.currentTarget.style.display = "none"; }}
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-white text-sm font-semibold leading-snug flex-1">
+                      {ev.name}
+                    </p>
+                    <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider bg-white/8 text-[#8892A4] border border-white/10 ml-1">
+                      {ev.eventName}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <Calendar size={11} className="text-[#8892A4]" />
+                    <span className="text-[#8892A4] text-xs">{ev.date}</span>
+                  </div>
+                </div>
+                <ChevronRight size={14} className="text-[#8892A4]/50 shrink-0" />
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <AnimatePresence>
+        {selectedEvent && (
+          <EventDetailModal
+            event={selectedEvent}
+            onClose={() => setSelectedEvent(null)}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 /** Generic error modal */
 const ErrorModal = ({ message, onClose }) => (

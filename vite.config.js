@@ -13,6 +13,10 @@ export default defineConfig(({ mode }) => {
       host: true,
       port: 3045,
       proxy: {
+        "/api/scans": {
+          target: env.VITE_BASEURL_APP,
+          changeOrigin: true,
+        },
         "/api": {
           target: env.VITE_BASEURL,
           changeOrigin: true,

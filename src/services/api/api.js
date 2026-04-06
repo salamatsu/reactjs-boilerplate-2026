@@ -61,11 +61,21 @@ export const getMeApi = async () => {
 // ============================================
 // EVENTS — Visitor App
 // GET /api/events → returns event config + interactions list
+// GET /api/scans/getEvents → returns list of all events
 // ============================================
 
 export const getEventApi = async () => {
   try {
     const response = await axiosInstance.get("/api/events");
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+  }
+};
+
+export const getEventsListApi = async () => {
+  try {
+    const response = await axiosInstance.get("/api/scans/getEvents");
     return response.data;
   } catch (error) {
     handleApiError(error);

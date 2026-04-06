@@ -11,6 +11,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { USE_MOCK, MOCK_DATA } from "../../lib/constants";
 import {
   getEventApi,
+  getEventsListApi,
   getPrizesApi,
   createPrizeApi,
   updatePrizeApi,
@@ -45,6 +46,13 @@ export const useGetEvent = () => {
   return useQuery({
     queryKey: ["event"],
     queryFn: () => (USE_MOCK ? MOCK_DATA.event : getEventApi()),
+  });
+};
+
+export const useGetEventsList = () => {
+  return useQuery({
+    queryKey: ["events-list"],
+    queryFn: getEventsListApi,
   });
 };
 

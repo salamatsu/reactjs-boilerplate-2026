@@ -79,7 +79,7 @@ const STATUS_ACCENT = {
 
 const fmtDate = (iso) => (iso ? dayjs(iso).format("MMM DD, YYYY") : "—");
 const boothQrUrl = (eventTag, boothCode, points) =>
-  `${window.location.origin}/${eventTag}?i=${boothCode}&p=${points}`;
+  `${"window.location.origin"}/${eventTag}?i=${boothCode}&p=${points}`;
 
 const copyText = (text) => {
   if (navigator.clipboard) {
@@ -210,7 +210,7 @@ const BoothQrModal = ({ open, onClose, campaign, booths }) => {
                 URL:
               </span>
               <code className="text-xs truncate" style={{ color: "#F5A623" }}>
-                {window.location.origin}/{campaign.eventTag}
+                {"window.location.origin"}/{campaign.eventTag}
                 ?i=&lt;boothCode&gt;&amp;p=&lt;points&gt;
               </code>
             </div>
@@ -478,7 +478,11 @@ const CampaignFormModal = ({ open, onClose, initialValues }) => {
             initialValue={0}
             tooltip="Extra points awarded on the participant's very first booth scan in this campaign"
           >
-            <InputNumber min={0} className="w-full" placeholder="0 = disabled" />
+            <InputNumber
+              min={0}
+              className="w-full"
+              placeholder="0 = disabled"
+            />
           </Form.Item>
           <Form.Item
             label="Max Spins Per Participant"
@@ -526,7 +530,8 @@ const BoothFormModal = ({ open, onClose, campaignId, initialValues }) => {
       title={isEditing ? "Edit Booth" : "New Booth"}
       onCancel={onClose}
       afterOpenChange={(v) => {
-        if (v) isEditing ? form.setFieldsValue(initialValues) : form.resetFields();
+        if (v)
+          isEditing ? form.setFieldsValue(initialValues) : form.resetFields();
       }}
       footer={[
         <Button key="cancel" onClick={onClose} disabled={saving}>
@@ -597,7 +602,9 @@ const BoothsTab = ({ campaign }) => {
   const booths = data?.data?.booths ?? [];
   const [qrOpen, setQrOpen] = useState(false);
   const [boothModal, setBoothModal] = useState({ open: false, record: null });
-  const activeBooths = booths.filter((b) => b.isActive !== false && b.isActive !== 0);
+  const activeBooths = booths.filter(
+    (b) => b.isActive !== false && b.isActive !== 0,
+  );
 
   const handleDelete = async (booth) => {
     try {
@@ -606,7 +613,10 @@ const BoothsTab = ({ campaign }) => {
     } catch (err) {
       // 409 means scan logs exist — suggest deactivating instead
       if (err?.response?.status === 409) {
-        message.warning(err?.response?.data?.message || "Cannot delete — scan records exist. Deactivate instead.");
+        message.warning(
+          err?.response?.data?.message ||
+            "Cannot delete — scan records exist. Deactivate instead.",
+        );
       } else {
         message.error(err?.message || "Delete failed.");
       }
@@ -651,7 +661,11 @@ const BoothsTab = ({ campaign }) => {
               title: "Code",
               dataIndex: "boothCode",
               key: "boothCode",
-              render: (v) => <Text code className="text-xs">{v}</Text>,
+              render: (v) => (
+                <Text code className="text-xs">
+                  {v}
+                </Text>
+              ),
             },
             { title: "Name", dataIndex: "boothName", key: "boothName" },
             {
@@ -659,7 +673,9 @@ const BoothsTab = ({ campaign }) => {
               dataIndex: "points",
               key: "points",
               width: 85,
-              render: (v) => <span className="font-bold text-[#E94560]">{v} pts</span>,
+              render: (v) => (
+                <span className="font-bold text-[#E94560]">{v} pts</span>
+              ),
             },
             {
               title: "Max Scans",
@@ -827,10 +843,7 @@ const STEPS = [
       <>
         Each booth awards its configured pts.
         {c.firstScanBonus > 0 && (
-          <span
-            className="ml-1 font-bold"
-            style={{ color: "#F5A623" }}
-          >
+          <span className="ml-1 font-bold" style={{ color: "#F5A623" }}>
             +{c.firstScanBonus} pts 1st-scan bonus on first ever booth scan.
           </span>
         )}
@@ -886,10 +899,17 @@ const MechanicsTab = ({ campaign }) => (
     {/* Summary chips */}
     <div className="flex flex-wrap gap-2 mb-4">
       {[
-        { label: "Threshold", value: `${campaign.thresholdPoints} pts`, color: "#E94560" },
+        {
+          label: "Threshold",
+          value: `${campaign.thresholdPoints} pts`,
+          color: "#E94560",
+        },
         {
           label: "1st Scan Bonus",
-          value: campaign.firstScanBonus > 0 ? `+${campaign.firstScanBonus} pts` : "Off",
+          value:
+            campaign.firstScanBonus > 0
+              ? `+${campaign.firstScanBonus} pts`
+              : "Off",
           color: campaign.firstScanBonus > 0 ? "#F5A623" : "#8892A4",
         },
         {
@@ -903,8 +923,12 @@ const MechanicsTab = ({ campaign }) => (
           className="flex items-center gap-2 rounded-xl px-3 py-2"
           style={{ background: "#0F1629", border: `1px solid ${color}30` }}
         >
-          <span className="text-xs" style={{ color: "#8892A4" }}>{label}</span>
-          <span className="font-black text-sm" style={{ color }}>{value}</span>
+          <span className="text-xs" style={{ color: "#8892A4" }}>
+            {label}
+          </span>
+          <span className="font-black text-sm" style={{ color }}>
+            {value}
+          </span>
         </div>
       ))}
     </div>
@@ -916,19 +940,29 @@ const MechanicsTab = ({ campaign }) => (
         <div className="flex flex-col items-center">
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-black text-sm"
-            style={{ background: `${step.color}20`, color: step.color, border: `2px solid ${step.color}40` }}
+            style={{
+              background: `${step.color}20`,
+              color: step.color,
+              border: `2px solid ${step.color}40`,
+            }}
           >
             {step.n}
           </div>
           {i < STEPS.length - 1 && (
-            <div className="w-0.5 flex-1 mt-1" style={{ background: "#16213E" }} />
+            <div
+              className="w-0.5 flex-1 mt-1"
+              style={{ background: "#16213E" }}
+            />
           )}
         </div>
 
         {/* Content */}
         <div
           className="flex-1 rounded-xl px-4 py-3 mb-3"
-          style={{ background: "#16213E", borderLeft: `3px solid ${step.color}` }}
+          style={{
+            background: "#16213E",
+            borderLeft: `3px solid ${step.color}`,
+          }}
         >
           <p className="font-bold text-sm mb-1" style={{ color: "#fff" }}>
             {step.title}
@@ -959,7 +993,9 @@ const CampaignDetailDrawer = ({ campaign, open, onClose }) => {
       }
       open={open}
       onClose={onClose}
-      width={typeof window !== "undefined" ? Math.min(736, window.innerWidth) : 736}
+      width={
+        typeof window !== "undefined" ? Math.min(736, window.innerWidth) : 736
+      }
       destroyOnHidden
     >
       <Descriptions
@@ -1058,10 +1094,7 @@ const CampaignCard = ({ campaign, onView, onEdit, onDelete, deleting }) => {
               >
                 {campaign.campaignCode}
               </Text>
-              <Tag
-                color="blue"
-                className="font-mono font-bold text-xs m-0"
-              >
+              <Tag color="blue" className="font-mono font-bold text-xs m-0">
                 {campaign.eventTag}
               </Tag>
             </div>
@@ -1125,7 +1158,9 @@ const CampaignCard = ({ campaign, onView, onEdit, onDelete, deleting }) => {
               <span className="font-semibold text-sm" style={{ color: "#fff" }}>
                 {fmtDate(campaign.startDate)}
               </span>
-              <span className="text-xs" style={{ color: "#8892A4" }}>→</span>
+              <span className="text-xs" style={{ color: "#8892A4" }}>
+                →
+              </span>
               <span className="font-semibold text-sm" style={{ color: "#fff" }}>
                 {fmtDate(campaign.endDate)}
               </span>
@@ -1154,7 +1189,7 @@ const CampaignCard = ({ campaign, onView, onEdit, onDelete, deleting }) => {
         <Tooltip title={`Copy link: /${campaign.eventTag}`} color="#E94560">
           <button
             onClick={() => {
-              copyText(`${window.location.origin}/${campaign.eventTag}`)
+              copyText(`${"window.location.origin"}/${campaign.eventTag}`)
                 .then(() => message.success("Link copied!"))
                 .catch(() => message.error("Copy failed."));
             }}
@@ -1184,7 +1219,10 @@ const CampaignCard = ({ campaign, onView, onEdit, onDelete, deleting }) => {
             >
               <button
                 className="w-8 h-8 flex items-center justify-center rounded-xl transition-opacity hover:opacity-80 active:scale-95"
-                style={{ background: "#E9456015", border: "1px solid #E9456025" }}
+                style={{
+                  background: "#E9456015",
+                  border: "1px solid #E9456025",
+                }}
               >
                 <DeleteOutlined style={{ fontSize: 13, color: "#E94560" }} />
               </button>
@@ -1261,7 +1299,10 @@ const CampaignManager = () => {
               >
                 Event Manager
               </h1>
-              <p className="text-xs mt-0.5 hidden sm:block" style={{ color: "#8892A4" }}>
+              <p
+                className="text-xs mt-0.5 hidden sm:block"
+                style={{ color: "#8892A4" }}
+              >
                 Manage raffle events and generate booth QR codes
               </p>
             </div>

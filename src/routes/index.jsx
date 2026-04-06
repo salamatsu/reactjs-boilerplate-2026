@@ -20,6 +20,7 @@ import {
 import LoadingFallback from "../components/LoadingFallback";
 
 // Lazy-load all surfaces for code splitting
+const EventList      = lazy(() => import("../pages/visitor/EventList"));
 const VisitorApp     = lazy(() => import("../pages/visitor/VisitorApp"));
 const RedeemPortal   = lazy(() => import("../pages/redeem/RedeemPortal"));
 const CmsRoute       = lazy(() => import("./pageRoutes/CmsRoute"));
@@ -36,6 +37,18 @@ const Layout = ({ children }) => (
 const RootRoutes = () => {
   const router = createBrowserRouter(
     [
+      // ─── Event List (home) ───────────────────────────────────────────────
+      {
+        path: "/",
+        element: (
+          <Layout>
+            <Suspense fallback={<LoadingFallback />}>
+              <EventList />
+            </Suspense>
+          </Layout>
+        ),
+      },
+
       // ─── Visitor Web App (/mias, /wofex, etc.) ───────────────────────────
       {
         path: "/:eventTag",
