@@ -1459,7 +1459,7 @@ const GoalModal = ({
                 field: "mobileNumber",
                 placeholder: "Mobile number (optional)",
                 type: "tel",
-                required: false,
+                required: true,
               },
               {
                 value: form.email,
@@ -1590,7 +1590,11 @@ const VisitorApp = () => {
     };
     lock();
     return () => {
-      try { screen.orientation?.unlock?.(); } catch { /* ignore */ }
+      try {
+        screen.orientation?.unlock?.();
+      } catch {
+        /* ignore */
+      }
     };
   }, []);
 
@@ -1620,7 +1624,8 @@ const VisitorApp = () => {
   useEffect(() => {
     if (!campaign) return;
     const title = `${campaign.campaignName} | Scan2Win`;
-    const desc = campaign.description || "Scan booths, collect points, and win prizes!";
+    const desc =
+      campaign.description || "Scan booths, collect points, and win prizes!";
     const setMeta = (attr, key, content) => {
       let el = document.querySelector(`meta[${attr}="${key}"]`);
       if (!el) {
