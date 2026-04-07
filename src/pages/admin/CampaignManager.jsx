@@ -165,21 +165,15 @@ const downloadBoothQR = (boothCode) => {
   img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData);
 };
 
-const downloadAllQRs = (booths) => {
-  booths.forEach((booth, i) => {
-    setTimeout(() => downloadBoothQR(booth.boothCode), i * 120);
-  });
-};
-
 const BoothQrModal = ({ open, onClose, campaign, booths }) => {
   if (!campaign) return null;
 
   return (
-    <Modal
+    <Drawer
       open={open}
-      onCancel={onClose}
-      footer={null}
-      width="min(860px, 95vw)"
+      onClose={onClose}
+      placement="right"
+      width="80%"
       destroyOnHidden
       styles={{
         header: {
@@ -188,7 +182,7 @@ const BoothQrModal = ({ open, onClose, campaign, booths }) => {
           padding: "20px 24px",
         },
         body: { background: "#0F1629", padding: "20px 24px 24px" },
-        content: { background: "#0F1629" },
+        wrapper: { background: "#0F1629" },
       }}
       title={
         <div>
@@ -219,37 +213,22 @@ const BoothQrModal = ({ open, onClose, campaign, booths }) => {
         />
       ) : (
         <>
-          {/* URL format + Download All */}
+          {/* URL format */}
           <div
-            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5 rounded-xl px-4 py-3"
+            className="flex items-center gap-2 mb-5 rounded-xl px-4 py-3 min-w-0"
             style={{ background: "#16213E", border: "1px solid #1A1A2E" }}
           >
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-xs shrink-0" style={{ color: "#8892A4" }}>
-                URL:
-              </span>
-              <code className="text-xs truncate" style={{ color: "#F5A623" }}>
-                {window.location.origin}/{campaign.eventTag}
-                ?i=&lt;boothCode&gt;&amp;p=&lt;points&gt;
-              </code>
-            </div>
-            <Button
-              size="small"
-              icon={<DownloadOutlined />}
-              onClick={() => downloadAllQRs(booths)}
-              className="shrink-0 self-end sm:self-auto"
-              style={{
-                background: "#E94560",
-                borderColor: "#E94560",
-                color: "#fff",
-              }}
-            >
-              Download All
-            </Button>
+            <span className="text-xs shrink-0" style={{ color: "#8892A4" }}>
+              URL:
+            </span>
+            <code className="text-xs truncate" style={{ color: "#F5A623" }}>
+              {window.location.origin}/{campaign.eventTag}
+              ?i=&lt;boothCode&gt;&amp;p=&lt;points&gt;
+            </code>
           </div>
 
           {/* QR grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-h-130 overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {booths.map((booth, i) => {
               const accent = CARD_ACCENTS[i % CARD_ACCENTS.length];
               return (
@@ -341,7 +320,7 @@ const BoothQrModal = ({ open, onClose, campaign, booths }) => {
           </div>
         </>
       )}
-    </Modal>
+    </Drawer>
   );
 };
 
@@ -532,7 +511,11 @@ const BoothFormModal = ({ open, onClose, campaignId, initialValues }) => {
     const payload = { ...values, isActive: values.isActive === 1 };
     try {
       if (isEditing) {
-        await updateBooth({ campaignId, boothId: initialValues.id, ...payload });
+        await updateBooth({
+          campaignId,
+          boothId: initialValues.id,
+          ...payload,
+        });
         message.success("Booth updated.");
       } else {
         await createBooth({ campaignId, ...payload });
@@ -787,8 +770,10 @@ const BoothsTab = ({ campaign }) => {
 const PrizeFormModal = ({ open, onClose, campaignId, initialValues }) => {
   const [form] = Form.useForm();
   const { message } = App.useApp();
-  const { mutateAsync: createPrize, isPending: creating } = useCreateCampaignPrize();
-  const { mutateAsync: updatePrize, isPending: updating } = useUpdateCampaignPrize();
+  const { mutateAsync: createPrize, isPending: creating } =
+    useCreateCampaignPrize();
+  const { mutateAsync: updatePrize, isPending: updating } =
+    useUpdateCampaignPrize();
   const isEditing = !!initialValues;
   const saving = creating || updating;
 
@@ -814,7 +799,8 @@ const PrizeFormModal = ({ open, onClose, campaignId, initialValues }) => {
       title={isEditing ? "Edit Prize" : "New Prize"}
       onCancel={onClose}
       afterOpenChange={(v) => {
-        if (v) isEditing ? form.setFieldsValue(initialValues) : form.resetFields();
+        if (v)
+          isEditing ? form.setFieldsValue(initialValues) : form.resetFields();
       }}
       footer={[
         <Button key="cancel" onClick={onClose} disabled={saving}>
@@ -875,7 +861,8 @@ const PrizeFormModal = ({ open, onClose, campaignId, initialValues }) => {
 const PrizesTab = ({ campaign }) => {
   const { message } = App.useApp();
   const { data, isLoading } = useGetCampaignPrizes(campaign.id);
-  const { mutateAsync: deletePrize, isPending: deleting } = useDeleteCampaignPrize();
+  const { mutateAsync: deletePrize, isPending: deleting } =
+    useDeleteCampaignPrize();
   const prizes = data?.data?.prizes ?? [];
   const [prizeModal, setPrizeModal] = useState({ open: false, record: null });
 
@@ -1077,9 +1064,12 @@ const STEPS = [
 const ImageUploadModal = ({ open, onClose, campaignId, editImage }) => {
   const [form] = Form.useForm();
   const { message } = App.useApp();
-  const { mutateAsync: uploadImage, isPending: uploading } = useUploadCampaignImage();
-  const { mutateAsync: updateImage, isPending: updating } = useUpdateCampaignImage();
-  const { mutateAsync: replaceImage, isPending: replacing } = useReplaceCampaignImage();
+  const { mutateAsync: uploadImage, isPending: uploading } =
+    useUploadCampaignImage();
+  const { mutateAsync: updateImage, isPending: updating } =
+    useUpdateCampaignImage();
+  const { mutateAsync: replaceImage, isPending: replacing } =
+    useReplaceCampaignImage();
   const [fileList, setFileList] = useState([]);
   const isEditing = !!editImage;
   const saving = uploading || updating || replacing;
@@ -1107,7 +1097,11 @@ const ImageUploadModal = ({ open, onClose, campaignId, editImage }) => {
         if (fileList.length > 0) {
           const fd = new FormData();
           fd.append("image", fileList[0].originFileObj);
-          await replaceImage({ campaignId, imageId: editImage.id, formData: fd });
+          await replaceImage({
+            campaignId,
+            imageId: editImage.id,
+            formData: fd,
+          });
         }
         await updateImage({ campaignId, imageId: editImage.id, ...values });
         message.success("Image updated.");
@@ -1137,9 +1131,13 @@ const ImageUploadModal = ({ open, onClose, campaignId, editImage }) => {
       open={open}
       title={isEditing ? "Edit Image" : "Upload Image"}
       onCancel={onClose}
-      afterOpenChange={(v) => { if (v) handleOpen(); }}
+      afterOpenChange={(v) => {
+        if (v) handleOpen();
+      }}
       footer={[
-        <Button key="cancel" onClick={onClose} disabled={saving}>Cancel</Button>,
+        <Button key="cancel" onClick={onClose} disabled={saving}>
+          Cancel
+        </Button>,
         <Button
           key="save"
           type="primary"
@@ -1218,7 +1216,8 @@ const ImageUploadModal = ({ open, onClose, campaignId, editImage }) => {
 const ImageMapsTab = ({ campaign }) => {
   const { message } = App.useApp();
   const { data, isLoading } = useGetCampaignImages(campaign.id);
-  const { mutateAsync: deleteImage, isPending: deleting } = useDeleteCampaignImage();
+  const { mutateAsync: deleteImage, isPending: deleting } =
+    useDeleteCampaignImage();
   const sites = data?.data?.imageSites ?? [];
   const [imgModal, setImgModal] = useState({ open: false, record: null });
 
@@ -1232,7 +1231,11 @@ const ImageMapsTab = ({ campaign }) => {
   };
 
   if (isLoading)
-    return <div className="flex justify-center py-10"><Spin /></div>;
+    return (
+      <div className="flex justify-center py-10">
+        <Spin />
+      </div>
+    );
 
   return (
     <>
@@ -1258,11 +1261,15 @@ const ImageMapsTab = ({ campaign }) => {
                 <Tag color="blue" className="font-mono font-bold">
                   {site.siteCode}
                 </Tag>
-                <span className="text-sm font-semibold" style={{ color: "#fff" }}>
+                <span
+                  className="text-sm font-semibold"
+                  style={{ color: "#fff" }}
+                >
                   {site.siteName}
                 </span>
                 <span className="text-xs" style={{ color: "#8892A4" }}>
-                  ({site.images.length} image{site.images.length !== 1 ? "s" : ""})
+                  ({site.images.length} image
+                  {site.images.length !== 1 ? "s" : ""})
                 </span>
               </div>
 
@@ -1272,7 +1279,10 @@ const ImageMapsTab = ({ campaign }) => {
                   <div
                     key={img.id}
                     className="flex gap-3 rounded-xl p-3"
-                    style={{ background: "#0F1629", border: "1px solid #16213E" }}
+                    style={{
+                      background: "#0F1629",
+                      border: "1px solid #16213E",
+                    }}
                   >
                     {/* Thumbnail */}
                     <div
@@ -1293,11 +1303,17 @@ const ImageMapsTab = ({ campaign }) => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-1">
                         <div className="min-w-0">
-                          <p className="text-xs font-mono truncate" style={{ color: "#8892A4" }}>
+                          <p
+                            className="text-xs font-mono truncate"
+                            style={{ color: "#8892A4" }}
+                          >
                             #{img.id} · order {img.sortOrder}
                           </p>
                           {img.altText && (
-                            <p className="text-xs truncate mt-0.5" style={{ color: "#fff" }}>
+                            <p
+                              className="text-xs truncate mt-0.5"
+                              style={{ color: "#fff" }}
+                            >
                               {img.altText}
                             </p>
                           )}
@@ -1317,7 +1333,9 @@ const ImageMapsTab = ({ campaign }) => {
                             type="text"
                             size="small"
                             icon={<SwapOutlined style={{ color: "#8892A4" }} />}
-                            onClick={() => setImgModal({ open: true, record: img })}
+                            onClick={() =>
+                              setImgModal({ open: true, record: img })
+                            }
                           />
                         </Tooltip>
                         <Tooltip title="Delete">
@@ -1331,7 +1349,9 @@ const ImageMapsTab = ({ campaign }) => {
                             <Button
                               type="text"
                               size="small"
-                              icon={<DeleteOutlined style={{ color: "#E94560" }} />}
+                              icon={
+                                <DeleteOutlined style={{ color: "#E94560" }} />
+                              }
                             />
                           </Popconfirm>
                         </Tooltip>
@@ -1456,8 +1476,8 @@ const CampaignDetailDrawer = ({ campaign, open, onClose }) => {
       }
       open={open}
       onClose={onClose}
-      width={
-        typeof window !== "undefined" ? Math.min(736, window.innerWidth) : 736
+      size={
+        typeof window !== "undefined" ? Math.min(1000, window.innerWidth) : 1000
       }
       destroyOnHidden
     >

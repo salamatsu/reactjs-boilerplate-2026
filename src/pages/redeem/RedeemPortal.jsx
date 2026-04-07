@@ -183,7 +183,7 @@ const SetupScreen = ({ onSetup }) => {
   };
 
   return (
-    <div className="relative flex flex-col items-center gap-6 w-full max-w-md mx-auto px-6 py-12 z-10">
+    <div className="relative h-full flex flex-col items-center justify-center gap-5 w-full max-w-md mx-auto px-6 z-10">
       <motion.div
         animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1] }}
         transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
@@ -332,7 +332,7 @@ const ScanStep = ({ station, onNext }) => {
   const screen = isLoading ? "loading" : apiError ? "error" : "ready";
 
   return (
-    <div className="relative flex flex-col items-center w-full max-w-md mx-auto px-6 py-10 z-10">
+    <div className="relative h-full flex flex-col items-center justify-center w-full max-w-md mx-auto px-6 z-10">
       {/* Hidden input — captures hardware QR scanner keystrokes */}
       <input
         ref={inputRef}
@@ -354,7 +354,7 @@ const ScanStep = ({ station, onNext }) => {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.92 }}
             transition={{ duration: 0.15 }}
-            className="flex flex-col items-center gap-8 py-8 w-full"
+            className="flex flex-col items-center gap-5 w-full"
           >
             {/* Pulsing rings */}
             <div className="relative flex items-center justify-center">
@@ -402,7 +402,7 @@ const ScanStep = ({ station, onNext }) => {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -16 }}
-            className="flex flex-col items-center gap-6 py-8 w-full text-center"
+            className="flex flex-col items-center gap-5 w-full text-center"
           >
             <motion.div
               animate={{ rotate: [0, -8, 8, 0] }}
@@ -435,19 +435,19 @@ const ScanStep = ({ station, onNext }) => {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -16 }}
-            className="flex flex-col items-center gap-8 py-8 w-full"
+            className="flex flex-col items-center gap-5 w-full"
           >
             {/* Animated scan frame */}
-            <div className="relative w-52 h-52">
+            <div className="relative w-44 h-44">
               {/* Corner brackets */}
-              <div className="absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 border-cyan-400 rounded-tl-xl" />
-              <div className="absolute top-0 right-0 w-10 h-10 border-t-4 border-r-4 border-cyan-400 rounded-tr-xl" />
-              <div className="absolute bottom-0 left-0 w-10 h-10 border-b-4 border-l-4 border-cyan-400 rounded-bl-xl" />
-              <div className="absolute bottom-0 right-0 w-10 h-10 border-b-4 border-r-4 border-cyan-400 rounded-br-xl" />
+              <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-cyan-400 rounded-tl-xl" />
+              <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-cyan-400 rounded-tr-xl" />
+              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-cyan-400 rounded-bl-xl" />
+              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-cyan-400 rounded-br-xl" />
 
               {/* Scan line */}
               <motion.div
-                animate={{ y: [0, 176, 0] }}
+                animate={{ y: [0, 144, 0] }}
                 transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
                 className="absolute left-2 right-2 top-2 h-0.5 rounded-full"
                 style={{
@@ -723,67 +723,48 @@ const SpinStep = ({ participant, station, onNext }) => {
   const spinApiError = spinError?.response?.data?.message || spinError?.message;
 
   return (
-    <div className="relative flex flex-col items-center gap-5 w-full max-w-md mx-auto px-6 py-8 z-10">
-      {/* Participant card */}
-      {participant.fullName && (
-        <motion.div
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="w-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl px-5 py-4 text-center backdrop-blur-sm"
+    <div className="relative h-full flex items-center justify-center gap-6 px-8 z-10 w-full max-w-6xl mx-auto">
+      {/* ── Left: Participant info + Spin button ── */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-6 min-w-0">
+        {/* Participant card */}
+        {participant.fullName && (
+          <motion.div
+            initial={{ x: -30, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            className="w-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-3xl px-6 py-6 text-center backdrop-blur-sm"
+          >
+            <p className="text-purple-300 text-xs font-semibold uppercase tracking-widest mb-2">
+              🎟 Participant
+            </p>
+            <p className="text-white font-black text-2xl leading-tight">{participant.fullName}</p>
+            <p className="text-yellow-400 text-base font-bold mt-1">
+              ⭐ {participant.totalPoints} pts
+            </p>
+          </motion.div>
+        )}
+
+        <motion.h2
+          animate={{ scale: mustSpin ? [1, 1.05, 1] : 1 }}
+          transition={{ duration: 0.5, repeat: mustSpin ? Infinity : 0 }}
+          className="text-4xl font-black text-white text-center drop-shadow-lg"
         >
-          <p className="text-purple-300 text-xs font-semibold uppercase tracking-widest mb-1">
-            🎟 Participant
-          </p>
-          <p className="text-white font-black text-lg">{participant.fullName}</p>
-          <p className="text-yellow-400 text-sm font-bold mt-0.5">
-            ⭐ {participant.totalPoints} pts
-          </p>
-        </motion.div>
-      )}
+          🎡 Spin to Win!
+        </motion.h2>
 
-      <motion.h2
-        animate={{ scale: mustSpin ? [1, 1.05, 1] : 1 }}
-        transition={{ duration: 0.5, repeat: mustSpin ? Infinity : 0 }}
-        className="text-3xl font-black text-white text-center drop-shadow-lg"
-      >
-        🎡 Spin to Win!
-      </motion.h2>
-
-      {loadingPrizes ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <Loader2 className="animate-spin text-pink-400" size={40} />
-          <p className="text-white/50 text-sm">Loading prizes…</p>
-        </div>
-      ) : wheelData.length === 0 ? (
-        <p className="text-white/50 text-sm text-center">
-          No prizes configured for this campaign.
+        <p className="text-white/40 text-sm text-center">
+          {mustSpin ? "Spinning…" : winner ? "Result recorded!" : "Press the button to spin the wheel!"}
         </p>
-      ) : (
-        <div className="flex flex-col items-center gap-5 w-full">
-          {/* Wheel glow ring */}
-          <div className="relative">
-            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-500 via-yellow-400 to-purple-500 blur-xl opacity-40 scale-105" />
-            <Wheel
-              mustStartSpinning={mustSpin}
-              prizeNumber={prizeNumber}
-              data={wheelData}
-              onStopSpinning={handleStopSpinning}
-              backgroundColors={WHEEL_COLORS}
-              textColors={["#FFFFFF"]}
-              outerBorderColor="#ffffff"
-              outerBorderWidth={6}
-              innerBorderColor="#ffffff"
-              innerBorderWidth={3}
-              radiusLineColor="#ffffff"
-              radiusLineWidth={2}
-              spinDuration={0.8}
-              fontSize={13}
-              pointerProps={{
-                style: { filter: "drop-shadow(0 0 6px rgba(255,200,0,0.8))" },
-              }}
-            />
-          </div>
 
+        {loadingPrizes ? (
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="animate-spin text-pink-400" size={36} />
+            <p className="text-white/50 text-sm">Loading prizes…</p>
+          </div>
+        ) : wheelData.length === 0 ? (
+          <p className="text-white/50 text-sm text-center">
+            No prizes configured for this campaign.
+          </p>
+        ) : (
           <motion.button
             onClick={handleSpin}
             disabled={mustSpin || !!winner}
@@ -812,8 +793,40 @@ const SpinStep = ({ participant, station, onNext }) => {
               "🎰 SPIN!"
             )}
           </motion.button>
-        </div>
-      )}
+        )}
+      </div>
+
+      {/* ── Right: Wheel ── */}
+      <div className="flex-1 flex items-center justify-center min-w-0">
+        {loadingPrizes ? (
+          <div className="w-72 h-72 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+            <Loader2 className="animate-spin text-pink-400" size={48} />
+          </div>
+        ) : wheelData.length > 0 ? (
+          <div className="relative flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-500 via-yellow-400 to-purple-500 blur-2xl opacity-30 scale-110" />
+            <Wheel
+              mustStartSpinning={mustSpin}
+              prizeNumber={prizeNumber}
+              data={wheelData}
+              onStopSpinning={handleStopSpinning}
+              backgroundColors={WHEEL_COLORS}
+              textColors={["#FFFFFF"]}
+              outerBorderColor="#ffffff"
+              outerBorderWidth={6}
+              innerBorderColor="#ffffff"
+              innerBorderWidth={3}
+              radiusLineColor="#ffffff"
+              radiusLineWidth={2}
+              spinDuration={0.8}
+              fontSize={13}
+              pointerProps={{
+                style: { filter: "drop-shadow(0 0 6px rgba(255,200,0,0.8))" },
+              }}
+            />
+          </div>
+        ) : null}
+      </div>
 
       {/* Prize reveal overlay */}
       <AnimatePresence>
@@ -846,70 +859,123 @@ const DoneStep = ({ outcome, prizeName, onReset }) => {
   return (
     <>
       {showConfetti && <Confetti />}
-      <div className="relative flex flex-col items-center gap-6 w-full max-w-md mx-auto px-6 py-12 text-center z-10">
+      <div className="relative h-full flex items-center justify-center z-10 w-full px-8">
         <motion.div
-          initial={{ scale: 0, rotate: -180 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", stiffness: 200, damping: 15 }}
-          className={`w-32 h-32 rounded-full flex items-center justify-center shadow-2xl ${
+          initial={{ scale: 0.8, opacity: 0, y: 40 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 200, damping: 18 }}
+          className={`relative w-full max-w-lg rounded-3xl overflow-hidden text-center px-10 py-12 flex flex-col items-center gap-6 ${
             isWin
-              ? "bg-gradient-to-br from-yellow-400 to-orange-500 shadow-yellow-400/50"
-              : "bg-gradient-to-br from-slate-500 to-slate-700"
+              ? "bg-gradient-to-br from-[#1a1000] via-[#2d1a00] to-[#1a0d00] border border-yellow-400/30"
+              : "bg-gradient-to-br from-[#0f0a1a] via-[#1a0d2e] to-[#0f0a1a] border border-white/10"
           }`}
+          style={{
+            boxShadow: isWin
+              ? "0 0 80px rgba(255,200,0,0.2), 0 0 160px rgba(255,100,0,0.1)"
+              : "0 0 60px rgba(99,102,241,0.15)",
+          }}
         >
-          {isWin ? (
-            <Gift size={56} className="text-white" />
-          ) : (
-            <Star size={56} className="text-white/60" />
-          )}
-        </motion.div>
-
-        {isWin && (
+          {/* Animated glow blob behind icon */}
           <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-            className="absolute top-8 left-1/2 -translate-x-1/2 w-44 h-44 rounded-full border-4 border-dashed border-yellow-400/30"
+            animate={{ scale: [1, 1.2, 1], opacity: [0.4, 0.7, 0.4] }}
+            transition={{ duration: 2.5, repeat: Infinity }}
+            className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full pointer-events-none"
+            style={{
+              background: isWin
+                ? "radial-gradient(circle, rgba(255,200,0,0.35) 0%, transparent 70%)"
+                : "radial-gradient(circle, rgba(99,102,241,0.25) 0%, transparent 70%)",
+            }}
           />
-        )}
 
-        <motion.h2
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className={`text-3xl font-black ${isWin ? "text-yellow-400" : "text-white"}`}
-        >
-          {isWin ? "🎉 Prize Claimed!" : "Better Luck Next Time!"}
-        </motion.h2>
+          {/* Icon */}
+          <motion.div
+            initial={{ scale: 0, rotate: -180 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 220, damping: 14, delay: 0.1 }}
+            className={`relative w-28 h-28 rounded-full flex items-center justify-center shadow-2xl ${
+              isWin
+                ? "bg-linear-to-br from-yellow-300 to-orange-500 shadow-yellow-400/50"
+                : "bg-linear-to-br from-slate-600 to-slate-800"
+            }`}
+          >
+            {isWin ? (
+              <Gift size={52} className="text-white drop-shadow-lg" />
+            ) : (
+              <Star size={52} className="text-white/50" />
+            )}
+          </motion.div>
 
-        <motion.p
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.45 }}
-          className="text-white/60 text-base"
-        >
-          {isWin ? (
-            <>
-              Hand the visitor their{" "}
-              <span className="text-yellow-400 font-black">{prizeName}</span>.{" "}
-              Congratulations! 🎊
-            </>
-          ) : (
-            "Result recorded. Thank the visitor for participating!"
-          )}
-        </motion.p>
+          {/* Label */}
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="text-xs font-black uppercase tracking-[0.3em]"
+            style={{ color: isWin ? "#FFD700" : "#818cf8" }}
+          >
+            {isWin ? "Prize Claimed!" : "Result Recorded"}
+          </motion.p>
 
-        <motion.button
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          whileHover={{ scale: 1.04 }}
-          whileTap={{ scale: 0.96 }}
-          onClick={onReset}
-          className="w-full bg-gradient-to-r from-pink-500 via-fuchsia-500 to-orange-400 text-white rounded-2xl py-4 font-black text-lg flex items-center justify-center gap-2 mt-2 shadow-lg shadow-pink-500/30"
-          aria-label="Next visitor"
-        >
-          <RotateCcw size={20} /> Next Visitor
-        </motion.button>
+          {/* Heading */}
+          <motion.h2
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: "spring", stiffness: 200, delay: 0.3 }}
+            className="font-black leading-tight"
+            style={{
+              fontSize: "clamp(2rem, 5vw, 3rem)",
+              background: isWin
+                ? "linear-gradient(135deg, #FFD700, #FF6B00)"
+                : "linear-gradient(135deg, #c4b5fd, #818cf8)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            {isWin ? "🎉 Congratulations!" : "Better Luck Next Time!"}
+          </motion.h2>
+
+          {/* Sub-text */}
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45 }}
+            className="text-white/60 text-lg leading-relaxed"
+          >
+            {isWin ? (
+              <>
+                Hand the visitor their{" "}
+                <span className="text-yellow-400 font-black">{prizeName}</span>.{" "}
+                🎊
+              </>
+            ) : (
+              "Thank the visitor for participating!"
+            )}
+          </motion.p>
+
+          {/* Divider */}
+          <div
+            className="w-full h-px rounded-full"
+            style={{
+              background: isWin
+                ? "linear-gradient(90deg, transparent, rgba(255,200,0,0.4), transparent)"
+                : "linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)",
+            }}
+          />
+
+          {/* Button */}
+          <motion.button
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={onReset}
+            className="w-full bg-linear-to-r from-pink-500 via-fuchsia-500 to-orange-400 text-white rounded-2xl py-4 font-black text-xl flex items-center justify-center gap-2 shadow-lg shadow-pink-500/30"
+            aria-label="Next visitor"
+          >
+            <RotateCcw size={22} /> Next Visitor
+          </motion.button>
+        </motion.div>
       </div>
     </>
   );
@@ -922,7 +988,7 @@ const StepIndicator = ({ currentStep }) => {
   const icons = ["📷", "🎡", "🏆"];
   const currentIndex = STEPS.indexOf(currentStep);
   return (
-    <div className="flex items-center justify-center gap-2 py-5 relative z-10">
+    <div className="shrink-0 flex items-center justify-center gap-2 py-2 relative z-10">
       {labels.map((label, i) => (
         <div key={label} className="flex items-center">
           <motion.div
@@ -994,29 +1060,30 @@ const RedeemPortal = () => {
 
   if (!station) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0D0D1A] via-[#1a0533] to-[#0D0D1A] text-white overflow-hidden">
+      <div className="h-screen flex flex-col bg-gradient-to-br from-[#0D0D1A] via-[#1a0533] to-[#0D0D1A] text-white overflow-hidden">
         <FloatingParticles />
-        {/* Top accent bar */}
-        <div className="h-1 bg-gradient-to-r from-pink-500 via-yellow-400 to-purple-500" />
-        <div className="bg-black/30 border-b border-white/10 px-6 py-4 backdrop-blur-sm relative z-10">
+        <div className="h-1 shrink-0 bg-gradient-to-r from-pink-500 via-yellow-400 to-purple-500" />
+        <div className="shrink-0 bg-black/30 border-b border-white/10 px-6 py-4 backdrop-blur-sm relative z-10">
           <h1 className="font-black text-lg tracking-wide bg-gradient-to-r from-pink-400 to-orange-400 bg-clip-text text-transparent">
             🎡 Worldbex QR Quest — Raffle Station
           </h1>
         </div>
-        <SetupScreen onSetup={setStation} />
+        <div className="flex-1 overflow-hidden flex items-center justify-center">
+          <SetupScreen onSetup={setStation} />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0D0D1A] via-[#1a0533] to-[#0D0D1A] text-white overflow-hidden">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-[#0D0D1A] via-[#1a0533] to-[#0D0D1A] text-white overflow-hidden">
       <FloatingParticles />
 
       {/* Top accent bar */}
-      <div className="h-1 bg-gradient-to-r from-pink-500 via-yellow-400 to-purple-500" />
+      <div className="h-1 shrink-0 bg-gradient-to-r from-pink-500 via-yellow-400 to-purple-500" />
 
       {/* Header */}
-      <div className="bg-black/30 border-b border-white/10 px-6 py-4 flex items-center justify-between backdrop-blur-sm relative z-10">
+      <div className="shrink-0 bg-black/30 border-b border-white/10 px-6 py-3 flex items-center justify-between backdrop-blur-sm relative z-10">
         <div>
           <h1 className="font-black text-lg tracking-wide bg-gradient-to-r from-pink-400 to-orange-400 bg-clip-text text-transparent">
             🎡 Worldbex QR Quest
@@ -1048,16 +1115,18 @@ const RedeemPortal = () => {
 
       <StepIndicator currentStep={step} />
 
-      {/* Step panels */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={step}
-          initial={{ x: 40, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: -40, opacity: 0 }}
-          transition={{ duration: 0.25 }}
-        >
-          {step === "scan" && <ScanStep station={station} onNext={advance} />}
+      {/* Step panels — fill remaining height, no scroll */}
+      <div className="flex-1 overflow-hidden relative">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={step}
+            initial={{ x: 40, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -40, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="h-full"
+          >
+            {step === "scan" && <ScanStep station={station} onNext={advance} />}
 
           {step === "spin" && (
             <SpinStep
@@ -1074,8 +1143,9 @@ const RedeemPortal = () => {
               onReset={reset}
             />
           )}
-        </motion.div>
-      </AnimatePresence>
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </div>
   );
 };
