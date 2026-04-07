@@ -42,7 +42,10 @@ export const getCsrfToken = async () => {
 
 export const loginApi = async (credentials) => {
   try {
-    const response = await axiosInstance.post(`${RAFFLE_BASE}/auth/login`, credentials);
+    const response = await axiosInstance.post(
+      `${RAFFLE_BASE}/auth/login`,
+      credentials,
+    );
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -291,7 +294,9 @@ export const listCampaignsApi = async () => {
 
 export const getCampaignByIdApi = async (campaignId) => {
   try {
-    const response = await axios.get(`${RAFFLE_BASE}/admin/campaigns/${campaignId}`);
+    const response = await axios.get(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}`,
+    );
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -311,7 +316,10 @@ export const createCampaignApi = async (data) => {
 
 export const updateCampaignApi = async ({ id, ...data }) => {
   try {
-    const response = await axios.patch(`${RAFFLE_BASE}/admin/campaigns/${id}`, data);
+    const response = await axios.patch(
+      `${RAFFLE_BASE}/admin/campaigns/${id}`,
+      data,
+    );
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -437,7 +445,11 @@ export const createCampaignPrizeApi = async ({ campaignId, ...data }) => {
   }
 };
 
-export const updateCampaignPrizeApi = async ({ campaignId, prizeId, ...data }) => {
+export const updateCampaignPrizeApi = async ({
+  campaignId,
+  prizeId,
+  ...data
+}) => {
   try {
     const response = await axios.patch(
       `${RAFFLE_BASE}/admin/campaigns/${campaignId}/prizes/${prizeId}`,
@@ -468,7 +480,10 @@ export const deleteCampaignPrizeApi = async ({ campaignId, prizeId }) => {
 //   → full participant view: points, scans, claims
 // ============================================
 
-export const getParticipantProgressApi = async ({ campaignId, participantId }) => {
+export const getParticipantProgressApi = async ({
+  campaignId,
+  participantId,
+}) => {
   try {
     const response = await axios.get(
       `${RAFFLE_BASE}/admin/campaigns/${campaignId}/participant/${participantId}/progress`,
@@ -516,7 +531,11 @@ export const uploadCampaignImageApi = async ({ campaignId, formData }) => {
   }
 };
 
-export const updateCampaignImageApi = async ({ campaignId, imageId, ...data }) => {
+export const updateCampaignImageApi = async ({
+  campaignId,
+  imageId,
+  ...data
+}) => {
   try {
     const response = await axios.patch(
       `${RAFFLE_BASE}/admin/campaigns/${campaignId}/images/${imageId}`,
@@ -529,7 +548,11 @@ export const updateCampaignImageApi = async ({ campaignId, imageId, ...data }) =
   }
 };
 
-export const replaceCampaignImageApi = async ({ campaignId, imageId, formData }) => {
+export const replaceCampaignImageApi = async ({
+  campaignId,
+  imageId,
+  formData,
+}) => {
   try {
     const response = await axiosMultipart.post(
       `${RAFFLE_BASE}/admin/campaigns/${campaignId}/images/${imageId}/replace`,
