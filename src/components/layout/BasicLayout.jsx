@@ -69,7 +69,7 @@ const BasicLayout = ({ navigations = [], store = noopStore }) => {
               />
             )}
             <span className="font-black text-sm tracking-widest text-[#E94560]">
-              Worldbex QR Quest
+              Worldbex Scan2Win
             </span>
           </div>
 

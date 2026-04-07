@@ -278,7 +278,9 @@ const ScanStep = ({ station, onNext }) => {
 
   // Re-focus on any click anywhere on the page
   useEffect(() => {
-    const refocus = () => { if (!isLoading) inputRef.current?.focus(); };
+    const refocus = () => {
+      if (!isLoading) inputRef.current?.focus();
+    };
     document.addEventListener("click", refocus);
     return () => document.removeEventListener("click", refocus);
   }, [isLoading]);
@@ -382,7 +384,9 @@ const ScanStep = ({ station, onNext }) => {
                 {isPending ? "Validating…" : "Scanning…"}
               </h2>
               <p className="text-white/50 text-sm">
-                {isPending ? "Checking QR code, please wait." : "Reading QR code data…"}
+                {isPending
+                  ? "Checking QR code, please wait."
+                  : "Reading QR code data…"}
               </p>
             </div>
 
@@ -391,7 +395,11 @@ const ScanStep = ({ station, onNext }) => {
               <motion.div
                 className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full"
                 animate={{ x: ["-100%", "100%"] }}
-                transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
+                transition={{
+                  duration: 1.0,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
               />
             </div>
           </motion.div>
@@ -448,7 +456,11 @@ const ScanStep = ({ station, onNext }) => {
               {/* Scan line */}
               <motion.div
                 animate={{ y: [0, 144, 0] }}
-                transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                transition={{
+                  duration: 2.4,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
                 className="absolute left-2 right-2 top-2 h-0.5 rounded-full"
                 style={{
                   background:
@@ -683,7 +695,8 @@ const SpinStep = ({ participant, station, onNext }) => {
 
   const handleSpin = () => {
     if (mustSpin || winner || !prizes.length) return;
-    const picked = eligiblePool[Math.floor(Math.random() * eligiblePool.length)];
+    const picked =
+      eligiblePool[Math.floor(Math.random() * eligiblePool.length)];
     const idx = prizes.findIndex((p) => p.id === picked.id);
     setPrizeNumber(idx);
     setMustSpin(true);
@@ -707,14 +720,17 @@ const SpinStep = ({ participant, station, onNext }) => {
         claimedBy: station.staffName || undefined,
       });
       // Brief celebration delay, then advance
-      setTimeout(() => {
-        onNext({
-          outcome: res.data.outcome,
-          prize: res.data.prize,
-          prizeName: isWin ? w.prizeName : "No Prize",
-          winner: w,
-        });
-      }, isWin ? 3500 : 2200);
+      setTimeout(
+        () => {
+          onNext({
+            outcome: res.data.outcome,
+            prize: res.data.prize,
+            prizeName: isWin ? w.prizeName : "No Prize",
+            winner: w,
+          });
+        },
+        isWin ? 3500 : 2200,
+      );
     } catch {
       // spinError state handles display; user can still see the overlay
     }
@@ -736,7 +752,9 @@ const SpinStep = ({ participant, station, onNext }) => {
             <p className="text-purple-300 text-xs font-semibold uppercase tracking-widest mb-2">
               🎟 Participant
             </p>
-            <p className="text-white font-black text-2xl leading-tight">{participant.fullName}</p>
+            <p className="text-white font-black text-2xl leading-tight">
+              {participant.fullName}
+            </p>
             <p className="text-yellow-400 text-base font-bold mt-1">
               ⭐ {participant.totalPoints} pts
             </p>
@@ -752,7 +770,11 @@ const SpinStep = ({ participant, station, onNext }) => {
         </motion.h2>
 
         <p className="text-white/40 text-sm text-center">
-          {mustSpin ? "Spinning…" : winner ? "Result recorded!" : "Press the button to spin the wheel!"}
+          {mustSpin
+            ? "Spinning…"
+            : winner
+              ? "Result recorded!"
+              : "Press the button to spin the wheel!"}
         </p>
 
         {loadingPrizes ? (
@@ -891,7 +913,12 @@ const DoneStep = ({ outcome, prizeName, onReset }) => {
           <motion.div
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 220, damping: 14, delay: 0.1 }}
+            transition={{
+              type: "spring",
+              stiffness: 220,
+              damping: 14,
+              delay: 0.1,
+            }}
             className={`relative w-28 h-28 rounded-full flex items-center justify-center shadow-2xl ${
               isWin
                 ? "bg-linear-to-br from-yellow-300 to-orange-500 shadow-yellow-400/50"
@@ -993,9 +1020,7 @@ const StepIndicator = ({ currentStep }) => {
         <div key={label} className="flex items-center">
           <motion.div
             animate={
-              i === currentIndex
-                ? { scale: [1, 1.15, 1] }
-                : { scale: 1 }
+              i === currentIndex ? { scale: [1, 1.15, 1] } : { scale: 1 }
             }
             transition={{ duration: 1, repeat: Infinity }}
             className={`flex flex-col items-center gap-1`}
@@ -1065,7 +1090,7 @@ const RedeemPortal = () => {
         <div className="h-1 shrink-0 bg-gradient-to-r from-pink-500 via-yellow-400 to-purple-500" />
         <div className="shrink-0 bg-black/30 border-b border-white/10 px-6 py-4 backdrop-blur-sm relative z-10">
           <h1 className="font-black text-lg tracking-wide bg-gradient-to-r from-pink-400 to-orange-400 bg-clip-text text-transparent">
-            🎡 Worldbex QR Quest — Raffle Station
+            🎡 Worldbex Scan2Win — Raffle Station
           </h1>
         </div>
         <div className="flex-1 overflow-hidden flex items-center justify-center">
@@ -1086,7 +1111,7 @@ const RedeemPortal = () => {
       <div className="shrink-0 bg-black/30 border-b border-white/10 px-6 py-3 flex items-center justify-between backdrop-blur-sm relative z-10">
         <div>
           <h1 className="font-black text-lg tracking-wide bg-gradient-to-r from-pink-400 to-orange-400 bg-clip-text text-transparent">
-            🎡 Worldbex QR Quest
+            🎡 Worldbex Scan2Win
           </h1>
           <p className="text-white/40 text-xs mt-0.5">
             {station.campaignName} · {station.eventTag}
@@ -1128,21 +1153,21 @@ const RedeemPortal = () => {
           >
             {step === "scan" && <ScanStep station={station} onNext={advance} />}
 
-          {step === "spin" && (
-            <SpinStep
-              participant={sessionData}
-              station={station}
-              onNext={advance}
-            />
-          )}
+            {step === "spin" && (
+              <SpinStep
+                participant={sessionData}
+                station={station}
+                onNext={advance}
+              />
+            )}
 
-          {step === "done" && (
-            <DoneStep
-              outcome={sessionData.outcome}
-              prizeName={sessionData.prizeName}
-              onReset={reset}
-            />
-          )}
+            {step === "done" && (
+              <DoneStep
+                outcome={sessionData.outcome}
+                prizeName={sessionData.prizeName}
+                onReset={reset}
+              />
+            )}
           </motion.div>
         </AnimatePresence>
       </div>

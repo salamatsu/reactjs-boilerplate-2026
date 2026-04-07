@@ -465,7 +465,7 @@ const CampaignFormModal = ({ open, onClose, initialValues }) => {
           style={{ borderColor: "#16213E", margin: "4px 0 12px" }}
         >
           <span className="text-xs font-semibold" style={{ color: "#8892A4" }}>
-            Worldbex QR Quest Mechanics
+            Worldbex Scan2Win Mechanics
           </span>
         </Divider>
 

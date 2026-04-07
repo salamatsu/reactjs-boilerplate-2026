@@ -1616,7 +1616,11 @@ const VisitorApp = () => {
         {/* Top bar */}
         <div className="sticky top-0 z-30 bg-[#1A1A2E]/95 backdrop-blur border-b border-[#16213E] px-4 py-3 flex items-center justify-between">
           <div className="flex items-center">
-            <img src={logo} alt="Worldbex QR Quest" className="h-8 w-auto object-contain" />
+            <img
+              src={logo}
+              alt="Worldbex Scan2Win"
+              className="h-8 w-auto object-contain"
+            />
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-[#8892A4] font-medium uppercase tracking-widest">
@@ -1649,9 +1653,17 @@ const VisitorApp = () => {
             Powered by
           </span>
           <div className="flex items-center gap-4">
-            <img src={dgsiLogo} alt="DGSI" className="h-6 w-auto object-contain opacity-70 brightness-0 invert" />
+            <img
+              src={dgsiLogo}
+              alt="DGSI"
+              className="h-6 w-auto object-contain opacity-70 brightness-0 invert"
+            />
             <div className="w-px h-4 bg-[#ffffff15]" />
-            <img src={eventbookLogo} alt="Eventbook" className="h-6 w-auto object-contain opacity-70 brightness-0 invert" />
+            <img
+              src={eventbookLogo}
+              alt="Eventbook"
+              className="h-6 w-auto object-contain opacity-70 brightness-0 invert"
+            />
           </div>
         </div>
 
@@ -1783,7 +1795,7 @@ const VisitorApp = () => {
                     How to Play
                   </p>
                   <p className="text-[#8892A4] text-xs mt-0.5">
-                    Worldbex QR Quest mechanics
+                    Worldbex Scan2Win mechanics
                   </p>
                 </div>
                 <button
