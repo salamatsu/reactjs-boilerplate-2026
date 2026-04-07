@@ -4,7 +4,7 @@
 // ============================================
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { App as AntProvider } from "antd";
+import { App as AntProvider, ConfigProvider } from "antd";
 import RootRoutes from "./routes";
 import "@ant-design/v5-patch-for-react-19";
 import { useCsrfToken } from "./hooks/useCsrfToken";
@@ -26,9 +26,11 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AntProvider>
-        <RootRoutes />
-      </AntProvider>
+      <ConfigProvider theme={{ token: { colorPrimary: "#fd9114" } }}>
+        <AntProvider>
+          <RootRoutes />
+        </AntProvider>
+      </ConfigProvider>
     </QueryClientProvider>
   );
 };

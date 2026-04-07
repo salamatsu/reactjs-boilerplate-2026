@@ -12,7 +12,14 @@
 //   Step 4  Visitor presents QR at raffle station
 // ============================================
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  createContext,
+  useContext,
+} from "react";
 import { useParams, useSearchParams } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
@@ -51,6 +58,41 @@ import {
   useGetEventsList,
 } from "../../services/requests/useApi";
 
+// ─── Theme ────────────────────────────────────────────────────────────────────
+
+const LIGHT = {
+  bg: "#FFFFFF",
+  card: "#FFF7EE",
+  deeper: "#FFF3E0",
+  text: "#1A1A2E",
+  muted: "#6B7280",
+  primary: "#FD9114",
+  primaryBg: "rgba(253,145,20,0.1)",
+  primaryBorder: "rgba(253,145,20,0.25)",
+  progressTrack: "#FFE4C2",
+  cardBorder: "rgba(0,0,0,0.07)",
+  divider: "rgba(0,0,0,0.06)",
+};
+
+const DARK = {
+  bg: "#1A1A2E",
+  card: "#16213E",
+  deeper: "#0F1629",
+  text: "#FFFFFF",
+  muted: "#8892A4",
+  primary: "#E94560",
+  primaryBg: "rgba(233,69,96,0.1)",
+  primaryBorder: "rgba(233,69,96,0.2)",
+  progressTrack: "#16213E",
+  cardBorder: "rgba(255,255,255,0.05)",
+  divider: "#16213E",
+};
+
+const THEME_KEY = "qrquest_theme";
+
+const ThemeContext = createContext(LIGHT);
+const useVT = () => useContext(ThemeContext);
+
 // ─── localStorage helpers ─────────────────────────────────────────────────────
 
 const ENTRY_KEY = "qrquest_entry";
@@ -70,23 +112,32 @@ const saveEntry = (entry) => {
 
 // ─── Desktop guard ────────────────────────────────────────────────────────────
 
-const DesktopGuard = () => (
-  <div className="hidden md:flex h-screen items-center justify-center bg-[#1A1A2E] text-white text-center px-8">
-    <div>
-      <Zap className="mx-auto mb-4 text-[#E94560]" size={56} />
-      <h1 className="text-2xl font-bold mb-2">Mobile Only</h1>
-      <p className="text-[#8892A4]">
-        Please open this page on your mobile device to participate in Scan to
-        Win.
-      </p>
+const DesktopGuard = () => {
+  const t = useVT();
+  return (
+    <div
+      className="hidden md:flex h-screen items-center justify-center text-center px-8"
+      style={{ background: t.bg }}
+    >
+      <div>
+        <Zap className="mx-auto mb-4" style={{ color: t.primary }} size={56} />
+        <h1 className="text-2xl font-bold mb-2" style={{ color: t.text }}>
+          Mobile Only
+        </h1>
+        <p style={{ color: t.muted }}>
+          Please open this page on your mobile device to participate in Scan to
+          Win.
+        </p>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 /** Arc / circular progress bar */
 const GoalProgress = ({ points, threshold }) => {
+  const t = useVT();
   const pct = Math.min((points / threshold) * 100, 100);
   const radius = 70;
   const stroke = 10;
@@ -103,7 +154,7 @@ const GoalProgress = ({ points, threshold }) => {
             cy={radius}
             r={normalizedR}
             fill="none"
-            stroke="#16213E"
+            stroke={t.progressTrack}
             strokeWidth={stroke}
           />
           <motion.circle
@@ -111,7 +162,7 @@ const GoalProgress = ({ points, threshold }) => {
             cy={radius}
             r={normalizedR}
             fill="none"
-            stroke="#E94560"
+            stroke={t.primary}
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={circumference}
@@ -121,96 +172,135 @@ const GoalProgress = ({ points, threshold }) => {
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-bold text-white">{points}</span>
-          <span className="text-xs text-[#8892A4]">pts</span>
+          <span className="text-2xl font-bold" style={{ color: t.text }}>
+            {points}
+          </span>
+          <span className="text-xs" style={{ color: t.muted }}>
+            pts
+          </span>
         </div>
       </div>
-      <p className="mt-2 text-sm text-[#8892A4]">
-        <span className="text-[#F5A623] font-semibold">{points}</span> /{" "}
-        {threshold} pts
+      <p className="mt-2 text-sm" style={{ color: t.muted }}>
+        <span className="font-semibold" style={{ color: "#F5A623" }}>
+          {points}
+        </span>{" "}
+        / {threshold} pts
       </p>
-      <div className="w-full mt-3 bg-[#16213E] rounded-full h-2">
+      <div
+        className="w-full mt-3 rounded-full h-2"
+        style={{ background: t.progressTrack }}
+      >
         <motion.div
-          className="h-2 rounded-full bg-gradient-to-r from-[#E94560] to-[#F5A623]"
+          className="h-2 rounded-full"
+          style={{
+            background: `linear-gradient(to right, ${t.primary}, #F5A623)`,
+          }}
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
           transition={{ duration: 0.8, ease: "easeOut" }}
         />
       </div>
-      <p className="mt-1 text-xs text-[#8892A4]">{Math.round(pct)}% of goal</p>
+      <p className="mt-1 text-xs" style={{ color: t.muted }}>
+        {Math.round(pct)}% of goal
+      </p>
     </div>
   );
 };
 
 /** List of booths with scan status */
-const BoothList = ({ booths, scannedCodes }) => (
-  <div className="space-y-2">
-    {booths.map((booth) => {
-      const scanned = scannedCodes.includes(booth.boothCode);
-      return (
-        <div
-          key={booth.id}
-          className={`flex items-center justify-between rounded-xl px-4 py-3 transition-all ${
-            scanned
-              ? "bg-[#16213E] opacity-60"
-              : "bg-[#16213E] border border-[#E94560]/20"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            {scanned ? (
-              <CheckCircle size={20} className="text-[#00D68F] shrink-0" />
-            ) : (
-              <Circle size={20} className="text-[#8892A4] shrink-0" />
-            )}
+const BoothList = ({ booths, scannedCodes }) => {
+  const t = useVT();
+  return (
+    <div className="space-y-2">
+      {booths.map((booth) => {
+        const scanned = scannedCodes.includes(booth.boothCode);
+        return (
+          <div
+            key={booth.id}
+            className="flex items-center justify-between rounded-xl px-4 py-3 transition-all"
+            style={{
+              background: t.card,
+              border: scanned
+                ? `1px solid ${t.cardBorder}`
+                : `1px solid ${t.primaryBorder}`,
+              opacity: scanned ? 0.65 : 1,
+            }}
+          >
+            <div className="flex items-center gap-3">
+              {scanned ? (
+                <CheckCircle size={20} className="text-[#00D68F] shrink-0" />
+              ) : (
+                <Circle
+                  size={20}
+                  className="shrink-0"
+                  style={{ color: t.muted }}
+                />
+              )}
+              <span
+                className="text-sm font-medium"
+                style={{
+                  color: scanned ? t.muted : t.text,
+                  textDecoration: scanned ? "line-through" : "none",
+                }}
+              >
+                {booth.boothName}
+              </span>
+            </div>
             <span
-              className={`text-sm font-medium ${
-                scanned ? "line-through text-[#8892A4]" : "text-white"
-              }`}
+              className="text-xs font-bold px-2 py-1 rounded-full shrink-0 whitespace-nowrap"
+              style={
+                scanned
+                  ? { background: "rgba(0,214,143,0.1)", color: "#00D68F" }
+                  : { background: t.primaryBg, color: t.primary }
+              }
             >
-              {booth.boothName}
+              +{booth.points} pts
             </span>
           </div>
-          <span
-            className={`text-xs font-bold px-2 py-1 rounded-full ${
-              scanned
-                ? "bg-[#00D68F]/10 text-[#00D68F]"
-                : "bg-[#E94560]/10 text-[#E94560]"
-            }`}
-          >
-            +{booth.points} pts
-          </span>
-        </div>
-      );
-    })}
-  </div>
-);
+        );
+      })}
+    </div>
+  );
+};
 
 /** Event details card */
-const CampaignHeader = ({ campaign }) => (
-  <div className="rounded-2xl bg-gradient-to-br from-[#16213E] to-[#1A1A2E] border border-[#E94560]/20 p-5 mb-4">
-    <h1 className="text-lg font-bold text-white leading-tight">
-      {campaign.campaignName}
-    </h1>
-    <div className="mt-3 space-y-2">
-      <div className="flex items-center gap-2 text-[#8892A4] text-sm">
-        <Calendar size={14} className="text-[#F5A623]" />
-        <span>
-          {formatDateTime(campaign.startDate, DATE_FORMATS.DATE)} –{" "}
-          {formatDateTime(campaign.endDate, DATE_FORMATS.DATE)}
-        </span>
+const CampaignHeader = ({ campaign }) => {
+  const t = useVT();
+  return (
+    <div
+      className="rounded-2xl p-5 mb-4"
+      style={{ background: t.card, border: `1px solid ${t.primaryBorder}` }}
+    >
+      <h1 className="text-lg font-bold leading-tight" style={{ color: t.text }}>
+        {campaign.campaignName}
+      </h1>
+      <div className="mt-3 space-y-2">
+        <div
+          className="flex items-center gap-2 text-sm"
+          style={{ color: t.muted }}
+        >
+          <Calendar size={14} className="text-[#F5A623]" />
+          <span>
+            {formatDateTime(campaign.startDate, DATE_FORMATS.DATE)} –{" "}
+            {formatDateTime(campaign.endDate, DATE_FORMATS.DATE)}
+          </span>
+        </div>
+        <div
+          className="flex items-center gap-2 text-sm"
+          style={{ color: t.muted }}
+        >
+          <Zap size={14} style={{ color: t.primary }} />
+          <span>Threshold: {campaign.thresholdPoints} pts</span>
+        </div>
       </div>
-      <div className="flex items-center gap-2 text-[#8892A4] text-sm">
-        <Zap size={14} className="text-[#E94560]" />
-        <span>Threshold: {campaign.thresholdPoints} pts</span>
-      </div>
+      {campaign.description && (
+        <p className="mt-3 text-xs leading-relaxed" style={{ color: t.muted }}>
+          {campaign.description}
+        </p>
+      )}
     </div>
-    {campaign.description && (
-      <p className="mt-3 text-xs text-[#8892A4] leading-relaxed">
-        {campaign.description}
-      </p>
-    )}
-  </div>
-);
+  );
+};
 
 /** Camera QR scanner using jsQR + canvas */
 const CameraScanner = ({ onScan, onClose }) => {
@@ -421,6 +511,7 @@ const WhatsAppIcon = () => (
 
 /** Share panel */
 const SharePanel = ({ eventTag }) => {
+  const t = useVT();
   const url = `${APP_BASE_URL}/${eventTag}`;
   const [copied, setCopied] = useState(false);
 
@@ -446,25 +537,25 @@ const SharePanel = ({ eventTag }) => {
     {
       label: "Facebook",
       icon: <FacebookIcon />,
-      bg: "bg-[#1877F2]",
+      bg: "#1877F2",
       url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
     },
     {
       label: "X (Twitter)",
       icon: <XIcon />,
-      bg: "bg-[#14171A]",
+      bg: "#14171A",
       url: `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=Join+me+at+Worldbex+Scan+to+Win!`,
     },
     {
       label: "Viber",
       icon: <ViberIcon />,
-      bg: "bg-[#7360F2]",
+      bg: "#7360F2",
       url: `viber://forward?text=${encodeURIComponent(url)}`,
     },
     {
       label: "WhatsApp",
       icon: <WhatsAppIcon />,
-      bg: "bg-[#25D366]",
+      bg: "#25D366",
       url: `https://api.whatsapp.com/send?text=${encodeURIComponent("Join me at Worldbex Scan to Win! " + url)}`,
     },
   ];
@@ -473,22 +564,30 @@ const SharePanel = ({ eventTag }) => {
     <div className="space-y-5">
       {/* Header */}
       <div>
-        <h2 className="text-white font-black text-xl">Invite Friends</h2>
-        <p className="text-[#8892A4] text-sm mt-1">
+        <h2 className="font-black text-xl" style={{ color: t.text }}>
+          Invite Friends
+        </h2>
+        <p className="text-sm mt-1" style={{ color: t.muted }}>
           Share this event and let others join the fun!
         </p>
       </div>
 
       {/* URL row */}
-      <div className="flex items-center gap-2 bg-[#16213E] border border-[#E94560]/20 rounded-2xl px-4 py-3">
-        <span className="flex-1 text-[#8892A4] text-xs truncate">{url}</span>
+      <div
+        className="flex items-center gap-2 rounded-2xl px-4 py-3"
+        style={{ background: t.card, border: `1px solid ${t.primaryBorder}` }}
+      >
+        <span className="flex-1 text-xs truncate" style={{ color: t.muted }}>
+          {url}
+        </span>
         <button
           onClick={copyLink}
-          className={`shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all active:scale-95 ${
+          className="shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all active:scale-95"
+          style={
             copied
-              ? "bg-[#00D68F]/20 text-[#00D68F]"
-              : "bg-[#E94560]/15 text-[#E94560]"
-          }`}
+              ? { background: "rgba(0,214,143,0.2)", color: "#00D68F" }
+              : { background: t.primaryBg, color: t.primary }
+          }
           aria-label="Copy event link"
         >
           <Copy size={12} />
@@ -499,7 +598,10 @@ const SharePanel = ({ eventTag }) => {
       {/* Native share button */}
       <button
         onClick={shareNative}
-        className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-[#E94560] to-[#F5A623] text-white rounded-2xl py-4 font-bold text-base shadow-lg shadow-[#E94560]/25 active:scale-95 transition-transform"
+        className="w-full flex items-center justify-center gap-3 text-white rounded-2xl py-4 font-bold text-base shadow-lg active:scale-95 transition-transform"
+        style={{
+          background: `linear-gradient(to right, ${t.primary}, #F5A623)`,
+        }}
         aria-label="Share event"
       >
         <Share2 size={20} />
@@ -508,7 +610,10 @@ const SharePanel = ({ eventTag }) => {
 
       {/* Social platforms */}
       <div>
-        <p className="text-[#8892A4] text-xs font-semibold uppercase tracking-widest mb-3">
+        <p
+          className="text-xs font-semibold uppercase tracking-widest mb-3"
+          style={{ color: t.muted }}
+        >
           Share on
         </p>
         <div className="grid grid-cols-2 gap-3">
@@ -518,8 +623,12 @@ const SharePanel = ({ eventTag }) => {
               href={s.url}
               target="_blank"
               rel="noopener noreferrer"
-              className={`${s.bg} flex items-center gap-3 rounded-2xl px-4 py-4 active:scale-95 transition-transform no-underline`}
-              style={{ color: "white", textDecoration: "none" }}
+              className="flex items-center gap-3 rounded-2xl px-4 py-4 active:scale-95 transition-transform no-underline"
+              style={{
+                background: s.bg,
+                color: "white",
+                textDecoration: "none",
+              }}
               aria-label={`Share on ${s.label}`}
             >
               <span className="shrink-0">{s.icon}</span>
@@ -556,6 +665,7 @@ const downloadImage = async (src, filename) => {
 };
 
 const ImageMapsView = ({ campaignId }) => {
+  const t = useVT();
   const { data, isLoading } = useGetCampaignImagesPublic(campaignId);
   const sites = data?.data?.imageSites ?? [];
   const [lightbox, setLightbox] = useState(null); // { src, alt, filename }
@@ -563,18 +673,30 @@ const ImageMapsView = ({ campaignId }) => {
   if (isLoading)
     return (
       <div className="flex justify-center py-16">
-        <Loader2 className="animate-spin text-[#E94560]" size={28} />
+        <Loader2
+          className="animate-spin"
+          style={{ color: t.primary }}
+          size={28}
+        />
       </div>
     );
 
   if (sites.length === 0)
     return (
-      <div className="rounded-2xl bg-[#16213E] border border-[#E94560]/10 flex flex-col items-center justify-center py-16 px-8 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-[#E94560]/10 flex items-center justify-center mb-4">
-          <MapPin size={28} className="text-[#E94560]" />
+      <div
+        className="rounded-2xl flex flex-col items-center justify-center py-16 px-8 text-center"
+        style={{ background: t.card, border: `1px solid ${t.primaryBorder}` }}
+      >
+        <div
+          className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+          style={{ background: t.primaryBg }}
+        >
+          <MapPin size={28} style={{ color: t.primary }} />
         </div>
-        <p className="text-white font-bold">No maps yet</p>
-        <p className="text-[#8892A4] text-xs mt-1">
+        <p className="font-bold" style={{ color: t.text }}>
+          No maps yet
+        </p>
+        <p className="text-xs mt-1" style={{ color: t.muted }}>
           Ask event staff for a printed venue map.
         </p>
       </div>
@@ -594,14 +716,23 @@ const ImageMapsView = ({ campaignId }) => {
             <div key={site.siteCode}>
               {/* Site header */}
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-lg bg-[#E94560]/15 flex items-center justify-center shrink-0">
-                  <MapPin size={12} className="text-[#E94560]" />
+                <div
+                  className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ background: t.primaryBg }}
+                >
+                  <MapPin size={12} style={{ color: t.primary }} />
                 </div>
-                <span className="text-white font-black text-sm">
+                <span className="font-black text-sm" style={{ color: t.text }}>
                   {site.siteName}
                 </span>
                 {showCode && (
-                  <span className="text-[10px] font-mono text-[#8892A4] border border-[#ffffff12] rounded-md px-1.5 py-0.5 leading-none">
+                  <span
+                    className="text-[10px] font-mono rounded-md px-1.5 py-0.5 leading-none"
+                    style={{
+                      color: t.muted,
+                      border: `1px solid ${t.cardBorder}`,
+                    }}
+                  >
                     {site.siteCode}
                   </span>
                 )}
@@ -618,8 +749,8 @@ const ImageMapsView = ({ campaignId }) => {
                       key={img.id}
                       className="rounded-2xl overflow-hidden"
                       style={{
-                        background: "#16213E",
-                        border: "1px solid rgba(255,255,255,0.05)",
+                        background: t.card,
+                        border: `1px solid ${t.cardBorder}`,
                       }}
                     >
                       {/* Image */}
@@ -637,11 +768,12 @@ const ImageMapsView = ({ campaignId }) => {
                       {/* Action bar */}
                       <div
                         className="flex items-center justify-between px-3 py-2.5 gap-2"
-                        style={{
-                          borderTop: "1px solid rgba(255,255,255,0.05)",
-                        }}
+                        style={{ borderTop: `1px solid ${t.cardBorder}` }}
                       >
-                        <p className="text-xs text-[#8892A4] truncate flex-1">
+                        <p
+                          className="text-xs truncate flex-1"
+                          style={{ color: t.muted }}
+                        >
                           {img.altText || site.siteName}
                         </p>
                         <div className="flex items-center gap-1.5 shrink-0">
@@ -654,10 +786,7 @@ const ImageMapsView = ({ campaignId }) => {
                               })
                             }
                             className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold active:scale-95 transition-transform"
-                            style={{
-                              background: "rgba(255,255,255,0.07)",
-                              color: "#8892A4",
-                            }}
+                            style={{ background: t.deeper, color: t.muted }}
                             aria-label="View fullscreen"
                           >
                             <Maximize2 size={11} />
@@ -667,8 +796,8 @@ const ImageMapsView = ({ campaignId }) => {
                             onClick={() => downloadImage(src, filename)}
                             className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold active:scale-95 transition-transform"
                             style={{
-                              background: "rgba(233,69,96,0.15)",
-                              color: "#E94560",
+                              background: t.primaryBg,
+                              color: t.primary,
                             }}
                             aria-label="Save image"
                           >
@@ -749,6 +878,7 @@ const ImageMapsView = ({ campaignId }) => {
 const REGISTER_URL = "https://register.worldbexevents.com/";
 
 const EventDetailModal = ({ event, onClose }) => {
+  const t = useVT();
   const from = event.dateFrom
     ? new Date(event.dateFrom).toLocaleDateString("en-PH", {
         month: "long",
@@ -774,18 +904,19 @@ const EventDetailModal = ({ event, onClose }) => {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 140, opacity: 0 }}
         transition={{ type: "spring", damping: 24, stiffness: 280 }}
-        className="w-full max-w-sm bg-[#16213E] rounded-3xl overflow-hidden"
+        className="w-full max-w-sm rounded-3xl overflow-hidden"
+        style={{ background: t.card }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cover image */}
         <div
-          className="relative bg-[#0f1729] flex items-center justify-center"
-          style={{ height: 200 }}
+          className="relative flex items-center justify-center"
+          style={{ height: 200, background: t.primary }}
         >
           <img
             src={`${VITE_BASEURL_APP}${event.imgSrc}`}
             alt={event.name}
-            className="h-full w-full object-contain p-6"
+            className="h-full w-full object-contain p-6 mb-6"
             onError={(e) => {
               e.currentTarget.style.display = "none";
             }}
@@ -797,23 +928,35 @@ const EventDetailModal = ({ event, onClose }) => {
           >
             <X size={16} className="text-white" />
           </button>
-          <span className="absolute bottom-3 left-4 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest bg-white/10 text-[#8892A4] border border-white/10">
+          <span className="absolute bottom-3 left-4 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest bg-white/10 text-white border border-white/10">
             {event.eventName}
           </span>
         </div>
 
         <div className="p-5 space-y-3">
-          <h2 className="text-white font-black text-lg leading-snug">
+          <h2
+            className="font-black text-lg leading-snug"
+            style={{ color: t.text }}
+          >
             {event.name}
           </h2>
 
           {/* Date */}
-          <div className="flex items-start gap-3 bg-[#1A1A2E] rounded-xl px-3 py-3">
-            <Calendar size={14} className="text-[#8892A4] shrink-0 mt-0.5" />
+          <div
+            className="flex items-start gap-3 rounded-xl px-3 py-3"
+            style={{ background: t.deeper }}
+          >
+            <Calendar
+              size={14}
+              className="shrink-0 mt-0.5"
+              style={{ color: t.muted }}
+            />
             <div>
-              <p className="text-white text-sm font-bold">{event.date}</p>
+              <p className="text-sm font-bold" style={{ color: t.text }}>
+                {event.date}
+              </p>
               {from && to && (
-                <p className="text-[#8892A4] text-xs mt-0.5">
+                <p className="text-xs mt-0.5" style={{ color: t.muted }}>
                   {from} — {to}
                 </p>
               )}
@@ -821,9 +964,16 @@ const EventDetailModal = ({ event, onClose }) => {
           </div>
 
           {/* Scan to Win info */}
-          <div className="flex items-start gap-3 bg-[#1A1A2E] rounded-xl px-3 py-3">
-            <Zap size={14} className="text-[#8892A4] shrink-0 mt-0.5" />
-            <p className="text-[#8892A4] text-xs leading-relaxed">
+          <div
+            className="flex items-start gap-3 rounded-xl px-3 py-3"
+            style={{ background: t.deeper }}
+          >
+            <Zap
+              size={14}
+              className="shrink-0 mt-0.5"
+              style={{ color: t.muted }}
+            />
+            <p className="text-xs leading-relaxed" style={{ color: t.muted }}>
               Scan exhibitor booths, collect points, and qualify for the raffle
               draw at this event.
             </p>
@@ -831,7 +981,8 @@ const EventDetailModal = ({ event, onClose }) => {
 
           <button
             onClick={onClose}
-            className="w-full rounded-2xl py-3 text-sm font-semibold text-[#8892A4] bg-[#1A1A2E] active:scale-95 transition-transform"
+            className="w-full rounded-2xl py-3 text-sm font-semibold active:scale-95 transition-transform"
+            style={{ background: t.primary, color: "white" }}
           >
             Close
           </button>
@@ -842,48 +993,71 @@ const EventDetailModal = ({ event, onClose }) => {
 };
 
 const UpcomingEvents = () => {
+  const t = useVT();
   const { data: events, isLoading } = useGetEventsList();
   const [selectedEvent, setSelectedEvent] = useState(null);
 
   return (
     <div>
       {/* Sticky register CTA */}
-      <div className="sticky top-13 z-20 -mx-4 px-4 pt-1 pb-3 bg-[#1A1A2E]">
+      <div
+        className="sticky top-13 z-20 -mx-4 px-4 pt-1 pb-3"
+        style={{ background: t.bg }}
+      >
         <a
           href={REGISTER_URL}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ textDecoration: "none" }}
-          className="flex items-center gap-3 rounded-2xl p-4 bg-[#16213E] border border-[#E94560]/30 active:scale-[0.98] transition-transform"
+          style={{
+            textDecoration: "none",
+            background: t.card,
+            border: `1px solid ${t.primaryBorder}`,
+          }}
+          className="flex items-center gap-3 rounded-2xl p-4 active:scale-[0.98] transition-transform"
           aria-label="Register or Login to Worldbex Events"
         >
-          <div className="w-10 h-10 rounded-xl bg-[#E94560]/15 flex items-center justify-center shrink-0">
-            <Star size={18} className="text-[#E94560]" />
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: t.primaryBg }}
+          >
+            <Star size={18} style={{ color: t.primary }} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white font-black text-sm leading-tight">
+            <p
+              className="font-black text-sm leading-tight"
+              style={{ color: t.text }}
+            >
               Register / Login
             </p>
-            <p className="text-[#8892A4] text-xs mt-0.5 truncate">
+            <p className="text-xs mt-0.5 truncate" style={{ color: t.muted }}>
               worldbexevents.com — access all events
             </p>
           </div>
-          <div className="shrink-0 w-8 h-8 rounded-xl bg-[#E94560] flex items-center justify-center">
+          <div
+            className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center"
+            style={{ background: t.primary }}
+          >
             <ChevronRight size={15} className="text-white" />
           </div>
         </a>
       </div>
 
       <div className="mb-4 mt-2">
-        <h2 className="text-white font-black text-xl">Upcoming Events</h2>
-        <p className="text-[#8892A4] text-sm mt-1">
+        <h2 className="font-black text-xl" style={{ color: t.text }}>
+          Upcoming Events
+        </h2>
+        <p className="text-sm mt-1" style={{ color: t.muted }}>
           Scan. Collect points. Win prizes.
         </p>
       </div>
 
       {isLoading ? (
         <div className="flex justify-center py-10">
-          <Loader2 className="animate-spin text-[#E94560]" size={28} />
+          <Loader2
+            className="animate-spin"
+            style={{ color: t.primary }}
+            size={28}
+          />
         </div>
       ) : (
         <div className="space-y-2">
@@ -891,10 +1065,17 @@ const UpcomingEvents = () => {
             <button
               key={ev.eventId}
               onClick={() => setSelectedEvent(ev)}
-              className="w-full rounded-2xl bg-[#16213E] overflow-hidden text-left active:scale-[0.98] transition-transform border border-white/5"
+              className="w-full rounded-2xl overflow-hidden text-left active:scale-[0.98] transition-transform"
+              style={{
+                background: t.card,
+                border: `1px solid ${t.cardBorder}`,
+              }}
             >
               <div className="p-3.5 flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl overflow-hidden bg-[#0f1729] shrink-0 flex items-center justify-center">
+                <div
+                  className="w-11 h-11 p-1 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
+                  style={{ background: t.primary }}
+                >
                   <img
                     src={`${VITE_BASEURL_APP}${ev.imgSrc}`}
                     alt={ev.name}
@@ -906,21 +1087,34 @@ const UpcomingEvents = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-white text-sm font-semibold leading-snug flex-1">
+                    <p
+                      className="text-sm font-semibold leading-snug flex-1"
+                      style={{ color: t.text }}
+                    >
                       {ev.name}
                     </p>
-                    <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider bg-white/8 text-[#8892A4] border border-white/10 ml-1">
+                    <span
+                      className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ml-1"
+                      style={{
+                        background: t.deeper,
+                        color: t.muted,
+                        border: `1px solid ${t.cardBorder}`,
+                      }}
+                    >
                       {ev.eventName}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 mt-1.5">
-                    <Calendar size={11} className="text-[#8892A4]" />
-                    <span className="text-[#8892A4] text-xs">{ev.date}</span>
+                    <Calendar size={11} style={{ color: t.muted }} />
+                    <span className="text-xs" style={{ color: t.muted }}>
+                      {ev.date}
+                    </span>
                   </div>
                 </div>
                 <ChevronRight
                   size={14}
-                  className="text-[#8892A4]/50 shrink-0"
+                  className="shrink-0"
+                  style={{ color: t.muted, opacity: 0.5 }}
                 />
               </div>
             </button>
@@ -941,59 +1135,79 @@ const UpcomingEvents = () => {
 };
 
 /** Generic error modal */
-const ErrorModal = ({ message, onClose }) => (
-  <div className="fixed inset-0 bg-black/70 z-50 flex items-end justify-center p-4">
-    <motion.div
-      initial={{ y: 100, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: 100, opacity: 0 }}
-      className="w-full max-w-sm bg-[#16213E] rounded-3xl p-6 text-center"
-    >
-      <div className="w-16 h-16 rounded-full bg-[#E94560]/10 flex items-center justify-center mx-auto mb-4">
-        <X size={32} className="text-[#E94560]" />
-      </div>
-      <h2 className="text-white font-bold text-lg mb-2">Oops!</h2>
-      <p className="text-[#8892A4] text-sm mb-5">{message}</p>
-      <button
-        onClick={onClose}
-        className="w-full bg-[#E94560] text-white rounded-xl py-3 font-bold"
-        aria-label="Dismiss error"
+const ErrorModal = ({ message, onClose }) => {
+  const t = useVT();
+  return (
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-end justify-center p-4">
+      <motion.div
+        initial={{ y: 100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 100, opacity: 0 }}
+        className="w-full max-w-sm rounded-3xl p-6 text-center"
+        style={{ background: t.card }}
       >
-        Got it
-      </button>
-    </motion.div>
-  </div>
-);
+        <div
+          className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+          style={{ background: "rgba(233,69,96,0.1)" }}
+        >
+          <X size={32} className="text-[#E94560]" />
+        </div>
+        <h2 className="font-bold text-lg mb-2" style={{ color: t.text }}>
+          Oops!
+        </h2>
+        <p className="text-sm mb-5" style={{ color: t.muted }}>
+          {message}
+        </p>
+        <button
+          onClick={onClose}
+          className="w-full text-white rounded-xl py-3 font-bold"
+          style={{ background: "#E94560" }}
+          aria-label="Dismiss error"
+        >
+          Got it
+        </button>
+      </motion.div>
+    </div>
+  );
+};
 
 /** Success modal after scanning a booth */
-const SuccessModal = ({ points, totalPoints, threshold, onClose }) => (
-  <div className="fixed inset-0 bg-black/70 z-50 flex items-end justify-center p-4">
-    <motion.div
-      initial={{ y: 100, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: 100, opacity: 0 }}
-      className="w-full max-w-sm bg-[#16213E] rounded-3xl p-6 text-center"
-    >
-      <div className="w-16 h-16 rounded-full bg-[#00D68F]/10 flex items-center justify-center mx-auto mb-4">
-        <CheckCircle size={32} className="text-[#00D68F]" />
-      </div>
-      <h2 className="text-white font-bold text-lg mb-1">Points Earned!</h2>
-      <div className="text-5xl font-black text-[#F5A623] my-3">+{points}</div>
-      <p className="text-[#8892A4] text-sm mb-1">
-        Running total:{" "}
-        <span className="text-white font-semibold">{totalPoints}</span> /{" "}
-        {threshold} pts
-      </p>
-      <button
-        onClick={onClose}
-        className="w-full mt-5 bg-[#00D68F] text-white rounded-xl py-3 font-bold"
-        aria-label="Dismiss success"
+const SuccessModal = ({ points, totalPoints, threshold, onClose }) => {
+  const t = useVT();
+  return (
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-end justify-center p-4">
+      <motion.div
+        initial={{ y: 100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 100, opacity: 0 }}
+        className="w-full max-w-sm rounded-3xl p-6 text-center"
+        style={{ background: t.card }}
       >
-        Keep Scanning!
-      </button>
-    </motion.div>
-  </div>
-);
+        <div className="w-16 h-16 rounded-full bg-[#00D68F]/10 flex items-center justify-center mx-auto mb-4">
+          <CheckCircle size={32} className="text-[#00D68F]" />
+        </div>
+        <h2 className="font-bold text-lg mb-1" style={{ color: t.text }}>
+          Points Earned!
+        </h2>
+        <div className="text-5xl font-black text-[#F5A623] my-3">+{points}</div>
+        <p className="text-sm mb-1" style={{ color: t.muted }}>
+          Running total:{" "}
+          <span className="font-semibold" style={{ color: t.text }}>
+            {totalPoints}
+          </span>{" "}
+          / {threshold} pts
+        </p>
+        <button
+          onClick={onClose}
+          className="w-full mt-5 bg-[#00D68F] text-white rounded-xl py-3 font-bold"
+          aria-label="Dismiss success"
+        >
+          Keep Scanning!
+        </button>
+      </motion.div>
+    </div>
+  );
+};
 
 /** First-ever scan modal — shown when scannedCodes was empty before this scan */
 const FirstScanModal = ({
@@ -1014,6 +1228,7 @@ const FirstScanModal = ({
     });
   }, []);
 
+  const t = useVT();
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-end justify-center p-4">
       <motion.div
@@ -1022,13 +1237,13 @@ const FirstScanModal = ({
         exit={{ y: 120, opacity: 0 }}
         transition={{ type: "spring", damping: 22, stiffness: 280 }}
         className="w-full max-w-sm rounded-3xl overflow-hidden text-center"
-        style={{ background: "#16213E" }}
+        style={{ background: t.card }}
       >
         {/* Top gradient banner */}
         <div
           className="px-6 pt-8 pb-6"
           style={{
-            background: "linear-gradient(160deg, #E9456025 0%, #7360F215 100%)",
+            background: `linear-gradient(160deg, ${t.primary}22 0%, #7360F215 100%)`,
           }}
         >
           <motion.div
@@ -1036,17 +1251,24 @@ const FirstScanModal = ({
             animate={{ scale: 1 }}
             transition={{ delay: 0.15, type: "spring", stiffness: 300 }}
             className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-4"
-            style={{ background: "linear-gradient(135deg, #E94560, #F5A623)" }}
+            style={{
+              background: `linear-gradient(135deg, ${t.primary}, #F5A623)`,
+            }}
           >
             <Zap size={36} className="text-white" />
           </motion.div>
           <p className="text-[#F5A623] text-xs font-bold uppercase tracking-widest mb-1">
             Welcome to the Event!
           </p>
-          <h2 className="text-white font-black text-xl leading-tight">
+          <h2
+            className="font-black text-xl leading-tight"
+            style={{ color: t.text }}
+          >
             First Scan Unlocked!
           </h2>
-          <p className="text-[#8892A4] text-xs mt-1">{campaignName}</p>
+          <p className="text-xs mt-1" style={{ color: t.muted }}>
+            {campaignName}
+          </p>
         </div>
 
         {/* Booth + Points */}
@@ -1054,7 +1276,7 @@ const FirstScanModal = ({
           {/* Booth name */}
           <div
             className="flex items-center gap-3 rounded-2xl px-4 py-3 text-left"
-            style={{ background: "#0F1629" }}
+            style={{ background: t.deeper }}
           >
             <div
               className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
@@ -1063,19 +1285,25 @@ const FirstScanModal = ({
               <ScanLine size={16} className="text-[#4096ff]" />
             </div>
             <div>
-              <p className="text-[#8892A4] text-xs">Booth scanned</p>
-              <p className="text-white font-bold text-sm">{booth.boothName}</p>
+              <p className="text-xs" style={{ color: t.muted }}>
+                Booth scanned
+              </p>
+              <p className="font-bold text-sm" style={{ color: t.text }}>
+                {booth.boothName}
+              </p>
             </div>
           </div>
 
           {/* Points breakdown */}
           <div
             className="rounded-2xl px-4 py-4 space-y-2"
-            style={{ background: "#0F1629" }}
+            style={{ background: t.deeper }}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[#8892A4] text-xs">Booth points</span>
-              <span className="text-white font-bold text-sm">
+              <span className="text-xs" style={{ color: t.muted }}>
+                Booth points
+              </span>
+              <span className="font-bold text-sm" style={{ color: t.text }}>
                 +{points} pts
               </span>
             </div>
@@ -1097,9 +1325,11 @@ const FirstScanModal = ({
             )}
             <div
               className="flex items-center justify-between pt-2"
-              style={{ borderTop: "1px solid #16213E" }}
+              style={{ borderTop: `1px solid ${t.divider}` }}
             >
-              <span className="text-[#8892A4] text-xs">Your total</span>
+              <span className="text-xs" style={{ color: t.muted }}>
+                Your total
+              </span>
               <span className="font-black text-lg" style={{ color: "#00D68F" }}>
                 {totalPoints} / {threshold} pts
               </span>
@@ -1109,7 +1339,9 @@ const FirstScanModal = ({
           <button
             onClick={onClose}
             className="w-full py-3.5 rounded-2xl font-black text-sm text-white"
-            style={{ background: "linear-gradient(135deg, #E94560, #F5A623)" }}
+            style={{
+              background: `linear-gradient(135deg, ${t.primary}, #F5A623)`,
+            }}
             aria-label="Continue scanning"
           >
             Let's Keep Scanning!
@@ -1139,6 +1371,7 @@ const GoalModal = ({
     email: "",
   });
   const [encryptedQr, setEncryptedQr] = useState(entry.encryptedQr ?? null);
+  const [validationError, setValidationError] = useState(null);
   const { mutateAsync: generateQr, isPending, error } = useGenerateRaffleQr();
 
   useEffect(() => {
@@ -1153,6 +1386,15 @@ const GoalModal = ({
   }, [phase]);
 
   const handleGenerate = async () => {
+    if (!form.fullName.trim()) {
+      setValidationError("Full name is required.");
+      return;
+    }
+    if (!form.email.trim()) {
+      setValidationError("Email address is required.");
+      return;
+    }
+    setValidationError(null);
     const participantInfo = {
       participantCode: entry.participantCode,
       ...(form.fullName.trim() && { fullName: form.fullName.trim() }),
@@ -1173,6 +1415,8 @@ const GoalModal = ({
     }
   };
 
+  const t = useVT();
+
   if (phase === "form") {
     return (
       <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 overflow-y-auto">
@@ -1180,7 +1424,8 @@ const GoalModal = ({
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="w-full max-w-sm bg-[#16213E] rounded-3xl p-6 my-auto"
+          className="w-full max-w-sm rounded-3xl p-6 my-auto"
+          style={{ background: t.card }}
         >
           <motion.div
             animate={{ rotate: [0, -10, 10, -10, 10, 0] }}
@@ -1190,52 +1435,72 @@ const GoalModal = ({
           >
             🎉
           </motion.div>
-          <h2 className="text-white font-black text-xl text-center mb-1">
+          <h2
+            className="font-black text-xl text-center mb-1"
+            style={{ color: t.text }}
+          >
             Threshold Reached!
           </h2>
-          <p className="text-[#8892A4] text-sm text-center mb-5">
-            Fill in your details (optional) and generate your raffle QR code.
+          <p className="text-sm text-center mb-5" style={{ color: t.muted }}>
+            Fill in your details and generate your raffle QR code.
           </p>
 
           <div className="space-y-3 mb-4">
-            <input
-              value={form.fullName}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, fullName: e.target.value }))
-              }
-              placeholder="Full name (optional)"
-              className="w-full bg-[#1A1A2E] border border-[#E94560]/20 rounded-xl px-4 py-3 text-white text-sm placeholder-[#8892A4] outline-none focus:border-[#E94560]"
-            />
-            <input
-              value={form.mobileNumber}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, mobileNumber: e.target.value }))
-              }
-              placeholder="Mobile number (optional)"
-              type="tel"
-              className="w-full bg-[#1A1A2E] border border-[#E94560]/20 rounded-xl px-4 py-3 text-white text-sm placeholder-[#8892A4] outline-none focus:border-[#E94560]"
-            />
-            <input
-              value={form.email}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, email: e.target.value }))
-              }
-              placeholder="Email address (optional)"
-              type="email"
-              className="w-full bg-[#1A1A2E] border border-[#E94560]/20 rounded-xl px-4 py-3 text-white text-sm placeholder-[#8892A4] outline-none focus:border-[#E94560]"
-            />
+            {[
+              {
+                value: form.fullName,
+                field: "fullName",
+                placeholder: "Full name",
+                type: "text",
+                required: true,
+              },
+              {
+                value: form.mobileNumber,
+                field: "mobileNumber",
+                placeholder: "Mobile number (optional)",
+                type: "tel",
+                required: false,
+              },
+              {
+                value: form.email,
+                field: "email",
+                placeholder: "Email address",
+                type: "email",
+                required: true,
+              },
+            ].map(({ value, field, placeholder, type, required }) => (
+              <input
+                key={field}
+                value={value}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, [field]: e.target.value }))
+                }
+                placeholder={placeholder}
+                type={type}
+                required={required}
+                className="w-full rounded-xl px-4 py-3 text-sm outline-none"
+                style={{
+                  background: t.deeper,
+                  border: `1px solid ${t.primaryBorder}`,
+                  color: t.text,
+                }}
+              />
+            ))}
           </div>
 
-          {error && (
+          {(validationError || error) && (
             <p className="text-[#E94560] text-xs text-center mb-3">
-              {error?.message || "Failed to generate QR. Please try again."}
+              {validationError ||
+                error?.message ||
+                "Failed to generate QR. Please try again."}
             </p>
           )}
 
           <button
             onClick={handleGenerate}
             disabled={isPending}
-            className="w-full bg-[#E94560] text-white rounded-xl py-3 font-bold flex items-center justify-center gap-2 disabled:opacity-60"
+            className="w-full text-white rounded-xl py-3 font-bold flex items-center justify-center gap-2 disabled:opacity-60"
+            style={{ background: t.primary }}
             aria-label="Generate raffle QR"
           >
             {isPending ? (
@@ -1251,7 +1516,8 @@ const GoalModal = ({
           </button>
           <button
             onClick={onClose}
-            className="w-full mt-2 text-[#8892A4] text-sm py-2"
+            className="w-full mt-2 text-sm py-2"
+            style={{ color: t.muted }}
             aria-label="Close"
           >
             Later
@@ -1269,7 +1535,8 @@ const GoalModal = ({
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.8, opacity: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        className="w-full max-w-sm bg-[#16213E] rounded-3xl p-6 text-center my-auto"
+        className="w-full max-w-sm rounded-3xl p-6 text-center my-auto"
+        style={{ background: t.card }}
       >
         <motion.div
           animate={{ rotate: [0, -10, 10, -10, 10, 0] }}
@@ -1279,8 +1546,10 @@ const GoalModal = ({
         >
           🎉
         </motion.div>
-        <h2 className="text-white font-black text-xl mb-1">You're In!</h2>
-        <p className="text-[#8892A4] text-sm mb-4">
+        <h2 className="font-black text-xl mb-1" style={{ color: t.text }}>
+          You're In!
+        </h2>
+        <p className="text-sm mb-4" style={{ color: t.muted }}>
           Show this QR code at the raffle station to spin the wheel.
         </p>
 
@@ -1288,12 +1557,13 @@ const GoalModal = ({
           <QRCodeSVG value={encryptedQr} size={180} level="H" />
         </div>
 
-        <p className="text-[#8892A4] text-xs mb-5">
+        <p className="text-xs mb-5" style={{ color: t.muted }}>
           This QR code is unique to you. Do not share it.
         </p>
         <button
           onClick={onClose}
-          className="w-full bg-[#E94560] text-white rounded-xl py-3 font-bold"
+          className="w-full text-white rounded-xl py-3 font-bold"
+          style={{ background: t.primary }}
           aria-label="Done"
         >
           Done
@@ -1308,6 +1578,32 @@ const GoalModal = ({
 const VisitorApp = () => {
   const { eventTag } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // ── Lock orientation to portrait ──
+  useEffect(() => {
+    const lock = async () => {
+      try {
+        await screen.orientation?.lock?.("portrait");
+      } catch {
+        // Not supported or not in fullscreen — CSS overlay handles landscape
+      }
+    };
+    lock();
+    return () => {
+      try { screen.orientation?.unlock?.(); } catch { /* ignore */ }
+    };
+  }, []);
+
+  // ── Theme ──
+  const [isDark, setIsDark] = useState(
+    () => localStorage.getItem(THEME_KEY) === "dark",
+  );
+  const t = isDark ? DARK : LIGHT;
+  const toggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    localStorage.setItem(THEME_KEY, next ? "dark" : "light");
+  };
 
   // ── Event data ──
   const {
@@ -1514,26 +1810,42 @@ const VisitorApp = () => {
   // ── Loading / error screens ──
   if (campaignLoading) {
     return (
-      <div className="md:hidden flex items-center justify-center h-screen bg-[#1A1A2E]">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-          className="w-10 h-10 border-4 border-[#E94560] border-t-transparent rounded-full"
-        />
-      </div>
+      <ThemeContext.Provider value={t}>
+        <div
+          className="md:hidden flex items-center justify-center h-screen"
+          style={{ background: t.bg }}
+        >
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+            className="w-10 h-10 border-4 border-t-transparent rounded-full"
+            style={{ borderColor: t.primary, borderTopColor: "transparent" }}
+          />
+        </div>
+      </ThemeContext.Provider>
     );
   }
 
   if (campaignError || !campaign) {
     return (
-      <div className="md:hidden flex flex-col items-center justify-center h-screen bg-[#1A1A2E] px-8 text-center">
-        <X size={40} className="text-[#E94560] mb-4" />
-        <h2 className="text-white font-bold text-lg mb-2">Event Not Found</h2>
-        <p className="text-[#8892A4] text-sm">
-          No active event found for{" "}
-          <span className="text-white font-semibold">{eventTag}</span>.
-        </p>
-      </div>
+      <ThemeContext.Provider value={t}>
+        <div
+          className="md:hidden flex flex-col items-center justify-center h-screen px-8 text-center"
+          style={{ background: t.bg }}
+        >
+          <X size={40} className="text-[#E94560] mb-4" />
+          <h2 className="font-bold text-lg mb-2" style={{ color: t.text }}>
+            Event Not Found
+          </h2>
+          <p className="text-sm" style={{ color: t.muted }}>
+            No active event found for{" "}
+            <span className="font-semibold" style={{ color: t.text }}>
+              {eventTag}
+            </span>
+            .
+          </p>
+        </div>
+      </ThemeContext.Provider>
     );
   }
 
@@ -1550,7 +1862,10 @@ const VisitorApp = () => {
             {currentPoints >= thresholdPoints ? (
               <button
                 onClick={() => setModal({ type: "goal" })}
-                className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-[#00D68F] to-[#F5A623] text-white rounded-2xl py-4 text-base font-black shadow-lg shadow-[#00D68F]/30"
+                className="w-full flex items-center justify-center gap-3 text-white rounded-2xl py-4 text-base font-black shadow-lg"
+                style={{
+                  background: "linear-gradient(to right, #00D68F, #F5A623)",
+                }}
                 aria-label="Generate raffle QR"
               >
                 <Gift size={22} />
@@ -1561,7 +1876,10 @@ const VisitorApp = () => {
             ) : (
               <button
                 onClick={() => setShowScanner(true)}
-                className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-[#E94560] to-[#F5A623] text-white rounded-2xl py-4 text-base font-black shadow-lg shadow-[#E94560]/30"
+                className="w-full flex items-center justify-center gap-3 text-white rounded-2xl py-4 text-base font-black shadow-lg"
+                style={{
+                  background: `linear-gradient(to right, ${t.primary}, #F5A623)`,
+                }}
                 aria-label="Open camera QR scanner"
               >
                 <Camera size={22} />
@@ -1571,7 +1889,7 @@ const VisitorApp = () => {
 
             {/* Booths list */}
             <div>
-              <h2 className="text-white font-bold text-sm mb-3">
+              <h2 className="font-bold text-sm mb-3" style={{ color: t.text }}>
                 Booths ({scannedCodes.length}/{booths.length})
               </h2>
               {booths.length > 0 && (
@@ -1584,7 +1902,9 @@ const VisitorApp = () => {
       case "map":
         return (
           <div className="px-4 pb-24 pt-4">
-            <h2 className="text-white font-bold text-sm mb-4">Venue Maps</h2>
+            <h2 className="font-bold text-sm mb-4" style={{ color: t.text }}>
+              Venue Maps
+            </h2>
             <ImageMapsView campaignId={campaign?.id} />
           </div>
         );
@@ -1609,39 +1929,61 @@ const VisitorApp = () => {
   };
 
   return (
-    <>
+    <ThemeContext.Provider value={t}>
       <DesktopGuard />
 
-      <div className="md:hidden min-h-screen bg-[#1A1A2E] text-white font-sans">
+      <div
+        className="md:hidden min-h-screen font-sans"
+        style={{ background: t.bg, color: t.text }}
+      >
         {/* Top bar */}
-        <div className="sticky top-0 z-30 bg-[#1A1A2E]/95 backdrop-blur border-b border-[#16213E] px-4 py-3 flex items-center justify-between">
+        <div
+          className="sticky top-0 z-30 backdrop-blur px-4 py-3 flex items-center justify-between"
+          style={{
+            background: `${t.bg}f2`,
+            borderBottom: `1px solid ${t.divider}`,
+          }}
+        >
           <div className="flex items-center">
             <img
               src={logo}
               alt="Worldbex Scan2Win"
               className="h-8 w-auto object-contain"
+              style={isDark ? {} : { filter: "none" }}
             />
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-[#8892A4] font-medium uppercase tracking-widest">
+          <div className="flex items-center gap-2">
+            <span
+              className="text-xs font-medium uppercase tracking-widest"
+              style={{ color: t.muted }}
+            >
               {eventTag}
             </span>
+            {/* Theme toggle */}
+            <button
+              onClick={toggleTheme}
+              className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors text-base"
+              style={{ background: t.card }}
+              aria-label="Toggle theme"
+            >
+              {isDark ? "☀️" : "🌙"}
+            </button>
             <button
               onClick={() => setShowGuide(true)}
               className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors"
-              style={{ background: "#16213E" }}
+              style={{ background: t.card }}
               aria-label="How to play"
             >
-              <HelpCircle size={14} className="text-[#8892A4]" />
+              <HelpCircle size={14} style={{ color: t.muted }} />
             </button>
-            <button
+            {/* <button
               onClick={() => setShowResetConfirm(true)}
               className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors"
-              style={{ background: "#16213E" }}
+              style={{ background: t.card }}
               aria-label="Reset progress"
             >
-              <RotateCcw size={13} className="text-[#8892A4]" />
-            </button>
+              <RotateCcw size={13} style={{ color: t.muted }} />
+            </button> */}
           </div>
         </div>
 
@@ -1649,26 +1991,34 @@ const VisitorApp = () => {
 
         {/* Powered by footer */}
         <div className="flex flex-col items-center gap-2 py-5 pb-20">
-          <span className="text-[10px] uppercase tracking-widest text-[#8892A4]/60 font-semibold">
+          <span
+            className="text-[10px] uppercase tracking-widest font-semibold"
+            style={{ color: `${t.muted}99` }}
+          >
             Powered by
           </span>
           <div className="flex items-center gap-4">
             <img
               src={dgsiLogo}
               alt="DGSI"
-              className="h-6 w-auto object-contain opacity-70 brightness-0 invert"
+              className="h-6 w-auto object-contain opacity-70"
+              style={isDark ? { filter: "brightness(0) invert(1)" } : {}}
             />
-            <div className="w-px h-4 bg-[#ffffff15]" />
+            <div className="w-px h-4" style={{ background: t.divider }} />
             <img
               src={eventbookLogo}
               alt="Eventbook"
-              className="h-6 w-auto object-contain opacity-70 brightness-0 invert"
+              className="h-6 w-auto object-contain opacity-70"
+              style={isDark ? { filter: "brightness(0) invert(1)" } : {}}
             />
           </div>
         </div>
 
         {/* Bottom navigation */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-[#16213E] border-t border-[#1A1A2E] flex z-30">
+        <nav
+          className="fixed bottom-0 left-0 right-0 flex z-30"
+          style={{ background: t.card, borderTop: `1px solid ${t.divider}` }}
+        >
           {[
             { id: "home", icon: <Zap size={18} />, label: "Home" },
             { id: "map", icon: <MapPin size={18} />, label: "Map" },
@@ -1678,9 +2028,8 @@ const VisitorApp = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex flex-col items-center py-3 gap-0.5 text-xs transition-colors ${
-                activeTab === tab.id ? "text-[#E94560]" : "text-[#8892A4]"
-              }`}
+              className="flex-1 flex flex-col items-center py-3 gap-0.5 text-xs transition-colors"
+              style={{ color: activeTab === tab.id ? t.primary : t.muted }}
               aria-label={tab.label}
             >
               {tab.icon}
@@ -1717,7 +2066,7 @@ const VisitorApp = () => {
             {/* Sheet */}
             <motion.div
               className="relative w-full rounded-t-3xl p-6 space-y-5"
-              style={{ background: "#16213E" }}
+              style={{ background: t.card }}
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
@@ -1726,15 +2075,18 @@ const VisitorApp = () => {
               <div className="flex flex-col items-center text-center gap-3">
                 <div
                   className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                  style={{ background: "#E9456020" }}
+                  style={{ background: "rgba(233,69,96,0.12)" }}
                 >
                   <AlertTriangle size={22} className="text-[#E94560]" />
                 </div>
                 <div>
-                  <p className="text-white font-black text-base">
+                  <p className="font-black text-base" style={{ color: t.text }}>
                     Reset Progress?
                   </p>
-                  <p className="text-[#8892A4] text-sm mt-1 leading-relaxed">
+                  <p
+                    className="text-sm mt-1 leading-relaxed"
+                    style={{ color: t.muted }}
+                  >
                     All scanned booths, points, and your raffle QR will be
                     cleared. This cannot be undone.
                   </p>
@@ -1750,7 +2102,7 @@ const VisitorApp = () => {
               <button
                 onClick={() => setShowResetConfirm(false)}
                 className="w-full py-3.5 rounded-2xl font-bold text-sm"
-                style={{ background: "#0F1629", color: "#8892A4" }}
+                style={{ background: t.deeper, color: t.muted }}
               >
                 Cancel
               </button>
@@ -1777,7 +2129,7 @@ const VisitorApp = () => {
             />
             <motion.div
               className="relative w-full rounded-t-3xl overflow-hidden"
-              style={{ background: "#16213E", maxHeight: "85vh" }}
+              style={{ background: t.card, maxHeight: "85vh" }}
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
@@ -1785,16 +2137,22 @@ const VisitorApp = () => {
             >
               {/* Handle */}
               <div className="flex justify-center pt-3 pb-1">
-                <div className="w-10 h-1 rounded-full bg-[#8892A430]" />
+                <div
+                  className="w-10 h-1 rounded-full"
+                  style={{ background: `${t.muted}40` }}
+                />
               </div>
 
               {/* Header */}
               <div className="px-6 pt-2 pb-4 flex items-center justify-between">
                 <div>
-                  <p className="text-white font-black text-lg leading-tight">
+                  <p
+                    className="font-black text-lg leading-tight"
+                    style={{ color: t.text }}
+                  >
                     How to Play
                   </p>
-                  <p className="text-[#8892A4] text-xs mt-0.5">
+                  <p className="text-xs mt-0.5" style={{ color: t.muted }}>
                     Worldbex Scan2Win mechanics
                   </p>
                 </div>
@@ -1804,9 +2162,9 @@ const VisitorApp = () => {
                     setShowGuide(false);
                   }}
                   className="w-8 h-8 flex items-center justify-center rounded-xl"
-                  style={{ background: "#0F1629" }}
+                  style={{ background: t.deeper }}
                 >
-                  <X size={15} className="text-[#8892A4]" />
+                  <X size={15} style={{ color: t.muted }} />
                 </button>
               </div>
 
@@ -1862,16 +2220,22 @@ const VisitorApp = () => {
                       {i < arr.length - 1 && (
                         <div
                           className="w-0.5 flex-1 my-1"
-                          style={{ background: "#0F162960" }}
+                          style={{ background: `${t.deeper}99` }}
                         />
                       )}
                     </div>
                     {/* Text */}
                     <div className="pb-5 pt-1 flex-1">
-                      <p className="font-bold text-sm text-white leading-tight">
+                      <p
+                        className="font-bold text-sm leading-tight"
+                        style={{ color: t.text }}
+                      >
                         {step.title}
                       </p>
-                      <p className="text-[#8892A4] text-xs mt-1 leading-relaxed">
+                      <p
+                        className="text-xs mt-1 leading-relaxed"
+                        style={{ color: t.muted }}
+                      >
                         {step.desc}
                       </p>
                     </div>
@@ -1885,7 +2249,7 @@ const VisitorApp = () => {
                   }}
                   className="w-full py-3.5 rounded-2xl font-black text-sm text-white mt-2"
                   style={{
-                    background: "linear-gradient(135deg, #E94560, #F5A623)",
+                    background: `linear-gradient(135deg, ${t.primary}, #F5A623)`,
                   }}
                 >
                   Got it, Let's Play!
@@ -1930,7 +2294,7 @@ const VisitorApp = () => {
           />
         )}
       </AnimatePresence>
-    </>
+    </ThemeContext.Provider>
   );
 };
 

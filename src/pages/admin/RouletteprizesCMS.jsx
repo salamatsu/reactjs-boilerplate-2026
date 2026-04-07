@@ -96,7 +96,7 @@ const PrizeFormModal = ({ open, onClose, initialValues }) => {
       }}
       onOk={handleSubmit}
       okText={saving ? "Saving…" : isEditing ? "Save Changes" : "Add Prize"}
-      okButtonProps={{ loading: saving, style: { background: "#E94560", borderColor: "#E94560" } }}
+      okButtonProps={{ loading: saving, style: { background: "#fd9114", borderColor: "#fd9114" } }}
       destroyOnHidden
     >
       <Form
@@ -260,7 +260,7 @@ const RouletteprizesCMS = () => {
           type="primary"
           icon={<PlusOutlined />}
           onClick={openAdd}
-          style={{ background: "#E94560", borderColor: "#E94560" }}
+          style={{ background: "#fd9114", borderColor: "#fd9114" }}
           aria-label="Add new prize"
         >
           Add Prize

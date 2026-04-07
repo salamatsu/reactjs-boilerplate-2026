@@ -12,7 +12,7 @@
 //   Step 7  POST /campaigns/:campaignId/spin-wheel       → record outcome
 // ============================================
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, createContext, useContext } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Wheel } from "react-custom-roulette";
 import {
@@ -32,6 +32,55 @@ import {
   useValidateRaffle,
   useSpinWheel,
 } from "../../services/requests/useApi";
+
+// ─── Theme ────────────────────────────────────────────────────────────────────
+
+const REDEEM_THEME_KEY = "qrquest_redeem_theme";
+
+const LIGHT = {
+  isDark: false,
+  bg: "#FFFFFF",
+  bgGradient: "linear-gradient(135deg, #fff7ee 0%, #ffffff 50%, #fff3e0 100%)",
+  card: "#FFF7EE",
+  deeper: "#FFF0DC",
+  headerBg: "rgba(255,247,238,0.92)",
+  headerBorder: "rgba(253,145,20,0.15)",
+  text: "#1A1A2E",
+  muted: "#6B7280",
+  mutedAlt: "rgba(107,114,128,0.6)",
+  primary: "#FD9114",
+  primaryBg: "rgba(253,145,20,0.1)",
+  primaryBorder: "rgba(253,145,20,0.25)",
+  accentBar: "linear-gradient(to right, #FD9114, #f59e0b, #FD9114)",
+  inputBg: "rgba(253,145,20,0.06)",
+  inputBorder: "rgba(253,145,20,0.2)",
+  pill: "rgba(0,0,0,0.05)",
+  pillBorder: "rgba(0,0,0,0.08)",
+};
+
+const DARK = {
+  isDark: true,
+  bg: "#0D0D1A",
+  bgGradient: "linear-gradient(135deg, #0D0D1A 0%, #1a0533 50%, #0D0D1A 100%)",
+  card: "rgba(255,255,255,0.05)",
+  deeper: "rgba(0,0,0,0.3)",
+  headerBg: "rgba(0,0,0,0.3)",
+  headerBorder: "rgba(255,255,255,0.1)",
+  text: "#FFFFFF",
+  muted: "rgba(255,255,255,0.5)",
+  mutedAlt: "rgba(255,255,255,0.4)",
+  primary: "#f472b6",
+  primaryBg: "rgba(255,255,255,0.05)",
+  primaryBorder: "rgba(255,255,255,0.1)",
+  accentBar: "linear-gradient(to right, #ec4899, #eab308, #a855f7)",
+  inputBg: "rgba(255,255,255,0.1)",
+  inputBorder: "rgba(255,255,255,0.2)",
+  pill: "rgba(255,255,255,0.05)",
+  pillBorder: "rgba(255,255,255,0.1)",
+};
+
+const ThemeCtx = createContext(LIGHT);
+const useRT = () => useContext(ThemeCtx);
 
 // ─── localStorage helpers ─────────────────────────────────────────────────────
 
@@ -182,19 +231,21 @@ const SetupScreen = ({ onSetup }) => {
     setSubmittedTag(eventTag.trim().toUpperCase());
   };
 
+  const t = useRT();
   return (
     <div className="relative h-full flex flex-col items-center justify-center gap-5 w-full max-w-md mx-auto px-6 z-10">
       <motion.div
         animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1] }}
         transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
-        className="w-20 h-20 rounded-2xl bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center shadow-lg shadow-pink-500/40"
+        className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-lg"
+        style={{ background: `linear-gradient(135deg, ${t.primary}, #f59e0b)` }}
       >
         <Settings size={40} className="text-white" />
       </motion.div>
 
       <div className="text-center">
-        <h2 className="text-3xl font-black text-white">Station Setup</h2>
-        <p className="text-white/50 text-sm mt-1">
+        <h2 className="text-3xl font-black" style={{ color: t.text }}>Station Setup</h2>
+        <p className="text-sm mt-1" style={{ color: t.muted }}>
           Enter the event tag to load the active raffle event.
         </p>
       </div>
@@ -205,14 +256,16 @@ const SetupScreen = ({ onSetup }) => {
           onChange={(e) => setEventTag(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
           placeholder="Event tag (e.g. WORLDBEX2026)"
-          className="w-full bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-white text-sm placeholder-white/30 outline-none focus:border-pink-400 focus:bg-white/15 transition-all uppercase backdrop-blur-sm"
+          className="w-full rounded-2xl px-4 py-3 text-sm outline-none transition-all uppercase backdrop-blur-sm"
+          style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text }}
           aria-label="Event tag"
         />
         <input
           value={staffName}
           onChange={(e) => setStaffName(e.target.value)}
           placeholder="Staff name (optional)"
-          className="w-full bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-white text-sm placeholder-white/30 outline-none focus:border-pink-400 focus:bg-white/15 transition-all backdrop-blur-sm"
+          className="w-full rounded-2xl px-4 py-3 text-sm outline-none transition-all backdrop-blur-sm"
+          style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text }}
           aria-label="Staff name"
         />
       </div>
@@ -233,7 +286,8 @@ const SetupScreen = ({ onSetup }) => {
         whileTap={{ scale: 0.97 }}
         onClick={handleSubmit}
         disabled={!eventTag.trim() || isLoading}
-        className="w-full bg-gradient-to-r from-pink-500 via-fuchsia-500 to-orange-400 text-white rounded-2xl py-4 font-black text-lg flex items-center justify-center gap-2 disabled:opacity-40 shadow-lg shadow-pink-500/40"
+        className="w-full text-white rounded-2xl py-4 font-black text-lg flex items-center justify-center gap-2 disabled:opacity-40 shadow-lg"
+        style={{ background: `linear-gradient(to right, ${t.primary}, #f59e0b)` }}
         aria-label="Load event"
       >
         {isLoading ? (
@@ -333,6 +387,9 @@ const ScanStep = ({ station, onNext }) => {
   // Derive which screen to show — no AnimatePresence mode="wait" so transitions are instant
   const screen = isLoading ? "loading" : apiError ? "error" : "ready";
 
+  const t = useRT();
+  const scanColor = t.isDark ? "#22d3ee" : t.primary;
+
   return (
     <div className="relative h-full flex flex-col items-center justify-center w-full max-w-md mx-auto px-6 z-10">
       {/* Hidden input — captures hardware QR scanner keystrokes */}
@@ -349,7 +406,6 @@ const ScanStep = ({ station, onNext }) => {
 
       <AnimatePresence>
         {screen === "loading" ? (
-          /* ── Scanning / Validating state ── */
           <motion.div
             key="loading"
             initial={{ opacity: 0, scale: 0.92 }}
@@ -358,53 +414,43 @@ const ScanStep = ({ station, onNext }) => {
             transition={{ duration: 0.15 }}
             className="flex flex-col items-center gap-5 w-full"
           >
-            {/* Pulsing rings */}
             <div className="relative flex items-center justify-center">
               {[0, 1, 2].map((i) => (
                 <motion.div
                   key={i}
-                  className="absolute rounded-full border-2 border-cyan-400"
+                  className="absolute rounded-full border-2"
+                  style={{ borderColor: scanColor, width: 80, height: 80 }}
                   animate={{ scale: [1, 2.4], opacity: [0.7, 0] }}
-                  transition={{
-                    duration: 1.6,
-                    delay: i * 0.5,
-                    repeat: Infinity,
-                    ease: "easeOut",
-                  }}
-                  style={{ width: 80, height: 80 }}
+                  transition={{ duration: 1.6, delay: i * 0.5, repeat: Infinity, ease: "easeOut" }}
                 />
               ))}
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-xl shadow-cyan-500/40 z-10">
+              <div
+                className="w-20 h-20 rounded-full flex items-center justify-center shadow-xl z-10"
+                style={{ background: `linear-gradient(135deg, ${scanColor}, #3b82f6)` }}
+              >
                 <Loader2 size={36} className="text-white animate-spin" />
               </div>
             </div>
 
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-black text-white">
+              <h2 className="text-2xl font-black" style={{ color: t.text }}>
                 {isPending ? "Validating…" : "Scanning…"}
               </h2>
-              <p className="text-white/50 text-sm">
-                {isPending
-                  ? "Checking QR code, please wait."
-                  : "Reading QR code data…"}
+              <p className="text-sm" style={{ color: t.muted }}>
+                {isPending ? "Checking QR code, please wait." : "Reading QR code data…"}
               </p>
             </div>
 
-            {/* Animated progress bar */}
-            <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: t.pill }}>
               <motion.div
-                className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full"
+                className="h-full rounded-full"
+                style={{ background: `linear-gradient(to right, ${scanColor}, #3b82f6)` }}
                 animate={{ x: ["-100%", "100%"] }}
-                transition={{
-                  duration: 1.0,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
+                transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
               />
             </div>
           </motion.div>
         ) : screen === "error" ? (
-          /* ── Error state ── */
           <motion.div
             key="error"
             initial={{ opacity: 0, y: 16 }}
@@ -421,7 +467,7 @@ const ScanStep = ({ station, onNext }) => {
             </motion.div>
 
             <div className="space-y-2">
-              <h2 className="text-2xl font-black text-white">Scan Failed</h2>
+              <h2 className="text-2xl font-black" style={{ color: t.text }}>Scan Failed</h2>
               <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2">
                 {apiError}
               </p>
@@ -431,13 +477,13 @@ const ScanStep = ({ station, onNext }) => {
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
               onClick={handleRetry}
-              className="w-full bg-gradient-to-r from-cyan-400 to-blue-500 text-white rounded-2xl py-4 font-black text-lg flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/30"
+              className="w-full text-white rounded-2xl py-4 font-black text-lg flex items-center justify-center gap-2 shadow-lg"
+              style={{ background: `linear-gradient(to right, ${scanColor}, #3b82f6)` }}
             >
               <RotateCcw size={20} /> Try Again
             </motion.button>
           </motion.div>
         ) : (
-          /* ── Ready state ── */
           <motion.div
             key="ready"
             initial={{ opacity: 0, y: 16 }}
@@ -447,54 +493,45 @@ const ScanStep = ({ station, onNext }) => {
           >
             {/* Animated scan frame */}
             <div className="relative w-44 h-44">
-              {/* Corner brackets */}
-              <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-cyan-400 rounded-tl-xl" />
-              <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-cyan-400 rounded-tr-xl" />
-              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-cyan-400 rounded-bl-xl" />
-              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-cyan-400 rounded-br-xl" />
+              <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 rounded-tl-xl" style={{ borderColor: scanColor }} />
+              <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 rounded-tr-xl" style={{ borderColor: scanColor }} />
+              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 rounded-bl-xl" style={{ borderColor: scanColor }} />
+              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 rounded-br-xl" style={{ borderColor: scanColor }} />
 
-              {/* Scan line */}
               <motion.div
                 animate={{ y: [0, 144, 0] }}
-                transition={{
-                  duration: 2.4,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
+                transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
                 className="absolute left-2 right-2 top-2 h-0.5 rounded-full"
                 style={{
-                  background:
-                    "linear-gradient(90deg, transparent, #22d3ee, #22d3ee, transparent)",
-                  boxShadow: "0 0 10px 2px rgba(34,211,238,0.6)",
+                  background: `linear-gradient(90deg, transparent, ${scanColor}, ${scanColor}, transparent)`,
+                  boxShadow: `0 0 10px 2px ${scanColor}99`,
                 }}
               />
 
-              {/* Center icon */}
               <div className="absolute inset-0 flex items-center justify-center">
-                <motion.div
-                  animate={{ opacity: [0.4, 1, 0.4] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  <ScanLine size={52} className="text-cyan-400/60" />
+                <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 2, repeat: Infinity }}>
+                  <ScanLine size={52} style={{ color: `${scanColor}99` }} />
                 </motion.div>
               </div>
             </div>
 
             <div className="text-center space-y-2">
-              <h2 className="text-3xl font-black text-white">Ready to Scan</h2>
-              <p className="text-white/50 text-sm">
+              <h2 className="text-3xl font-black" style={{ color: t.text }}>Ready to Scan</h2>
+              <p className="text-sm" style={{ color: t.muted }}>
                 Present the visitor's QR code to the scanner.
               </p>
             </div>
 
-            {/* Status pill */}
-            <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-5 py-2">
+            <div
+              className="flex items-center gap-2 rounded-full px-5 py-2"
+              style={{ background: t.pill, border: `1px solid ${t.pillBorder}` }}
+            >
               <motion.div
                 animate={{ opacity: [1, 0.3, 1] }}
                 transition={{ duration: 1.2, repeat: Infinity }}
                 className="w-2 h-2 rounded-full bg-green-400"
               />
-              <span className="text-white/60 text-xs font-semibold tracking-wide">
+              <span className="text-xs font-semibold tracking-wide" style={{ color: t.muted }}>
                 Scanner active
               </span>
             </div>
@@ -509,7 +546,7 @@ const ScanStep = ({ station, onNext }) => {
 
 const RAYS = Array.from({ length: 12 }, (_, i) => i);
 
-const PrizeReveal = ({ winner, isWin, recording, spinApiError }) => {
+const PrizeReveal = ({ winner, isWin, recording, spinApiError, onDismiss }) => {
   const prizeColor = isWin ? "#FFD700" : "#A855F7";
   const prizeColor2 = isWin ? "#FF6B00" : "#6366F1";
 
@@ -643,9 +680,19 @@ const PrizeReveal = ({ winner, isWin, recording, spinApiError }) => {
         </motion.div>
 
         {spinApiError && (
-          <p className="text-red-400 text-xs mt-1 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-1">
-            {spinApiError}
-          </p>
+          <div className="flex flex-col items-center gap-3 w-full">
+            <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-1 text-center">
+              {spinApiError}
+            </p>
+            <button
+              onClick={onDismiss}
+              className="w-full py-2.5 rounded-xl font-black text-sm text-white"
+              style={{ background: "linear-gradient(135deg, #ec4899, #f97316)" }}
+            >
+              <RotateCcw size={14} className="inline mr-1.5 -mt-0.5" />
+              Next Visitor
+            </button>
+          </div>
         )}
 
         {/* Decorative bottom glow bar */}
@@ -662,7 +709,7 @@ const PrizeReveal = ({ winner, isWin, recording, spinApiError }) => {
 
 // ─── Step: Spin Wheel ─────────────────────────────────────────────────────────
 
-const SpinStep = ({ participant, station, onNext }) => {
+const SpinStep = ({ participant, station, onNext, onReset }) => {
   const [mustSpin, setMustSpin] = useState(false);
   const [prizeNumber, setPrizeNumber] = useState(0);
   const [winner, setWinner] = useState(null);
@@ -738,6 +785,8 @@ const SpinStep = ({ participant, station, onNext }) => {
 
   const spinApiError = spinError?.response?.data?.message || spinError?.message;
 
+  const t = useRT();
+
   return (
     <div className="relative h-full flex items-center justify-center gap-6 px-8 z-10 w-full max-w-6xl mx-auto">
       {/* ── Left: Participant info + Spin button ── */}
@@ -747,15 +796,16 @@ const SpinStep = ({ participant, station, onNext }) => {
           <motion.div
             initial={{ x: -30, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            className="w-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-3xl px-6 py-6 text-center backdrop-blur-sm"
+            className="w-full rounded-3xl px-6 py-6 text-center backdrop-blur-sm"
+            style={{ background: t.card, border: `1px solid ${t.primaryBorder}` }}
           >
-            <p className="text-purple-300 text-xs font-semibold uppercase tracking-widest mb-2">
+            <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: t.primary }}>
               🎟 Participant
             </p>
-            <p className="text-white font-black text-2xl leading-tight">
+            <p className="font-black text-2xl leading-tight" style={{ color: t.text }}>
               {participant.fullName}
             </p>
-            <p className="text-yellow-400 text-base font-bold mt-1">
+            <p className="text-base font-bold mt-1 text-yellow-500">
               ⭐ {participant.totalPoints} pts
             </p>
           </motion.div>
@@ -764,26 +814,23 @@ const SpinStep = ({ participant, station, onNext }) => {
         <motion.h2
           animate={{ scale: mustSpin ? [1, 1.05, 1] : 1 }}
           transition={{ duration: 0.5, repeat: mustSpin ? Infinity : 0 }}
-          className="text-4xl font-black text-white text-center drop-shadow-lg"
+          className="text-4xl font-black text-center drop-shadow-lg"
+          style={{ color: t.text }}
         >
           🎡 Spin to Win!
         </motion.h2>
 
-        <p className="text-white/40 text-sm text-center">
-          {mustSpin
-            ? "Spinning…"
-            : winner
-              ? "Result recorded!"
-              : "Press the button to spin the wheel!"}
+        <p className="text-sm text-center" style={{ color: t.muted }}>
+          {mustSpin ? "Spinning…" : winner ? "Result recorded!" : "Press the button to spin the wheel!"}
         </p>
 
         {loadingPrizes ? (
           <div className="flex flex-col items-center gap-3">
-            <Loader2 className="animate-spin text-pink-400" size={36} />
-            <p className="text-white/50 text-sm">Loading prizes…</p>
+            <Loader2 className="animate-spin" style={{ color: t.primary }} size={36} />
+            <p className="text-sm" style={{ color: t.muted }}>Loading prizes…</p>
           </div>
         ) : wheelData.length === 0 ? (
-          <p className="text-white/50 text-sm text-center">
+          <p className="text-sm text-center" style={{ color: t.muted }}>
             No prizes configured for this campaign.
           </p>
         ) : (
@@ -794,17 +841,12 @@ const SpinStep = ({ participant, station, onNext }) => {
             whileTap={!mustSpin && !winner ? { scale: 0.95 } : {}}
             animate={
               !mustSpin && !winner
-                ? {
-                    boxShadow: [
-                      "0 0 20px rgba(233,69,96,0.4)",
-                      "0 0 40px rgba(245,166,35,0.6)",
-                      "0 0 20px rgba(233,69,96,0.4)",
-                    ],
-                  }
+                ? { boxShadow: [`0 0 20px ${t.primary}66`, `0 0 40px ${t.primary}99`, `0 0 20px ${t.primary}66`] }
                 : {}
             }
             transition={{ duration: 1.5, repeat: Infinity }}
-            className="w-full bg-gradient-to-r from-pink-500 via-orange-400 to-yellow-400 text-white rounded-2xl py-5 font-black text-2xl disabled:opacity-60 shadow-xl tracking-wider"
+            className="w-full text-white rounded-2xl py-5 font-black text-2xl disabled:opacity-60 shadow-xl tracking-wider"
+            style={{ background: `linear-gradient(to right, ${t.primary}, #f59e0b, #facc15)` }}
             aria-label="Spin the wheel"
           >
             {mustSpin ? (
@@ -821,12 +863,15 @@ const SpinStep = ({ participant, station, onNext }) => {
       {/* ── Right: Wheel ── */}
       <div className="flex-1 flex items-center justify-center min-w-0">
         {loadingPrizes ? (
-          <div className="w-72 h-72 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-            <Loader2 className="animate-spin text-pink-400" size={48} />
+          <div
+            className="w-72 h-72 rounded-full flex items-center justify-center"
+            style={{ background: t.pill, border: `1px solid ${t.pillBorder}` }}
+          >
+            <Loader2 className="animate-spin" style={{ color: t.primary }} size={48} />
           </div>
         ) : wheelData.length > 0 ? (
           <div className="relative flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-500 via-yellow-400 to-purple-500 blur-2xl opacity-30 scale-110" />
+            <div className="absolute inset-0 rounded-full blur-2xl opacity-30 scale-110" style={{ background: `linear-gradient(to right, ${t.primary}, #facc15, #a855f7)` }} />
             <Wheel
               mustStartSpinning={mustSpin}
               prizeNumber={prizeNumber}
@@ -858,6 +903,7 @@ const SpinStep = ({ participant, station, onNext }) => {
             isWin={spinIsWin}
             recording={recording}
             spinApiError={spinApiError}
+            onDismiss={onReset}
           />
         )}
       </AnimatePresence>
@@ -878,6 +924,8 @@ const DoneStep = ({ outcome, prizeName, onReset }) => {
     }
   }, [isWin]);
 
+  const t = useRT();
+
   return (
     <>
       {showConfetti && <Confetti />}
@@ -886,12 +934,12 @@ const DoneStep = ({ outcome, prizeName, onReset }) => {
           initial={{ scale: 0.8, opacity: 0, y: 40 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 200, damping: 18 }}
-          className={`relative w-full max-w-lg rounded-3xl overflow-hidden text-center px-10 py-12 flex flex-col items-center gap-6 ${
-            isWin
-              ? "bg-gradient-to-br from-[#1a1000] via-[#2d1a00] to-[#1a0d00] border border-yellow-400/30"
-              : "bg-gradient-to-br from-[#0f0a1a] via-[#1a0d2e] to-[#0f0a1a] border border-white/10"
-          }`}
+          className="relative w-full max-w-lg rounded-3xl overflow-hidden text-center px-10 py-12 flex flex-col items-center gap-6"
           style={{
+            background: isWin
+              ? t.isDark ? "linear-gradient(135deg,#1a1000,#2d1a00,#1a0d00)" : "linear-gradient(135deg,#fffbf0,#fff7ee)"
+              : t.isDark ? "linear-gradient(135deg,#0f0a1a,#1a0d2e)" : t.card,
+            border: isWin ? "1px solid rgba(255,200,0,0.3)" : `1px solid ${t.primaryBorder}`,
             boxShadow: isWin
               ? "0 0 80px rgba(255,200,0,0.2), 0 0 160px rgba(255,100,0,0.1)"
               : "0 0 60px rgba(99,102,241,0.15)",
@@ -966,7 +1014,8 @@ const DoneStep = ({ outcome, prizeName, onReset }) => {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.45 }}
-            className="text-white/60 text-lg leading-relaxed"
+            className="text-lg leading-relaxed"
+            style={{ color: t.muted }}
           >
             {isWin ? (
               <>
@@ -1011,6 +1060,7 @@ const DoneStep = ({ outcome, prizeName, onReset }) => {
 // ─── Step progress indicator ─────────────────────────────────────────────────
 
 const StepIndicator = ({ currentStep }) => {
+  const t = useRT();
   const labels = ["Scan", "Spin", "Done"];
   const icons = ["📷", "🎡", "🏆"];
   const currentIndex = STEPS.indexOf(currentStep);
@@ -1019,38 +1069,37 @@ const StepIndicator = ({ currentStep }) => {
       {labels.map((label, i) => (
         <div key={label} className="flex items-center">
           <motion.div
-            animate={
-              i === currentIndex ? { scale: [1, 1.15, 1] } : { scale: 1 }
-            }
+            animate={i === currentIndex ? { scale: [1, 1.15, 1] } : { scale: 1 }}
             transition={{ duration: 1, repeat: Infinity }}
-            className={`flex flex-col items-center gap-1`}
+            className="flex flex-col items-center gap-1"
           >
             <div
-              className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-black transition-all shadow-md ${
+              className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black transition-all shadow-md"
+              style={
                 i < currentIndex
-                  ? "bg-gradient-to-br from-green-400 to-emerald-500 text-white shadow-green-400/40"
+                  ? { background: "linear-gradient(135deg, #4ade80, #10b981)", color: "#fff" }
                   : i === currentIndex
-                    ? "bg-gradient-to-br from-pink-500 to-orange-400 text-white shadow-pink-500/40 ring-2 ring-white/30"
-                    : "bg-white/10 text-white/30"
-              }`}
+                    ? { background: `linear-gradient(135deg, ${t.primary}, #f59e0b)`, color: "#fff", boxShadow: `0 0 12px ${t.primary}66`, outline: `2px solid ${t.primaryBorder}` }
+                    : { background: t.pill, color: t.muted }
+              }
             >
               {i < currentIndex ? <CheckCircle size={16} /> : icons[i]}
             </div>
             <span
-              className={`text-xs font-bold ${
-                i === currentIndex ? "text-white" : "text-white/30"
-              }`}
+              className="text-xs font-bold"
+              style={{ color: i === currentIndex ? t.text : t.muted }}
             >
               {label}
             </span>
           </motion.div>
           {i < labels.length - 1 && (
             <div
-              className={`w-10 h-1 mx-2 mb-4 rounded-full transition-all ${
-                i < currentIndex
-                  ? "bg-gradient-to-r from-green-400 to-emerald-500"
-                  : "bg-white/10"
-              }`}
+              className="w-10 h-1 mx-2 mb-4 rounded-full transition-all"
+              style={{
+                background: i < currentIndex
+                  ? "linear-gradient(to right, #4ade80, #10b981)"
+                  : t.pill,
+              }}
             />
           )}
         </div>
@@ -1065,6 +1114,16 @@ const RedeemPortal = () => {
   const [station, setStation] = useState(() => loadStation());
   const [step, setStep] = useState("scan");
   const [sessionData, setSessionData] = useState({});
+
+  const [isDark, setIsDark] = useState(
+    () => (localStorage.getItem(REDEEM_THEME_KEY) ?? "light") !== "light"
+  );
+  const t = isDark ? DARK : LIGHT;
+  const toggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    localStorage.setItem(REDEEM_THEME_KEY, next ? "dark" : "light");
+  };
 
   const advance = (newData) => {
     setSessionData((prev) => ({ ...prev, ...newData }));
@@ -1085,93 +1144,81 @@ const RedeemPortal = () => {
 
   if (!station) {
     return (
-      <div className="h-screen flex flex-col bg-gradient-to-br from-[#0D0D1A] via-[#1a0533] to-[#0D0D1A] text-white overflow-hidden">
-        <FloatingParticles />
-        <div className="h-1 shrink-0 bg-gradient-to-r from-pink-500 via-yellow-400 to-purple-500" />
-        <div className="shrink-0 bg-black/30 border-b border-white/10 px-6 py-4 backdrop-blur-sm relative z-10">
-          <h1 className="font-black text-lg tracking-wide bg-gradient-to-r from-pink-400 to-orange-400 bg-clip-text text-transparent">
-            🎡 Worldbex Scan2Win — Raffle Station
-          </h1>
+      <ThemeCtx.Provider value={t}>
+        <div className="h-screen flex flex-col overflow-hidden" style={{ background: t.bgGradient }}>
+          {isDark && <FloatingParticles />}
+          <div className="h-1 shrink-0" style={{ background: t.accentBar }} />
+          <div className="shrink-0 px-6 py-4 backdrop-blur-sm relative z-10 flex items-center justify-between" style={{ background: t.headerBg, borderBottom: `1px solid ${t.headerBorder}` }}>
+            <h1 className="font-black text-lg tracking-wide" style={{ color: t.primary }}>
+              🎡 Worldbex Scan2Win — Raffle Station
+            </h1>
+            <button onClick={toggleTheme} className="w-8 h-8 flex items-center justify-center rounded-lg text-base" style={{ background: t.pill }} aria-label="Toggle theme">
+              {isDark ? "☀️" : "🌙"}
+            </button>
+          </div>
+          <div className="flex-1 overflow-hidden flex items-center justify-center">
+            <SetupScreen onSetup={setStation} />
+          </div>
         </div>
-        <div className="flex-1 overflow-hidden flex items-center justify-center">
-          <SetupScreen onSetup={setStation} />
-        </div>
-      </div>
+      </ThemeCtx.Provider>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-[#0D0D1A] via-[#1a0533] to-[#0D0D1A] text-white overflow-hidden">
-      <FloatingParticles />
+    <ThemeCtx.Provider value={t}>
+      <div className="h-screen flex flex-col overflow-hidden" style={{ background: t.bgGradient }}>
+        {isDark && <FloatingParticles />}
 
-      {/* Top accent bar */}
-      <div className="h-1 shrink-0 bg-gradient-to-r from-pink-500 via-yellow-400 to-purple-500" />
+        {/* Top accent bar */}
+        <div className="h-1 shrink-0" style={{ background: t.accentBar }} />
 
-      {/* Header */}
-      <div className="shrink-0 bg-black/30 border-b border-white/10 px-6 py-3 flex items-center justify-between backdrop-blur-sm relative z-10">
-        <div>
-          <h1 className="font-black text-lg tracking-wide bg-gradient-to-r from-pink-400 to-orange-400 bg-clip-text text-transparent">
-            🎡 Worldbex Scan2Win
-          </h1>
-          <p className="text-white/40 text-xs mt-0.5">
-            {station.campaignName} · {station.eventTag}
-            {station.staffName && ` · ${station.staffName}`}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {step !== "scan" && (
-            <button
-              onClick={reset}
-              className="text-white/40 text-xs flex items-center gap-1 hover:text-white/70 transition-colors"
-              aria-label="Reset for next visitor"
-            >
-              <RotateCcw size={14} /> Reset
+        {/* Header */}
+        <div className="shrink-0 px-6 py-3 flex items-center justify-between backdrop-blur-sm relative z-10" style={{ background: t.headerBg, borderBottom: `1px solid ${t.headerBorder}` }}>
+          <div>
+            <h1 className="font-black text-lg tracking-wide" style={{ color: t.primary }}>
+              🎡 Worldbex Scan2Win
+            </h1>
+            <p className="text-xs mt-0.5" style={{ color: t.muted }}>
+              {station.campaignName} · {station.eventTag}
+              {station.staffName && ` · ${station.staffName}`}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {step !== "scan" && (
+              <button onClick={reset} className="text-xs flex items-center gap-1 transition-colors" style={{ color: t.muted }} aria-label="Reset for next visitor">
+                <RotateCcw size={14} /> Reset
+              </button>
+            )}
+            <button onClick={toggleTheme} className="w-8 h-8 flex items-center justify-center rounded-lg text-base" style={{ background: t.pill }} aria-label="Toggle theme">
+              {isDark ? "☀️" : "🌙"}
             </button>
-          )}
-          <button
-            onClick={handleChangeStation}
-            className="text-white/40 text-xs flex items-center gap-1 hover:text-white/70 transition-colors"
-            aria-label="Change event"
-          >
-            <Settings size={14} />
-          </button>
+            <button onClick={handleChangeStation} className="flex items-center gap-1 transition-colors" style={{ color: t.muted }} aria-label="Change event">
+              <Settings size={14} />
+            </button>
+          </div>
+        </div>
+
+        <StepIndicator currentStep={step} />
+
+        {/* Step panels — fill remaining height, no scroll */}
+        <div className="flex-1 overflow-hidden relative">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={step}
+              initial={{ x: 40, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -40, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="h-full"
+            >
+              {step === "scan" && <ScanStep station={station} onNext={advance} />}
+              {step === "spin" && <SpinStep participant={sessionData} station={station} onNext={advance} onReset={reset} />}
+              {step === "done" && <DoneStep outcome={sessionData.outcome} prizeName={sessionData.prizeName} onReset={reset} />}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
-
-      <StepIndicator currentStep={step} />
-
-      {/* Step panels — fill remaining height, no scroll */}
-      <div className="flex-1 overflow-hidden relative">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={{ x: 40, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -40, opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="h-full"
-          >
-            {step === "scan" && <ScanStep station={station} onNext={advance} />}
-
-            {step === "spin" && (
-              <SpinStep
-                participant={sessionData}
-                station={station}
-                onNext={advance}
-              />
-            )}
-
-            {step === "done" && (
-              <DoneStep
-                outcome={sessionData.outcome}
-                prizeName={sessionData.prizeName}
-                onReset={reset}
-              />
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-    </div>
+    </ThemeCtx.Provider>
   );
 };
 

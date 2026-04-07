@@ -71,7 +71,7 @@ const PrizePoolConfig = () => {
       {/* Page header */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
-          <Layers size={24} className="text-[#E94560]" />
+          <Layers size={24} className="text-[#fd9114]" />
           <div>
             <Title level={4} className="!mb-0">
               Prize Pool Config
@@ -86,7 +86,7 @@ const PrizePoolConfig = () => {
           icon={<SaveOutlined />}
           loading={saving}
           onClick={handleSave}
-          style={{ background: "#E94560", borderColor: "#E94560" }}
+          style={{ background: "#fd9114", borderColor: "#fd9114" }}
           aria-label="Save pool configuration"
         >
           Save

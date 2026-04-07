@@ -78,7 +78,9 @@ export const getEventApi = async () => {
 
 export const getEventsListApi = async () => {
   try {
-    const response = await axiosInstance.get("/api/scans/getEvents");
+    const response = await axiosInstance.get(
+      import.meta.env.VITE_BASEURL_APP + "/api/scans/getEvents",
+    );
     return response.data;
   } catch (error) {
     handleApiError(error);

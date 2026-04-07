@@ -21,17 +21,9 @@ createRoot(document.getElementById("root")).render(
       <ConfigProvider
         theme={{
           token: {
-            colorPrimary: "#E94560",       // Vivid red-pink accent
-            colorBgBase: "#1A1A2E",        // Deep navy background
-            colorTextBase: "#FFFFFF",
+            colorPrimary: "#fd9114",
             borderRadius: 8,
             fontFamily: "'DM Sans', 'Nunito', sans-serif",
-          },
-          components: {
-            Button: {
-              colorPrimary: "#E94560",
-              algorithm: true,
-            },
           },
         }}
       >

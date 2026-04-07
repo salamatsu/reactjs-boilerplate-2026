@@ -114,7 +114,7 @@ const copyText = (text) => {
 const StatCard = ({ icon, label, value, accent }) => (
   <div
     className="flex items-center gap-4 rounded-2xl px-5 py-4 flex-1"
-    style={{ backgroundColor: "#16213E", borderLeft: `3px solid ${accent}` }}
+    style={{ backgroundColor: "#ffffff", border: `1px solid #E5E7EB`, borderLeft: `3px solid ${accent}` }}
   >
     <div
       className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
@@ -123,10 +123,10 @@ const StatCard = ({ icon, label, value, accent }) => (
       {icon}
     </div>
     <div>
-      <p className="text-xs mb-0.5" style={{ color: "#8892A4" }}>
+      <p className="text-xs mb-0.5" style={{ color: "#6B7280" }}>
         {label}
       </p>
-      <p className="text-xl font-black leading-none" style={{ color: "#fff" }}>
+      <p className="text-xl font-black leading-none" style={{ color: "#1A1A2E" }}>
         {value}
       </p>
     </div>
@@ -139,30 +139,26 @@ const CARD_ACCENTS = ["#E94560", "#F5A623", "#00D68F", "#7360F2", "#4096ff"];
 
 const downloadBoothQR = (boothCode) => {
   const container = document.getElementById(`qr-${boothCode}`);
-  const svg = container?.querySelector("svg");
-  if (!svg) return;
+  const srcCanvas = container?.querySelector("canvas");
+  if (!srcCanvas) return;
 
   const SIZE = 1000;
-  const PADDING = 50; // padding on each side
+  const PADDING = 50;
   const QR_SIZE = SIZE - PADDING * 2;
 
-  const svgData = new XMLSerializer().serializeToString(svg);
-  const canvas = document.createElement("canvas");
-  canvas.width = SIZE;
-  canvas.height = SIZE;
-  const ctx = canvas.getContext("2d");
+  const destCanvas = document.createElement("canvas");
+  destCanvas.width = SIZE;
+  destCanvas.height = SIZE;
+  const ctx = destCanvas.getContext("2d");
 
-  const img = new Image();
-  img.onload = () => {
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, SIZE, SIZE);
-    ctx.drawImage(img, PADDING, PADDING, QR_SIZE, QR_SIZE); // offset by padding
-    const a = document.createElement("a");
-    a.download = `${boothCode}.png`;
-    a.href = canvas.toDataURL("image/png");
-    a.click();
-  };
-  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, SIZE, SIZE);
+  ctx.drawImage(srcCanvas, PADDING, PADDING, QR_SIZE, QR_SIZE);
+
+  const a = document.createElement("a");
+  a.download = `${boothCode}.png`;
+  a.href = destCanvas.toDataURL("image/png");
+  a.click();
 };
 
 const BoothQrModal = ({ open, onClose, campaign, booths }) => {
@@ -177,27 +173,27 @@ const BoothQrModal = ({ open, onClose, campaign, booths }) => {
       destroyOnHidden
       styles={{
         header: {
-          background: "#0F1629",
-          borderBottom: "1px solid #16213E",
+          background: "#ffffff",
+          borderBottom: "1px solid #E5E7EB",
           padding: "20px 24px",
         },
-        body: { background: "#0F1629", padding: "20px 24px 24px" },
-        wrapper: { background: "#0F1629" },
+        body: { background: "#F8F9FA", padding: "20px 24px 24px" },
+        wrapper: { background: "#F8F9FA" },
       }}
       title={
         <div>
           <div className="flex items-center gap-2 mb-1">
             <div
               className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: "#E9456020" }}
+              style={{ background: "#fd911420" }}
             >
-              <QrcodeOutlined style={{ color: "#E94560", fontSize: 14 }} />
+              <QrcodeOutlined style={{ color: "#fd9114", fontSize: 14 }} />
             </div>
-            <span className="font-black text-base" style={{ color: "#fff" }}>
+            <span className="font-black text-base" style={{ color: "#1A1A2E" }}>
               Booth QR Codes
             </span>
           </div>
-          <p className="text-xs ml-9" style={{ color: "#8892A4" }}>
+          <p className="text-xs ml-9" style={{ color: "#6B7280" }}>
             {campaign.campaignName} &middot; {booths.length} active booth
             {booths.length !== 1 ? "s" : ""}
           </p>
@@ -207,7 +203,7 @@ const BoothQrModal = ({ open, onClose, campaign, booths }) => {
       {booths.length === 0 ? (
         <Empty
           description={
-            <span style={{ color: "#8892A4" }}>No active booths</span>
+            <span style={{ color: "#6B7280" }}>No active booths</span>
           }
           className="py-12"
         />
@@ -216,12 +212,12 @@ const BoothQrModal = ({ open, onClose, campaign, booths }) => {
           {/* URL format */}
           <div
             className="flex items-center gap-2 mb-5 rounded-xl px-4 py-3 min-w-0"
-            style={{ background: "#16213E", border: "1px solid #1A1A2E" }}
+            style={{ background: "#F0F2F5", border: "1px solid #E5E7EB" }}
           >
-            <span className="text-xs shrink-0" style={{ color: "#8892A4" }}>
+            <span className="text-xs shrink-0" style={{ color: "#6B7280" }}>
               URL:
             </span>
-            <code className="text-xs truncate" style={{ color: "#F5A623" }}>
+            <code className="text-xs truncate" style={{ color: "#fd9114" }}>
               {window.location.origin}/{campaign.eventTag}
               ?i=&lt;boothCode&gt;&amp;p=&lt;points&gt;
             </code>
@@ -236,8 +232,8 @@ const BoothQrModal = ({ open, onClose, campaign, booths }) => {
                   key={booth.id}
                   className="rounded-2xl overflow-hidden flex flex-col"
                   style={{
-                    background: "#16213E",
-                    border: `1px solid ${accent}30`,
+                    background: "#ffffff",
+                    border: `1px solid ${accent}40`,
                   }}
                 >
                   {/* Accent top strip */}
@@ -256,7 +252,7 @@ const BoothQrModal = ({ open, onClose, campaign, booths }) => {
                           booth.boothCode,
                           booth.points,
                         )}
-                        type="svg"
+                        type="canvas"
                         size={150}
                         errorLevel="H"
                         color="#0F1629"
@@ -271,13 +267,13 @@ const BoothQrModal = ({ open, onClose, campaign, booths }) => {
                     <div className="text-center">
                       <p
                         className="font-bold text-sm leading-tight"
-                        style={{ color: "#fff" }}
+                        style={{ color: "#1A1A2E" }}
                       >
                         {booth.boothName}
                       </p>
                       <p
                         className="text-xs mt-1 font-mono"
-                        style={{ color: "#8892A4" }}
+                        style={{ color: "#6B7280" }}
                       >
                         {booth.boothCode}
                       </p>
@@ -388,7 +384,7 @@ const CampaignFormModal = ({ open, onClose, initialValues }) => {
           type="primary"
           loading={saving}
           onClick={handleSubmit}
-          style={{ background: "#E94560", borderColor: "#E94560" }}
+          style={{ background: "#fd9114", borderColor: "#fd9114" }}
         >
           {isEditing ? "Save Changes" : "Create Event"}
         </Button>,
@@ -462,9 +458,9 @@ const CampaignFormModal = ({ open, onClose, initialValues }) => {
 
         <Divider
           orientation="left"
-          style={{ borderColor: "#16213E", margin: "4px 0 12px" }}
+          style={{ borderColor: "#E5E7EB", margin: "4px 0 12px" }}
         >
-          <span className="text-xs font-semibold" style={{ color: "#8892A4" }}>
+          <span className="text-xs font-semibold" style={{ color: "#6B7280" }}>
             Worldbex Scan2Win Mechanics
           </span>
         </Divider>
@@ -550,7 +546,7 @@ const BoothFormModal = ({ open, onClose, campaignId, initialValues }) => {
           type="primary"
           loading={saving}
           onClick={handleSubmit}
-          style={{ background: "#E94560", borderColor: "#E94560" }}
+          style={{ background: "#fd9114", borderColor: "#fd9114" }}
         >
           {isEditing ? "Save Changes" : "Add Booth"}
         </Button>,
@@ -645,7 +641,7 @@ const BoothsTab = ({ campaign }) => {
           type="primary"
           icon={<PlusOutlined />}
           onClick={() => setBoothModal({ open: true, record: null })}
-          style={{ background: "#E94560", borderColor: "#E94560" }}
+          style={{ background: "#fd9114", borderColor: "#fd9114" }}
         >
           Add Booth
         </Button>
@@ -682,7 +678,7 @@ const BoothsTab = ({ campaign }) => {
               key: "points",
               width: 85,
               render: (v) => (
-                <span className="font-bold text-[#E94560]">{v} pts</span>
+                <span className="font-bold text-[#fd9114]">{v} pts</span>
               ),
             },
             {
@@ -720,7 +716,7 @@ const BoothsTab = ({ campaign }) => {
                     <Button
                       type="text"
                       size="small"
-                      icon={<EditOutlined style={{ color: "#8892A4" }} />}
+                      icon={<EditOutlined style={{ color: "#6B7280" }} />}
                       onClick={() => setBoothModal({ open: true, record })}
                     />
                   </Tooltip>
@@ -811,7 +807,7 @@ const PrizeFormModal = ({ open, onClose, campaignId, initialValues }) => {
           type="primary"
           loading={saving}
           onClick={handleSubmit}
-          style={{ background: "#E94560", borderColor: "#E94560" }}
+          style={{ background: "#fd9114", borderColor: "#fd9114" }}
         >
           {isEditing ? "Save Changes" : "Add Prize"}
         </Button>,
@@ -896,7 +892,7 @@ const PrizesTab = ({ campaign }) => {
           type="primary"
           icon={<PlusOutlined />}
           onClick={() => setPrizeModal({ open: true, record: null })}
-          style={{ background: "#E94560", borderColor: "#E94560" }}
+          style={{ background: "#fd9114", borderColor: "#fd9114" }}
         >
           Add Prize
         </Button>
@@ -914,7 +910,7 @@ const PrizesTab = ({ campaign }) => {
               dataIndex: "prizeName",
               key: "prizeName",
               render: (v) => (
-                <span className="font-semibold" style={{ color: "#fff" }}>
+                <span className="font-semibold" style={{ color: "#1A1A2E" }}>
                   {v}
                 </span>
               ),
@@ -925,7 +921,7 @@ const PrizesTab = ({ campaign }) => {
               key: "quantity",
               width: 65,
               render: (v) => (
-                <span className="font-bold" style={{ color: "#E94560" }}>
+                <span className="font-bold" style={{ color: "#fd9114" }}>
                   {v}
                 </span>
               ),
@@ -958,7 +954,7 @@ const PrizesTab = ({ campaign }) => {
                     <Button
                       type="text"
                       size="small"
-                      icon={<EditOutlined style={{ color: "#8892A4" }} />}
+                      icon={<EditOutlined style={{ color: "#6B7280" }} />}
                       onClick={() => setPrizeModal({ open: true, record })}
                     />
                   </Tooltip>
@@ -1022,7 +1018,7 @@ const STEPS = [
     detail: (c) => (
       <>
         Participant accumulates points across all booths. Reach{" "}
-        <span className="font-black" style={{ color: "#E94560" }}>
+        <span className="font-black" style={{ color: "#fd9114" }}>
           {c.thresholdPoints} pts
         </span>{" "}
         to unlock the raffle.
@@ -1050,7 +1046,7 @@ const STEPS = [
     detail: (c) => (
       <>
         Participant spins the prize wheel.{" "}
-        <span className="font-bold" style={{ color: "#fff" }}>
+        <span className="font-bold" style={{ color: "#1A1A2E" }}>
           Max {c.maxSpinsPerParticipant ?? 1} spin
           {(c.maxSpinsPerParticipant ?? 1) !== 1 ? "s" : ""} per participant.
         </span>
@@ -1143,7 +1139,7 @@ const ImageUploadModal = ({ open, onClose, campaignId, editImage }) => {
           type="primary"
           loading={saving}
           onClick={handleSubmit}
-          style={{ background: "#E94560", borderColor: "#E94560" }}
+          style={{ background: "#fd9114", borderColor: "#fd9114" }}
         >
           {isEditing ? "Save Changes" : "Upload"}
         </Button>,
@@ -1218,7 +1214,7 @@ const ImageMapsTab = ({ campaign }) => {
   const { data, isLoading } = useGetCampaignImages(campaign.id);
   const { mutateAsync: deleteImage, isPending: deleting } =
     useDeleteCampaignImage();
-  const sites = data?.data?.imageSites ?? [];
+  const sites = data?.data?.sites ?? [];
   const [imgModal, setImgModal] = useState({ open: false, record: null });
 
   const handleDelete = async (img) => {
@@ -1244,7 +1240,7 @@ const ImageMapsTab = ({ campaign }) => {
           type="primary"
           icon={<UploadOutlined />}
           onClick={() => setImgModal({ open: true, record: null })}
-          style={{ background: "#E94560", borderColor: "#E94560" }}
+          style={{ background: "#fd9114", borderColor: "#fd9114" }}
         >
           Upload Image
         </Button>
@@ -1263,11 +1259,11 @@ const ImageMapsTab = ({ campaign }) => {
                 </Tag>
                 <span
                   className="text-sm font-semibold"
-                  style={{ color: "#fff" }}
+                  style={{ color: "#1A1A2E" }}
                 >
                   {site.siteName}
                 </span>
-                <span className="text-xs" style={{ color: "#8892A4" }}>
+                <span className="text-xs" style={{ color: "#6B7280" }}>
                   ({site.images.length} image
                   {site.images.length !== 1 ? "s" : ""})
                 </span>
@@ -1280,14 +1276,14 @@ const ImageMapsTab = ({ campaign }) => {
                     key={img.id}
                     className="flex gap-3 rounded-xl p-3"
                     style={{
-                      background: "#0F1629",
-                      border: "1px solid #16213E",
+                      background: "#ffffff",
+                      border: "1px solid #E5E7EB",
                     }}
                   >
                     {/* Thumbnail */}
                     <div
                       className="w-16 h-16 rounded-lg overflow-hidden shrink-0 flex items-center justify-center"
-                      style={{ background: "#16213E" }}
+                      style={{ background: "#F0F2F5" }}
                     >
                       <Image
                         src={`${IMG_BASE}/${img.imageUrl}`}
@@ -1305,14 +1301,14 @@ const ImageMapsTab = ({ campaign }) => {
                         <div className="min-w-0">
                           <p
                             className="text-xs font-mono truncate"
-                            style={{ color: "#8892A4" }}
+                            style={{ color: "#6B7280" }}
                           >
                             #{img.id} · order {img.sortOrder}
                           </p>
                           {img.altText && (
                             <p
                               className="text-xs truncate mt-0.5"
-                              style={{ color: "#fff" }}
+                              style={{ color: "#1A1A2E" }}
                             >
                               {img.altText}
                             </p>
@@ -1332,7 +1328,7 @@ const ImageMapsTab = ({ campaign }) => {
                           <Button
                             type="text"
                             size="small"
-                            icon={<SwapOutlined style={{ color: "#8892A4" }} />}
+                            icon={<SwapOutlined style={{ color: "#6B7280" }} />}
                             onClick={() =>
                               setImgModal({ open: true, record: img })
                             }
@@ -1385,7 +1381,7 @@ const MechanicsTab = ({ campaign }) => (
         {
           label: "Threshold",
           value: `${campaign.thresholdPoints} pts`,
-          color: "#E94560",
+          color: "#fd9114",
         },
         {
           label: "1st Scan Bonus",
@@ -1393,7 +1389,7 @@ const MechanicsTab = ({ campaign }) => (
             campaign.firstScanBonus > 0
               ? `+${campaign.firstScanBonus} pts`
               : "Off",
-          color: campaign.firstScanBonus > 0 ? "#F5A623" : "#8892A4",
+          color: campaign.firstScanBonus > 0 ? "#F5A623" : "#6B7280",
         },
         {
           label: "Max Spins",
@@ -1404,9 +1400,9 @@ const MechanicsTab = ({ campaign }) => (
         <div
           key={label}
           className="flex items-center gap-2 rounded-xl px-3 py-2"
-          style={{ background: "#0F1629", border: `1px solid ${color}30` }}
+          style={{ background: "#F0F2F5", border: `1px solid ${color}40` }}
         >
-          <span className="text-xs" style={{ color: "#8892A4" }}>
+          <span className="text-xs" style={{ color: "#6B7280" }}>
             {label}
           </span>
           <span className="font-black text-sm" style={{ color }}>
@@ -1434,7 +1430,7 @@ const MechanicsTab = ({ campaign }) => (
           {i < STEPS.length - 1 && (
             <div
               className="w-0.5 flex-1 mt-1"
-              style={{ background: "#16213E" }}
+              style={{ background: "#E5E7EB" }}
             />
           )}
         </div>
@@ -1443,14 +1439,15 @@ const MechanicsTab = ({ campaign }) => (
         <div
           className="flex-1 rounded-xl px-4 py-3 mb-3"
           style={{
-            background: "#16213E",
+            background: "#ffffff",
+            border: "1px solid #E5E7EB",
             borderLeft: `3px solid ${step.color}`,
           }}
         >
-          <p className="font-bold text-sm mb-1" style={{ color: "#fff" }}>
+          <p className="font-bold text-sm mb-1" style={{ color: "#1A1A2E" }}>
             {step.title}
           </p>
-          <p className="text-xs leading-relaxed" style={{ color: "#8892A4" }}>
+          <p className="text-xs leading-relaxed" style={{ color: "#6B7280" }}>
             {step.detail(campaign)}
           </p>
         </div>
@@ -1498,7 +1495,7 @@ const CampaignDetailDrawer = ({ campaign, open, onClose }) => {
           {
             label: "Threshold",
             children: (
-              <span className="font-bold text-[#E94560]">
+              <span className="font-bold text-[#fd9114]">
                 {campaign.thresholdPoints} pts
               </span>
             ),
@@ -1554,12 +1551,12 @@ const CampaignCard = ({ campaign, onView, onEdit, onDelete, deleting }) => {
     color: "default",
     label: campaign.status,
   };
-  const accent = STATUS_ACCENT[campaign.status] ?? "#E94560";
+  const accent = STATUS_ACCENT[campaign.status] ?? "#fd9114";
 
   return (
     <div
       className="rounded-2xl overflow-hidden flex flex-col transition-transform hover:-translate-y-0.5"
-      style={{ background: "#16213E", border: `1px solid ${accent}30` }}
+      style={{ background: "#ffffff", border: `1px solid ${accent}40` }}
     >
       {/* Status accent strip */}
       <div className="h-1 shrink-0" style={{ background: accent }} />
@@ -1571,14 +1568,14 @@ const CampaignCard = ({ campaign, onView, onEdit, onDelete, deleting }) => {
           <div className="min-w-0 flex-1">
             <p
               className="font-black text-base leading-snug"
-              style={{ color: "#fff" }}
+              style={{ color: "#1A1A2E" }}
             >
               {campaign.campaignName}
             </p>
             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
               <Text
                 code
-                className="text-xs !bg-[#0F1629] !border-[#0F1629] !text-[#8892A4]"
+                className="text-xs !bg-[#F0F2F5] !border-[#E5E7EB] !text-[#6B7280]"
               >
                 {campaign.campaignCode}
               </Text>
@@ -1591,7 +1588,7 @@ const CampaignCard = ({ campaign, onView, onEdit, onDelete, deleting }) => {
             <Tag color={color} className="m-0">
               {label}
             </Tag>
-            <span className="text-xs" style={{ color: "#8892A450" }}>
+            <span className="text-xs" style={{ color: "#9CA3AF" }}>
               #{campaign.id}
             </span>
           </div>
@@ -1614,7 +1611,7 @@ const CampaignCard = ({ campaign, onView, onEdit, onDelete, deleting }) => {
         {campaign.description && (
           <p
             className="text-xs leading-relaxed line-clamp-2"
-            style={{ color: "#8892A4" }}
+            style={{ color: "#6B7280" }}
           >
             {campaign.description}
           </p>
@@ -1625,31 +1622,31 @@ const CampaignCard = ({ campaign, onView, onEdit, onDelete, deleting }) => {
           {/* Threshold */}
           <div
             className="flex items-center justify-between rounded-xl px-3 py-2.5"
-            style={{ background: "#0F1629" }}
+            style={{ background: "#F0F2F5" }}
           >
-            <span className="text-xs" style={{ color: "#8892A4" }}>
+            <span className="text-xs" style={{ color: "#6B7280" }}>
               Threshold
             </span>
-            <span className="font-black text-sm" style={{ color: "#E94560" }}>
+            <span className="font-black text-sm" style={{ color: "#fd9114" }}>
               {campaign.thresholdPoints} pts
             </span>
           </div>
           {/* Duration */}
           <div
             className="rounded-xl px-3 py-3 flex flex-col gap-1"
-            style={{ background: "#0F1629" }}
+            style={{ background: "#F0F2F5" }}
           >
-            <span className="text-xs" style={{ color: "#8892A4" }}>
+            <span className="text-xs" style={{ color: "#6B7280" }}>
               Duration
             </span>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-sm" style={{ color: "#fff" }}>
+              <span className="font-semibold text-sm" style={{ color: "#1A1A2E" }}>
                 {fmtDate(campaign.startDate)}
               </span>
-              <span className="text-xs" style={{ color: "#8892A4" }}>
+              <span className="text-xs" style={{ color: "#6B7280" }}>
                 →
               </span>
-              <span className="font-semibold text-sm" style={{ color: "#fff" }}>
+              <span className="font-semibold text-sm" style={{ color: "#1A1A2E" }}>
                 {fmtDate(campaign.endDate)}
               </span>
             </div>
@@ -1674,7 +1671,7 @@ const CampaignCard = ({ campaign, onView, onEdit, onDelete, deleting }) => {
           <EyeOutlined style={{ fontSize: 12 }} />
           Booths & QR
         </button>
-        <Tooltip title={`Copy link: /${campaign.eventTag}`} color="#E94560">
+        <Tooltip title={`Copy link: /${campaign.eventTag}`} color="#fd9114">
           <button
             onClick={() => {
               copyText(`${window.location.origin}/${campaign.eventTag}`)
@@ -1682,18 +1679,18 @@ const CampaignCard = ({ campaign, onView, onEdit, onDelete, deleting }) => {
                 .catch(() => message.error("Copy failed."));
             }}
             className="w-8 h-8 flex items-center justify-center rounded-xl transition-opacity hover:opacity-80 active:scale-95"
-            style={{ background: "#0F1629", border: "1px solid #ffffff10" }}
+            style={{ background: "#F0F2F5", border: "1px solid #E5E7EB" }}
           >
-            <CopyOutlined style={{ fontSize: 13, color: "#8892A4" }} />
+            <CopyOutlined style={{ fontSize: 13, color: "#6B7280" }} />
           </button>
         </Tooltip>
         <Tooltip title="Edit">
           <button
             onClick={() => onEdit(campaign)}
             className="w-8 h-8 flex items-center justify-center rounded-xl transition-opacity hover:opacity-80 active:scale-95"
-            style={{ background: "#0F1629", border: "1px solid #ffffff10" }}
+            style={{ background: "#F0F2F5", border: "1px solid #E5E7EB" }}
           >
-            <EditOutlined style={{ fontSize: 13, color: "#8892A4" }} />
+            <EditOutlined style={{ fontSize: 13, color: "#6B7280" }} />
           </button>
         </Tooltip>
         {campaign.status === "draft" && (
@@ -1766,30 +1763,30 @@ const CampaignManager = () => {
   };
 
   return (
-    <div className="min-h-full" style={{ background: "#0F1629" }}>
+    <div className="min-h-full" style={{ background: "#F8F9FA" }}>
       {/* Header */}
       <div
         className="px-4 pt-4 pb-4 sm:px-6 sm:pt-6 sm:pb-5"
-        style={{ borderBottom: "1px solid #16213E" }}
+        style={{ borderBottom: "1px solid #E5E7EB" }}
       >
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0">
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: "#E9456020" }}
+              style={{ background: "#fd911420" }}
             >
-              <Megaphone color="#E94560" size={20} />
+              <Megaphone color="#fd9114" size={20} />
             </div>
             <div className="min-w-0">
               <h1
                 className="font-black text-lg leading-none truncate"
-                style={{ color: "#fff" }}
+                style={{ color: "#1A1A2E" }}
               >
                 Event Manager
               </h1>
               <p
                 className="text-xs mt-0.5 hidden sm:block"
-                style={{ color: "#8892A4" }}
+                style={{ color: "#6B7280" }}
               >
                 Manage raffle events and generate booth QR codes
               </p>
@@ -1801,9 +1798,9 @@ const CampaignManager = () => {
               onClick={() => refetch()}
               loading={isFetching}
               style={{
-                background: "#16213E",
-                borderColor: "#16213E",
-                color: "#fff",
+                background: "#ffffff",
+                borderColor: "#E5E7EB",
+                color: "#1A1A2E",
               }}
             >
               <span className="hidden sm:inline">Refresh</span>
@@ -1812,7 +1809,7 @@ const CampaignManager = () => {
               type="primary"
               icon={<PlusOutlined />}
               onClick={openCreate}
-              style={{ background: "#E94560", borderColor: "#E94560" }}
+              style={{ background: "#fd9114", borderColor: "#fd9114" }}
             >
               <span className="hidden sm:inline">New Event</span>
             </Button>
@@ -1822,10 +1819,10 @@ const CampaignManager = () => {
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-4">
           <StatCard
-            icon={<Zap size={18} color="#E94560" />}
+            icon={<Zap size={18} color="#fd9114" />}
             label="Total"
             value={counts.total}
-            accent="#E94560"
+            accent="#fd9114"
           />
           <StatCard
             icon={<Activity size={18} color="#00D68F" />}
@@ -1863,7 +1860,7 @@ const CampaignManager = () => {
         ) : campaigns.length === 0 ? (
           <Empty
             description={
-              <span style={{ color: "#8892A4" }}>No events yet</span>
+              <span style={{ color: "#6B7280" }}>No events yet</span>
             }
             className="py-24"
           />

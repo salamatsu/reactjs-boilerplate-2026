@@ -33,11 +33,11 @@ const TopMenus = ({ path, navigations = [], handleCollapse = () => {} }) => (
 const Brand = ({ collapsed }) => (
   <div
     className="flex items-center justify-center gap-2 py-5 px-4"
-    style={{ borderBottom: "1px solid rgba(233,69,96,0.15)" }}
+    style={{ borderBottom: "1px solid rgba(253,145,20,0.15)" }}
   >
-    <Zap size={20} color="#E94560" />
+    <Zap size={20} color="#fd9114" />
     {!collapsed && (
-      <span className="font-black tracking-widest text-sm text-[#E94560]">
+      <span className="font-black tracking-widest text-sm text-[#fd9114]">
         Worldbex Scan2Win
       </span>
     )}
@@ -118,7 +118,7 @@ const Sidebar = ({ collapsed, handleCollapse, navigations, reset }) => {
             <div className="flex-1 overflow-y-auto">
               <TopMenus path={pathname} navigations={navigations} />
             </div>
-            <div className="mt-auto border-t border-gray-800">
+            <div className="mt-auto border-t border-gray-200">
               <Menu mode="inline" items={bottomItems} selectedKeys={[]} />
             </div>
           </div>

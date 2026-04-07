@@ -21,6 +21,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { Zap } from "lucide-react";
 import { useLoginAdminAuth } from "../../services/requests/useAuth";
+import { logo } from "../../assets/images/logos";
 
 const { Title, Paragraph } = Typography;
 
@@ -66,7 +67,7 @@ const Login = () => {
         alignItems: "center",
         justifyContent: "center",
         background:
-          "linear-gradient(135deg, #1A1A2E 0%, #16213E 60%, #E94560 200%)",
+          "linear-gradient(135deg, #FFF7EE 0%, #FFF3E0 60%, #FFE4C2 100%)",
         padding: "20px",
       }}
     >
@@ -74,8 +75,9 @@ const Login = () => {
         style={{
           maxWidth: "400px",
           width: "100%",
-          background: "#16213E",
-          border: "1px solid rgba(233,69,96,0.2)",
+          background: "#ffffff",
+          border: "1px solid rgba(253,145,20,0.2)",
+          boxShadow: "0 4px 24px rgba(253,145,20,0.08)",
         }}
       >
         <motion.div
@@ -85,13 +87,20 @@ const Login = () => {
         >
           {/* Brand header */}
           <div className="text-center mb-6">
+            <img
+              src={logo}
+              className="m-auto"
+              style={{
+                maxWidth: 100,
+              }}
+            />
             <div className="flex items-center justify-center gap-2 mb-2">
-              <Zap size={28} color="#E94560" />
-              <Title level={3} style={{ color: "#FFFFFF", margin: 0 }}>
+              {/* <Zap size={28/} color="#fd9114" /> */}
+              <Title level={3} style={{ color: "#1A1A2E", margin: 0 }}>
                 Worldbex Scan2Win
               </Title>
             </div>
-            <Paragraph style={{ color: "#8892A4", margin: 0, fontSize: 13 }}>
+            <Paragraph style={{ color: "#6B7280", margin: 0, fontSize: 13 }}>
               Worldbex Events — Admin CMS
             </Paragraph>
           </div>
@@ -125,14 +134,14 @@ const Login = () => {
               rules={[{ required: true, message: "Username is required." }]}
             >
               <Input
-                prefix={<UserOutlined style={{ color: "#8892A4" }} />}
+                prefix={<UserOutlined style={{ color: "#6B7280" }} />}
                 placeholder="Username"
                 size="large"
                 onChange={() => setErrorMsg(null)}
                 style={{
-                  background: "#1A1A2E",
-                  borderColor: "#E94560",
-                  color: "#fff",
+                  background: "#F8F9FA",
+                  borderColor: "#fd9114",
+                  color: "#1A1A2E",
                 }}
               />
             </Form.Item>
@@ -142,14 +151,14 @@ const Login = () => {
               rules={[{ required: true, message: "Password is required." }]}
             >
               <Input.Password
-                prefix={<LockOutlined style={{ color: "#8892A4" }} />}
+                prefix={<LockOutlined style={{ color: "#6B7280" }} />}
                 placeholder="Password"
                 size="large"
                 onChange={() => setErrorMsg(null)}
                 style={{
-                  background: "#1A1A2E",
-                  borderColor: "#E94560",
-                  color: "#fff",
+                  background: "#F8F9FA",
+                  borderColor: "#fd9114",
+                  color: "#1A1A2E",
                 }}
               />
             </Form.Item>
@@ -162,8 +171,8 @@ const Login = () => {
                 block
                 loading={isPending}
                 style={{
-                  background: "#E94560",
-                  borderColor: "#E94560",
+                  background: "#fd9114",
+                  borderColor: "#fd9114",
                   fontWeight: 700,
                 }}
                 aria-label="Sign in to admin CMS"

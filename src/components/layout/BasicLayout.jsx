@@ -53,10 +53,10 @@ const BasicLayout = ({ navigations = [], store = noopStore }) => {
       />
       <Layout className="site-layout">
         <Header
-          style={{ backgroundColor: "#1A1A2E", padding: "0 16px" }}
-          className="site-layout-background flex justify-between items-center h-[55px] text-white px-3 md:pr-7"
+          style={{ backgroundColor: "#ffffff", padding: "0 16px", borderBottom: "1px solid #E5E7EB" }}
+          className="site-layout-background flex justify-between items-center h-[55px] px-3 md:pr-7"
         >
-          <div className="flex h-full items-center gap-3 text-white">
+          <div className="flex h-full items-center gap-3 text-gray-800">
             {collapsed ? (
               <MenuFoldOutlined
                 className="text-2xl"
@@ -68,7 +68,7 @@ const BasicLayout = ({ navigations = [], store = noopStore }) => {
                 onClick={() => handleCollapse(!collapsed)}
               />
             )}
-            <span className="font-black text-sm tracking-widest text-[#E94560]">
+            <span className="font-black text-sm tracking-widest text-[#fd9114]">
               Worldbex Scan2Win
             </span>
           </div>

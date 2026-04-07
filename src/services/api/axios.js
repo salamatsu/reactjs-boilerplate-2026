@@ -8,11 +8,12 @@ import {
 import { useCsrfStore } from "../../store/useCsrfStore";
 
 export const axiosInstance = axios.create({
+  baseURL: import.meta.env.VITE_BASEURL,
   headers: {
     "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
+    // "Access-Control-Allow-Origin": "*",
   },
-  withCredentials: true, // Send cookies (refresh token) with requests
+  // withCredentials: true, // Send cookies (refresh token) with requests
 });
 
 export const userTypeAuth = {
@@ -104,7 +105,7 @@ export const createAxiosInstanceWithInterceptor = (type = "data") => {
   }
 
   const headers = {
-    "Access-Control-Allow-Origin": "*",
+    // "Access-Control-Allow-Origin": "*",
   };
 
   if (type === "data") {
@@ -114,6 +115,7 @@ export const createAxiosInstanceWithInterceptor = (type = "data") => {
   }
 
   const instance = axios.create({
+    baseURL: import.meta.env.VITE_BASEURL,
     headers,
     withCredentials: true, // Send cookies (refresh token) with requests
   });
