@@ -1616,6 +1616,29 @@ const VisitorApp = () => {
   const booths = campaignData?.data?.booths ?? [];
   const thresholdPoints = campaignData?.data?.thresholdPoints ?? 0;
 
+  // ── Dynamic page title + OG meta ──
+  useEffect(() => {
+    if (!campaign) return;
+    const title = `${campaign.campaignName} | Scan2Win`;
+    const desc = campaign.description || "Scan booths, collect points, and win prizes!";
+    const setMeta = (attr, key, content) => {
+      let el = document.querySelector(`meta[${attr}="${key}"]`);
+      if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute(attr, key);
+        document.head.appendChild(el);
+      }
+      el.setAttribute("content", content);
+    };
+    document.title = title;
+    setMeta("property", "og:title", title);
+    setMeta("property", "og:description", desc);
+    setMeta("name", "description", desc);
+    return () => {
+      document.title = "Worldbex Scan2Win";
+    };
+  }, [campaign]);
+
   // ── Local entry (tracks scanned booth codes + progress) ──
   const [entry, setEntry] = useState(null);
   const [modal, setModal] = useState(null); // { type: "error"|"success"|"goal", ... }
