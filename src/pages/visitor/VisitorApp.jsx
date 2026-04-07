@@ -1782,6 +1782,7 @@ const VisitorApp = () => {
       return;
     urlScanProcessed.current = true;
     setSearchParams({}, { replace: true });
+    setActiveTab("scan");
     processScan(
       boothCode,
       entry,
@@ -1879,11 +1880,396 @@ const VisitorApp = () => {
 
   // ── Tab content ──
   const renderTab = () => {
+    const unscannedBooths = booths.filter((b) => !scannedCodes.includes(b.boothCode));
+    const progressPct = thresholdPoints > 0 ? Math.min((currentPoints / thresholdPoints) * 100, 100) : 0;
+    const isQualified = currentPoints >= thresholdPoints;
+
     switch (activeTab) {
       case "home":
         return (
           <div className="space-y-5 px-4 pb-24 pt-4">
-            <CampaignHeader campaign={campaign} />
+
+            {/* ── Hero card ── */}
+            <div
+              className="rounded-2xl overflow-hidden"
+              style={{ background: t.card, border: `1px solid ${t.primaryBorder}` }}
+            >
+              {campaign.bannerUrl ? (
+                <img
+                  src={campaign.bannerUrl}
+                  alt={campaign.campaignName}
+                  className="w-full object-cover max-h-52"
+                />
+              ) : (
+                <div
+                  className="w-full h-40 flex flex-col items-center justify-center gap-2"
+                  style={{ background: `linear-gradient(135deg, ${t.primary}, #F5A623)` }}
+                >
+                  <QrCode size={52} className="text-white opacity-90" />
+                  <span className="text-white text-xs font-bold opacity-80 tracking-widest uppercase">
+                    Scan to Win
+                  </span>
+                </div>
+              )}
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-2">
+                  <h1 className="text-xl font-black leading-tight flex-1" style={{ color: t.text }}>
+                    {campaign.campaignName}
+                  </h1>
+                  {isQualified && (
+                    <span
+                      className="shrink-0 text-xs font-bold px-2 py-1 rounded-full"
+                      style={{ background: "rgba(0,214,143,0.15)", color: "#00D68F" }}
+                    >
+                      ✓ Qualified!
+                    </span>
+                  )}
+                </div>
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center gap-2 text-sm" style={{ color: t.muted }}>
+                    <Calendar size={14} className="shrink-0 text-[#F5A623]" />
+                    <span>
+                      {formatDateTime(campaign.startDate, DATE_FORMATS.DATE)} –{" "}
+                      {formatDateTime(campaign.endDate, DATE_FORMATS.DATE)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm" style={{ color: t.muted }}>
+                    <MapPin size={14} className="shrink-0" style={{ color: t.primary }} />
+                    <span>{booths.length} participating booths</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm" style={{ color: t.muted }}>
+                    <Trophy size={14} className="shrink-0 text-[#00D68F]" />
+                    <span>
+                      Collect{" "}
+                      <strong style={{ color: "#F5A623" }}>{thresholdPoints} pts</strong>{" "}
+                      to join the raffle
+                    </span>
+                  </div>
+                  {campaign.firstScanBonus > 0 && (
+                    <div className="flex items-center gap-2 text-sm" style={{ color: t.muted }}>
+                      <Zap size={14} className="shrink-0" style={{ color: t.primary }} />
+                      <span>
+                        +{campaign.firstScanBonus} bonus pts on your first scan!
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {campaign.description && (
+                  <p className="mt-3 text-sm leading-relaxed" style={{ color: t.muted }}>
+                    {campaign.description}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* ── Your Progress (only after first scan) ── */}
+            {currentPoints > 0 && (
+              <div
+                className="rounded-2xl p-5"
+                style={{ background: t.card, border: `1px solid ${t.divider}` }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-bold text-sm" style={{ color: t.text }}>
+                    Your Progress
+                  </h2>
+                  {isQualified ? (
+                    <span
+                      className="text-xs font-bold px-2 py-0.5 rounded-full"
+                      style={{ background: "rgba(0,214,143,0.15)", color: "#00D68F" }}
+                    >
+                      Goal Reached!
+                    </span>
+                  ) : (
+                    <span className="text-xs" style={{ color: t.muted }}>
+                      {currentPoints} / {thresholdPoints} pts
+                    </span>
+                  )}
+                </div>
+                <div className="w-full rounded-full h-3" style={{ background: t.progressTrack }}>
+                  <motion.div
+                    className="h-3 rounded-full"
+                    style={{ background: `linear-gradient(to right, ${t.primary}, #F5A623)` }}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progressPct}%` }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                  />
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                  {[
+                    { label: "booths scanned", value: scannedCodes.length, color: t.primary },
+                    { label: "pts earned", value: currentPoints, color: "#F5A623" },
+                    {
+                      label: "pts to go",
+                      value: isQualified ? "✓" : Math.max(0, thresholdPoints - currentPoints),
+                      color: isQualified ? "#00D68F" : t.muted,
+                    },
+                  ].map(({ label, value, color }) => (
+                    <div
+                      key={label}
+                      className="rounded-xl py-2 px-1"
+                      style={{ background: t.deeper }}
+                    >
+                      <p className="text-lg font-black" style={{ color }}>{value}</p>
+                      <p className="text-[10px] font-medium" style={{ color: t.muted }}>{label}</p>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setActiveTab("scan")}
+                  className="mt-3 w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold active:scale-95 transition-transform"
+                  style={{ background: t.primaryBg, color: t.primary }}
+                >
+                  {isQualified ? (
+                    <><Gift size={16} /> Generate Raffle QR</>
+                  ) : (
+                    <><ScanLine size={16} /> Continue Scanning</>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* ── Quick stats (first visit, no progress yet) ── */}
+            {currentPoints === 0 && (
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "Booths", value: booths.length, icon: <MapPin size={16} />, color: t.primary },
+                  { label: "Pts Goal", value: thresholdPoints, icon: <Trophy size={16} />, color: "#F5A623" },
+                  {
+                    label: "1st Bonus",
+                    value: `+${campaign.firstScanBonus ?? 0}`,
+                    icon: <Zap size={16} />,
+                    color: "#00D68F",
+                  },
+                ].map(({ label, value, icon, color }) => (
+                  <div
+                    key={label}
+                    className="rounded-2xl p-3 text-center"
+                    style={{ background: t.card, border: `1px solid ${t.divider}` }}
+                  >
+                    <div className="flex justify-center mb-1" style={{ color }}>{icon}</div>
+                    <p className="text-base font-black" style={{ color: t.text }}>{value}</p>
+                    <p className="text-[10px]" style={{ color: t.muted }}>{label}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ── How to Play ── */}
+            <div
+              className="rounded-2xl p-5"
+              style={{ background: t.card, border: `1px solid ${t.divider}` }}
+            >
+              <h2 className="font-bold text-sm mb-1" style={{ color: t.text }}>
+                How to Play
+              </h2>
+              <p className="text-xs mb-4" style={{ color: t.muted }}>
+                4 simple steps to win prizes
+              </p>
+              {[
+                {
+                  icon: <ScanLine size={20} />,
+                  color: t.primary,
+                  step: "1",
+                  title: "Visit & Scan Booths",
+                  desc: "Walk around the event and scan QR codes at each participating booth. Every scan is recorded instantly — no internet required per scan.",
+                },
+                {
+                  icon: <Star size={20} />,
+                  color: "#F5A623",
+                  step: "2",
+                  title: "Collect Points",
+                  desc: `Each booth awards different points. Reach ${thresholdPoints} pts to qualify for the draw.${campaign.firstScanBonus > 0 ? ` Your very first scan gives you +${campaign.firstScanBonus} bonus pts!` : ""}`,
+                },
+                {
+                  icon: <QrCode size={20} />,
+                  color: "#A855F7",
+                  step: "3",
+                  title: "Generate Your Raffle QR",
+                  desc: "Once you hit the goal, enter your name and email then generate your unique encrypted raffle QR — your personal entry ticket.",
+                },
+                {
+                  icon: <Gift size={20} />,
+                  color: "#00D68F",
+                  step: "4",
+                  title: "Present & Win",
+                  desc: "Head to the prize redemption booth and show your raffle QR. Staff will scan it and register you in the draw.",
+                },
+              ].map(({ icon, color, step, title, desc }, i, arr) => (
+                <div key={step} className="flex gap-4">
+                  <div className="shrink-0 flex flex-col items-center">
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center"
+                      style={{ background: `${color}22`, color }}
+                    >
+                      {icon}
+                    </div>
+                    {i < arr.length - 1 && (
+                      <div className="w-0.5 flex-1 my-1" style={{ background: t.divider }} />
+                    )}
+                  </div>
+                  <div className="pt-1 pb-5 last:pb-0">
+                    <p className="font-bold text-sm" style={{ color: t.text }}>
+                      {step}. {title}
+                    </p>
+                    <p className="text-xs mt-1 leading-relaxed" style={{ color: t.muted }}>
+                      {desc}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── App Features & Capabilities ── */}
+            <div
+              className="rounded-2xl p-5"
+              style={{ background: t.card, border: `1px solid ${t.divider}` }}
+            >
+              <h2 className="font-bold text-sm mb-1" style={{ color: t.text }}>
+                App Features
+              </h2>
+              <p className="text-xs mb-4" style={{ color: t.muted }}>
+                Everything you can do in this app
+              </p>
+              <div className="space-y-4">
+                {[
+                  {
+                    icon: <Camera size={16} />,
+                    color: t.primary,
+                    title: "Camera QR Scanner",
+                    desc: "Tap the Scan tab and point your camera at any booth QR code. Real-time detection — no button press needed.",
+                  },
+                  {
+                    icon: <ScanLine size={16} />,
+                    color: "#F5A623",
+                    title: "URL Auto-Scan",
+                    desc: "Opening a booth QR link in your browser auto-registers the scan immediately — no camera needed.",
+                  },
+                  {
+                    icon: <Trophy size={16} />,
+                    color: "#00D68F",
+                    title: "Raffle QR Generation",
+                    desc: "When you reach the points goal, generate a unique encrypted QR code that serves as your raffle entry.",
+                  },
+                  {
+                    icon: <MapPin size={16} />,
+                    color: "#A855F7",
+                    title: "Venue Map",
+                    desc: "Browse floor maps to find participating booths. Zoom in or download maps for offline use.",
+                  },
+                  {
+                    icon: <Share2 size={16} />,
+                    color: "#EC4899",
+                    title: "Share with Friends",
+                    desc: "Invite others via Facebook, WhatsApp, Viber, X, or copy the event link directly.",
+                  },
+                  {
+                    icon: <Star size={16} />,
+                    color: "#F5A623",
+                    title: "Upcoming Events",
+                    desc: "Discover other Worldbex events and register via worldbexevents.com — right from the app.",
+                  },
+                  {
+                    icon: <RotateCcw size={16} />,
+                    color: t.muted,
+                    title: "Progress Saved Locally",
+                    desc: "Your scanned booths and points are saved on your device. Safe to close and reopen anytime.",
+                  },
+                ].map(({ icon, color, title, desc }) => (
+                  <div key={title} className="flex gap-3 items-start">
+                    <div
+                      className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: `${color}20`, color }}
+                    >
+                      {icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold" style={{ color: t.text }}>
+                        {title}
+                      </p>
+                      <p className="text-xs mt-0.5 leading-relaxed" style={{ color: t.muted }}>
+                        {desc}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Booth preview (top 3 unscanned) ── */}
+            {unscannedBooths.length > 0 && (
+              <div
+                className="rounded-2xl p-5"
+                style={{ background: t.card, border: `1px solid ${t.divider}` }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-bold text-sm" style={{ color: t.text }}>
+                    {scannedCodes.length === 0 ? "Participating Booths" : "Still to Scan"}
+                  </h2>
+                  <button
+                    onClick={() => setActiveTab("scan")}
+                    className="text-xs font-semibold flex items-center gap-0.5 active:opacity-70"
+                    style={{ color: t.primary }}
+                  >
+                    View all <ChevronRight size={13} />
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {unscannedBooths.slice(0, 3).map((booth) => (
+                    <div
+                      key={booth.id}
+                      className="flex items-center justify-between rounded-xl px-3 py-2.5"
+                      style={{ background: t.deeper, border: `1px solid ${t.divider}` }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Circle size={15} className="shrink-0" style={{ color: t.muted }} />
+                        <span className="text-sm" style={{ color: t.text }}>
+                          {booth.boothName}
+                        </span>
+                      </div>
+                      <span
+                        className="text-xs font-bold px-2 py-0.5 rounded-full"
+                        style={{ background: t.primaryBg, color: t.primary }}
+                      >
+                        +{booth.points} pts
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {unscannedBooths.length > 3 && (
+                  <button
+                    onClick={() => setActiveTab("scan")}
+                    className="mt-3 w-full text-center text-xs py-2 rounded-xl font-semibold active:scale-95 transition-transform"
+                    style={{ background: t.primaryBg, color: t.primary }}
+                  >
+                    +{unscannedBooths.length - 3} more booths →
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* ── Primary CTA ── */}
+            <button
+              onClick={() => setActiveTab("scan")}
+              className="w-full flex items-center justify-center gap-3 text-white rounded-2xl py-4 text-base font-black shadow-lg active:scale-95 transition-transform"
+              style={{
+                background: isQualified
+                  ? "linear-gradient(to right, #00D68F, #F5A623)"
+                  : `linear-gradient(to right, ${t.primary}, #F5A623)`,
+              }}
+            >
+              {isQualified ? (
+                <><Gift size={22} /> View My Raffle QR</>
+              ) : (
+                <><ScanLine size={22} /> Start Scanning</>
+              )}
+            </button>
+
+          </div>
+        );
+
+      case "scan":
+        return (
+          <div className="space-y-5 px-4 pb-24 pt-4">
             <GoalProgress points={currentPoints} threshold={thresholdPoints} />
 
             {/* Show "Generate QR" if threshold reached, else show scan button */}
@@ -2048,10 +2434,11 @@ const VisitorApp = () => {
           style={{ background: t.card, borderTop: `1px solid ${t.divider}` }}
         >
           {[
-            { id: "home", icon: <Zap size={18} />, label: "Home" },
-            { id: "map", icon: <MapPin size={18} />, label: "Map" },
-            { id: "share", icon: <Share2 size={18} />, label: "Share" },
-            { id: "events", icon: <Gift size={18} />, label: "Events" },
+            { id: "home",   icon: <Zap size={18} />,     label: "Home" },
+            { id: "scan",   icon: <ScanLine size={18} />, label: "Scan" },
+            { id: "map",    icon: <MapPin size={18} />,   label: "Map" },
+            { id: "share",  icon: <Share2 size={18} />,   label: "Share" },
+            { id: "events", icon: <Gift size={18} />,     label: "Events" },
           ].map((tab) => (
             <button
               key={tab.id}
