@@ -146,7 +146,10 @@ const InlineEdit = ({ value, onSave, placeholder = "Edit…", className = "" }) 
 
 const AnalyticsPanel = ({ campaignId, surveyId, onClose }) => {
   const { data, isLoading } = useGetSurveyAnalytics({ campaignId, surveyId });
-  const analytics = data?.data;
+
+  // Response shape: { data: { survey: { id, surveyName }, analytics: [...] } }
+  const survey    = data?.data?.survey;
+  const questions = data?.data?.analytics ?? [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -154,46 +157,51 @@ const AnalyticsPanel = ({ campaignId, surveyId, onClose }) => {
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <BarChart2 size={18} className="text-orange-500" />
-            <h2 className="font-black text-base text-gray-800">Survey Analytics</h2>
+            <div>
+              <h2 className="font-black text-base text-gray-800">Survey Analytics</h2>
+              {survey ? (
+                <p className="text-xs text-gray-400 mt-0.5">{survey.surveyName}</p>
+              ) : null}
+            </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-gray-400 hover:bg-gray-100"><X size={18} /></button>
+          <button onClick={onClose} className="p-1 rounded-lg text-gray-400 hover:bg-gray-100">
+            <X size={18} />
+          </button>
         </div>
+
         <div className="flex-1 overflow-y-auto p-5">
           {isLoading ? (
             <Spinner />
-          ) : !analytics ? (
+          ) : questions.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">No analytics data yet.</p>
           ) : (
             <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { label: "Total Responses", value: analytics.totalResponses ?? 0 },
-                  { label: "Complete", value: analytics.completeResponses ?? 0 },
-                  { label: "Completion Rate", value: `${analytics.completionRate ?? 0}%` },
-                ].map(({ label, value }) => (
-                  <div key={label} className="rounded-xl bg-orange-50 border border-orange-100 p-3 text-center">
-                    <p className="text-xl font-black text-orange-500">{value}</p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">{label}</p>
-                  </div>
-                ))}
-              </div>
-              {(analytics.questions ?? []).map((q) => (
+              {questions.map((q) => (
                 <div key={q.questionId} className="rounded-xl border border-gray-100 p-4">
-                  <p className="text-sm font-semibold text-gray-700 mb-2">{q.questionText}</p>
-                  {(q.breakdown ?? []).map((b) => (
-                    <div key={b.label} className="mb-1.5">
-                      <div className="flex justify-between text-xs text-gray-500 mb-0.5">
-                        <span>{b.label}</span>
-                        <span>{b.count} ({b.pct}%)</span>
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <p className="text-sm font-semibold text-gray-700">{q.questionText}</p>
+                    <span className="shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-400">
+                      {q.totalAnswers} answer{q.totalAnswers !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {(q.data?.breakdown ?? []).map((b) => (
+                      <div key={b.optionId}>
+                        <div className="flex justify-between text-xs text-gray-500 mb-1">
+                          <span>{b.optionText}</span>
+                          <span className="font-semibold">
+                            {b.count} <span className="text-gray-300">·</span> {b.percentage}%
+                          </span>
+                        </div>
+                        <div className="w-full h-1.5 rounded-full bg-gray-100">
+                          <div
+                            className="h-1.5 rounded-full bg-gradient-to-r from-orange-400 to-amber-300 transition-all"
+                            style={{ width: `${b.percentage}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="w-full h-1.5 rounded-full bg-gray-100">
-                        <div
-                          className="h-1.5 rounded-full bg-gradient-to-r from-orange-400 to-amber-300"
-                          style={{ width: `${b.pct}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>

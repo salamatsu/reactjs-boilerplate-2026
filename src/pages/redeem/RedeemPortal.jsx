@@ -590,7 +590,7 @@ const PrizeReveal = ({ winner, isWin, recording, spinApiError, onDismiss }) => {
       </motion.div>
 
       {/* Confetti for wins */}
-      {isWin && <Confetti />}
+      {isWin ? <Confetti /> : null}
 
       {/* Outer glow ring */}
       <motion.div
@@ -936,7 +936,7 @@ const DoneStep = ({ outcome, prizeName, onReset }) => {
 
   return (
     <>
-      {showConfetti && <Confetti />}
+      {showConfetti ? <Confetti /> : null}
       <div className="relative h-full flex items-center justify-center z-10 w-full px-8">
         <motion.div
           initial={{ scale: 0.8, opacity: 0, y: 40 }}
@@ -1178,7 +1178,7 @@ const SurveyQuestion = ({ question, value, onChange, error }) => {
                 className="w-4 h-4 rounded flex items-center justify-center shrink-0"
                 style={{ background: checked ? t.primary : "transparent", border: `2px solid ${checked ? t.primary : t.inputBorder}` }}
               >
-                {checked && <CheckCircle size={10} className="text-white" />}
+                {checked ? <CheckCircle size={10} className="text-white" /> : null}
               </div>
               {o.optionText}
             </button>
@@ -1574,7 +1574,7 @@ const SurveyStep = ({ participant, station, onNext }) => {
                 <div className="flex-1">
                   <p className="text-sm font-semibold" style={{ color: t.text }}>
                     {q.questionText}
-                    {q.isRequired && <span className="text-red-400 ml-1">*</span>}
+                    {q.isRequired ? <span className="text-red-400 ml-1">*</span> : null}
                   </p>
                   {errors[q.id] && (
                     <p className="text-xs text-red-400 mt-0.5">{errors[q.id]}</p>
@@ -1719,7 +1719,7 @@ const RedeemPortal = () => {
     return (
       <ThemeCtx.Provider value={t}>
         <div className="h-screen flex flex-col overflow-hidden" style={{ background: t.bgGradient }}>
-          {isDark && <FloatingParticles />}
+          {isDark ? <FloatingParticles /> : null}
           <div className="h-1 shrink-0" style={{ background: t.accentBar }} />
           <div className="shrink-0 px-6 py-4 backdrop-blur-sm relative z-10 flex items-center justify-between" style={{ background: t.headerBg, borderBottom: `1px solid ${t.headerBorder}` }}>
             <h1 className="font-black text-lg tracking-wide" style={{ color: t.primary }}>
@@ -1753,7 +1753,7 @@ const RedeemPortal = () => {
             </h1>
             <p className="text-xs mt-0.5" style={{ color: t.muted }}>
               {station.campaignName} · {station.eventTag}
-              {station.staffName && ` · ${station.staffName}`}
+              {station.staffName ? ` · ${station.staffName}` : null}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -1784,10 +1784,15 @@ const RedeemPortal = () => {
               transition={{ duration: 0.25 }}
               className="h-full"
             >
-              {step === "scan"   && <ScanStep station={station} onNext={advance} />}
-              {step === "survey" && <SurveyStep participant={sessionData} station={station} onNext={advance} />}
-              {step === "spin"   && <SpinStep participant={sessionData} station={station} onNext={advance} onReset={reset} />}
-              {step === "done"   && <DoneStep outcome={sessionData.outcome} prizeName={sessionData.prizeName} onReset={reset} />}
+              {step === "scan" ? (
+                <ScanStep station={station} onNext={advance} />
+              ) : step === "survey" ? (
+                <SurveyStep participant={sessionData} station={station} onNext={advance} />
+              ) : step === "spin" ? (
+                <SpinStep participant={sessionData} station={station} onNext={advance} onReset={reset} />
+              ) : step === "done" ? (
+                <DoneStep outcome={sessionData.outcome} prizeName={sessionData.prizeName} onReset={reset} />
+              ) : null}
             </motion.div>
           </AnimatePresence>
         </div>
