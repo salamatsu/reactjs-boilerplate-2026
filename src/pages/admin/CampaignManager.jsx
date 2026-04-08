@@ -33,6 +33,7 @@ import {
   DeleteOutlined,
   CopyOutlined,
   DownloadOutlined,
+  DownOutlined,
   EditOutlined,
   EyeOutlined,
   PlusOutlined,
@@ -40,6 +41,7 @@ import {
   ReloadOutlined,
   SwapOutlined,
   UploadOutlined,
+  UpOutlined,
 } from "@ant-design/icons";
 import {
   Activity,
@@ -1078,7 +1080,8 @@ const ImageUploadModal = ({ open, onClose, campaignId, editImage }) => {
         siteName: editImage.siteName,
         altText: editImage.altText ?? "",
         sortOrder: editImage.sortOrder,
-        isActive: editImage.isActive,
+        // API returns 0/1 — normalise to boolean for the Select
+        isActive: editImage.isActive === 1 || editImage.isActive === true,
       });
     } else {
       form.resetFields();
@@ -1089,7 +1092,7 @@ const ImageUploadModal = ({ open, onClose, campaignId, editImage }) => {
     const values = await form.validateFields();
     try {
       if (isEditing) {
-        // If a new file was chosen → replace, then patch metadata separately
+        // If a new file was chosen → replace first, then patch metadata
         if (fileList.length > 0) {
           const fd = new FormData();
           fd.append("image", fileList[0].originFileObj);
@@ -1099,7 +1102,12 @@ const ImageUploadModal = ({ open, onClose, campaignId, editImage }) => {
             formData: fd,
           });
         }
-        await updateImage({ campaignId, imageId: editImage.id, ...values });
+        await updateImage({
+          campaignId,
+          imageId: editImage.id,
+          ...values,
+          isActive: !!values.isActive,
+        });
         message.success("Image updated.");
       } else {
         if (fileList.length === 0) {
@@ -1112,7 +1120,7 @@ const ImageUploadModal = ({ open, onClose, campaignId, editImage }) => {
         fd.append("siteName", values.siteName);
         if (values.altText) fd.append("altText", values.altText);
         fd.append("sortOrder", String(values.sortOrder ?? 1));
-        fd.append("isActive", String(values.isActive ?? true));
+        fd.append("isActive", values.isActive ? "true" : "false");
         await uploadImage({ campaignId, formData: fd });
         message.success("Image uploaded.");
       }
@@ -1214,8 +1222,15 @@ const ImageMapsTab = ({ campaign }) => {
   const { data, isLoading } = useGetCampaignImages(campaign.id);
   const { mutateAsync: deleteImage, isPending: deleting } =
     useDeleteCampaignImage();
+  const { mutateAsync: updateImage, isPending: reordering } =
+    useUpdateCampaignImage();
   const sites = data?.data?.sites ?? [];
   const [imgModal, setImgModal] = useState({ open: false, record: null });
+  const [movingId, setMovingId] = useState(null);
+  const [savingOrder, setSavingOrder] = useState(false);
+  // drag state: { siteCode, idx }
+  const [dragSrc, setDragSrc] = useState(null);
+  const [dragOver, setDragOver] = useState(null);
 
   const handleDelete = async (img) => {
     try {
@@ -1223,6 +1238,58 @@ const ImageMapsTab = ({ campaign }) => {
       message.success("Image deleted.");
     } catch (err) {
       message.error(err?.message || "Delete failed.");
+    }
+  };
+
+  // ↑/↓ swap adjacent sort orders
+  const handleMove = async (sortedImgs, idx, direction) => {
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    const a = sortedImgs[idx];
+    const b = sortedImgs[swapIdx];
+    setMovingId(a.id);
+    try {
+      await Promise.all([
+        updateImage({ campaignId: campaign.id, imageId: a.id, sortOrder: b.sortOrder }),
+        updateImage({ campaignId: campaign.id, imageId: b.id, sortOrder: a.sortOrder }),
+      ]);
+    } catch (err) {
+      message.error(err?.message || "Reorder failed.");
+    } finally {
+      setMovingId(null);
+    }
+  };
+
+  // drag-and-drop: reorder all images in site and batch-patch changed ones
+  const handleDrop = async (sortedImgs, siteCode, targetIdx) => {
+    if (!dragSrc || dragSrc.siteCode !== siteCode || dragSrc.idx === targetIdx) {
+      setDragSrc(null);
+      setDragOver(null);
+      return;
+    }
+    const reordered = [...sortedImgs];
+    const [moved] = reordered.splice(dragSrc.idx, 1);
+    reordered.splice(targetIdx, 0, moved);
+
+    const updates = reordered
+      .map((img, i) => ({ img, newOrder: i + 1 }))
+      .filter(({ img, newOrder }) => img.sortOrder !== newOrder);
+
+    setDragSrc(null);
+    setDragOver(null);
+    if (!updates.length) return;
+
+    setSavingOrder(true);
+    try {
+      await Promise.all(
+        updates.map(({ img, newOrder }) =>
+          updateImage({ campaignId: campaign.id, imageId: img.id, sortOrder: newOrder })
+        )
+      );
+      message.success(`Reordered ${updates.length} item${updates.length > 1 ? "s" : ""}.`);
+    } catch (err) {
+      message.error(err?.message || "Reorder failed.");
+    } finally {
+      setSavingOrder(false);
     }
   };
 
@@ -1249,37 +1316,105 @@ const ImageMapsTab = ({ campaign }) => {
       {sites.length === 0 ? (
         <Empty description="No images yet" />
       ) : (
-        <div className="space-y-5">
-          {sites.map((site) => (
+        <div className="space-y-6">
+          {sites.map((site) => {
+            const sortedImgs = [...site.images].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+            return (
             <div key={site.siteCode}>
               {/* Site header */}
-              <div className="flex items-center gap-2 mb-2">
-                <Tag color="blue" className="font-mono font-bold">
-                  {site.siteCode}
-                </Tag>
-                <span
-                  className="text-sm font-semibold"
-                  style={{ color: "#1A1A2E" }}
-                >
-                  {site.siteName}
-                </span>
-                <span className="text-xs" style={{ color: "#6B7280" }}>
-                  ({site.images.length} image
-                  {site.images.length !== 1 ? "s" : ""})
-                </span>
+              <div className="flex items-center gap-3 mb-3 pb-2" style={{ borderBottom: "2px solid #E5E7EB" }}>
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0" style={{ background: "#EFF6FF" }}>
+                  <span className="text-xs font-black font-mono leading-none" style={{ color: "#1D4ED8" }}>
+                    {site.siteCode.slice(0, 3)}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-base font-bold leading-tight truncate" style={{ color: "#1A1A2E" }}>
+                    {site.siteName}
+                  </div>
+                  <div className="text-xs font-mono mt-0.5" style={{ color: "#6B7280" }}>
+                    {site.siteCode} &middot; {site.images.length} image{site.images.length !== 1 ? "s" : ""}
+                    {savingOrder ? " · saving order…" : " · drag to reorder"}
+                  </div>
+                </div>
+                <Tag color="blue" className="font-mono font-bold shrink-0">{site.siteCode}</Tag>
               </div>
 
               {/* Image cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {site.images.map((img) => (
+              <div className="flex flex-col gap-2">
+                {sortedImgs.map((img, idx) => {
+                  const isDragSrc = dragSrc?.siteCode === site.siteCode && dragSrc?.idx === idx;
+                  const isDragOver = dragOver?.siteCode === site.siteCode && dragOver?.idx === idx;
+                  return (
                   <div
                     key={img.id}
+                    draggable={!savingOrder && !reordering}
+                    onDragStart={() => setDragSrc({ siteCode: site.siteCode, idx })}
+                    onDragOver={(e) => { e.preventDefault(); setDragOver({ siteCode: site.siteCode, idx }); }}
+                    onDragEnd={() => { setDragSrc(null); setDragOver(null); }}
+                    onDrop={() => handleDrop(sortedImgs, site.siteCode, idx)}
                     className="flex gap-3 rounded-xl p-3"
                     style={{
-                      background: "#ffffff",
-                      border: "1px solid #E5E7EB",
+                      background: isDragOver ? "#EFF6FF" : "#ffffff",
+                      border: isDragOver
+                        ? "2px dashed #1D4ED8"
+                        : isDragSrc
+                        ? "2px dashed #D1D5DB"
+                        : "1px solid #E5E7EB",
+                      opacity: isDragSrc || movingId === img.id ? 0.45 : 1,
+                      cursor: savingOrder ? "wait" : "grab",
+                      transition: "all 0.15s",
                     }}
                   >
+                    {/* Sort handle — drag grip + ↑/↓ */}
+                    <div className="flex flex-col items-center justify-between shrink-0 py-0.5" style={{ width: 22 }}>
+                      {/* Grip dots */}
+                      <div className="flex flex-col items-center gap-[3px] mt-0.5 cursor-grab" style={{ color: "#D1D5DB" }}>
+                        {[0,1,2].map((r) => (
+                          <div key={r} className="flex gap-[3px]">
+                            <div className="w-[3px] h-[3px] rounded-full bg-current" />
+                            <div className="w-[3px] h-[3px] rounded-full bg-current" />
+                          </div>
+                        ))}
+                      </div>
+                      {/* Position badge */}
+                      <span
+                        className="text-[10px] font-mono font-bold leading-none rounded px-1 py-0.5 my-1"
+                        style={{ background: "#F3F4F6", color: "#6B7280" }}
+                      >
+                        {idx + 1}
+                      </span>
+                      {/* ↑/↓ arrows */}
+                      <div className="flex flex-col gap-0" onMouseDown={(e) => e.stopPropagation()}>
+                        <button
+                          disabled={idx === 0 || reordering || savingOrder}
+                          onClick={() => handleMove(sortedImgs, idx, "up")}
+                          title="Move up"
+                          style={{
+                            background: "none", border: "none", padding: "1px 0",
+                            cursor: idx === 0 ? "default" : "pointer",
+                            color: idx === 0 ? "#E5E7EB" : "#6B7280",
+                            lineHeight: 1,
+                          }}
+                        >
+                          <UpOutlined style={{ fontSize: 9 }} />
+                        </button>
+                        <button
+                          disabled={idx === sortedImgs.length - 1 || reordering || savingOrder}
+                          onClick={() => handleMove(sortedImgs, idx, "down")}
+                          title="Move down"
+                          style={{
+                            background: "none", border: "none", padding: "1px 0",
+                            cursor: idx === sortedImgs.length - 1 ? "default" : "pointer",
+                            color: idx === sortedImgs.length - 1 ? "#E5E7EB" : "#6B7280",
+                            lineHeight: 1,
+                          }}
+                        >
+                          <DownOutlined style={{ fontSize: 9 }} />
+                        </button>
+                      </div>
+                    </div>
+
                     {/* Thumbnail */}
                     <div
                       className="w-16 h-16 rounded-lg overflow-hidden shrink-0 flex items-center justify-center"
@@ -1300,35 +1435,33 @@ const ImageMapsTab = ({ campaign }) => {
                       <div className="flex items-start justify-between gap-1">
                         <div className="min-w-0">
                           <p
-                            className="text-xs font-mono truncate"
+                            className="text-xs font-bold truncate"
+                            style={{ color: "#1A1A2E" }}
+                          >
+                            {img.altText || img.siteName}
+                          </p>
+                          <p
+                            className="text-[10px] font-mono mt-0.5 truncate"
                             style={{ color: "#6B7280" }}
                           >
-                            #{img.id} · order {img.sortOrder}
+                            #{img.id} · sort {img.sortOrder}
                           </p>
-                          {img.altText && (
-                            <p
-                              className="text-xs truncate mt-0.5"
-                              style={{ color: "#1A1A2E" }}
-                            >
-                              {img.altText}
-                            </p>
-                          )}
                         </div>
                         <Tag
-                          color={img.isActive !== false ? "success" : "default"}
+                          color={img.isActive === 1 || img.isActive === true ? "success" : "default"}
                           className="shrink-0 text-xs"
                         >
-                          {img.isActive !== false ? "Active" : "Inactive"}
+                          {img.isActive === 1 || img.isActive === true ? "Active" : "Inactive"}
                         </Tag>
                       </div>
 
                       {/* Actions */}
                       <div className="flex items-center gap-1 mt-2">
-                        <Tooltip title="Edit / Replace">
+                        <Tooltip title="Edit metadata / replace image">
                           <Button
                             type="text"
                             size="small"
-                            icon={<SwapOutlined style={{ color: "#6B7280" }} />}
+                            icon={<EditOutlined style={{ color: "#1D4ED8" }} />}
                             onClick={() =>
                               setImgModal({ open: true, record: img })
                             }
@@ -1354,10 +1487,12 @@ const ImageMapsTab = ({ campaign }) => {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -1529,7 +1664,7 @@ const CampaignDetailDrawer = ({ campaign, open, onClose }) => {
           },
           {
             key: "images",
-            label: "Image Maps",
+            label: "Maps & Directories",
             children: <ImageMapsTab campaign={campaign} />,
           },
           {

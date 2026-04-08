@@ -3845,6 +3845,338 @@
       ]
     },
     {
+      "name": "G. Admin — Analytics",
+      "description": "Campaign analytics dashboards. All requests require `Authorization: Bearer {{admin_token}}`.\n\nBase path: `{{base_url}}/admin/analytics`",
+      "item": [
+        {
+          "name": "Overview — All Campaigns by Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Overview data returned', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.success).to.be.true;",
+                  "  pm.expect(j.data.total).to.be.a('number');",
+                  "  pm.expect(j.data.byStatus).to.be.an('object');",
+                  "  console.log('Total campaigns:', j.data.total);",
+                  "  console.log('By status:', JSON.stringify(j.data.byStatus));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/analytics/campaigns",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "campaigns"
+              ]
+            },
+            "description": "Counts all campaigns grouped by status (draft, active, paused, ended) plus grand total."
+          },
+          "response": []
+        },
+        {
+          "name": "Participant Analytics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Participant analytics returned', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.success).to.be.true;",
+                  "  pm.expect(j.data.totals).to.be.an('object');",
+                  "  pm.expect(j.data.points).to.be.an('object');",
+                  "  pm.expect(j.data.registrationsByDay).to.be.an('array');",
+                  "  console.log('Total participants:', j.data.totals.total);",
+                  "  console.log('Avg points:', j.data.points.avg);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/analytics/campaigns/{{campaignId}}/participants",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "campaigns",
+                "{{campaignId}}",
+                "participants"
+              ]
+            },
+            "description": "Participant breakdown by status, points distribution (avg/min/max), registration timeline by day."
+          },
+          "response": []
+        },
+        {
+          "name": "Booth Analytics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Booth analytics returned', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.success).to.be.true;",
+                  "  pm.expect(j.data.summary).to.be.an('object');",
+                  "  pm.expect(j.data.booths).to.be.an('array');",
+                  "  pm.expect(j.data.scansByDay).to.be.an('array');",
+                  "  console.log('Total scans:', j.data.summary.totalScans);",
+                  "  console.log('Booths:', j.data.booths.length);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/analytics/campaigns/{{campaignId}}/booths",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "campaigns",
+                "{{campaignId}}",
+                "booths"
+              ]
+            },
+            "description": "Per-booth scan stats (total scans, unique participants, points distributed) + scan volume by day."
+          },
+          "response": []
+        },
+        {
+          "name": "Raffle QR Analytics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Raffle QR analytics returned', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.success).to.be.true;",
+                  "  pm.expect(j.data.total).to.be.a('number');",
+                  "  pm.expect(j.data.conversionRate).to.be.a('number');",
+                  "  pm.expect(j.data.usageRate).to.be.a('number');",
+                  "  console.log('Total QRs generated:', j.data.total);",
+                  "  console.log('Usage rate:', j.data.usageRate + '%');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/analytics/campaigns/{{campaignId}}/raffle-qrs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "campaigns",
+                "{{campaignId}}",
+                "raffle-qrs"
+              ]
+            },
+            "description": "QR generation and usage stats: total generated, active, used, expired, conversion rate, avg seconds to use."
+          },
+          "response": []
+        },
+        {
+          "name": "Entry (Spin Wheel) Analytics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Entry analytics returned', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.success).to.be.true;",
+                  "  pm.expect(j.data.totals).to.be.an('object');",
+                  "  pm.expect(j.data.winRate).to.be.a('number');",
+                  "  pm.expect(j.data.wheelResults).to.be.an('array');",
+                  "  pm.expect(j.data.entriesByDay).to.be.an('array');",
+                  "  console.log('Total entries:', j.data.totals.total);",
+                  "  console.log('Win rate:', j.data.winRate + '%');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/analytics/campaigns/{{campaignId}}/entries",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "campaigns",
+                "{{campaignId}}",
+                "entries"
+              ]
+            },
+            "description": "Spin wheel outcome breakdown (pending/won/lost/claimed), win rate, wheel result distribution, entries by day."
+          },
+          "response": []
+        },
+        {
+          "name": "Prize Analytics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Prize analytics returned', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.success).to.be.true;",
+                  "  pm.expect(j.data.claimSummary).to.be.an('object');",
+                  "  pm.expect(j.data.prizes).to.be.an('array');",
+                  "  pm.expect(j.data.claimsByDay).to.be.an('array');",
+                  "  console.log('Total claimed:', j.data.claimSummary.total);",
+                  "  console.log('Forfeiture rate:', j.data.claimSummary.forfeitureRate + '%');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/analytics/campaigns/{{campaignId}}/prizes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "campaigns",
+                "{{campaignId}}",
+                "prizes"
+              ]
+            },
+            "description": "Prize inventory + claim breakdown per prize (won/claimed/forfeited), forfeiture rate, claims by day."
+          },
+          "response": []
+        },
+        {
+          "name": "Conversion Funnel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Funnel data returned', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.success).to.be.true;",
+                  "  pm.expect(j.data.funnel).to.be.an('array').with.lengthOf(7);",
+                  "  pm.expect(j.data.overallConversionRate).to.be.a('number');",
+                  "  console.log('Overall conversion:', j.data.overallConversionRate + '%');",
+                  "  j.data.funnel.forEach(s => console.log(s.step + '. ' + s.label + ':', s.count));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/analytics/campaigns/{{campaignId}}/funnel",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "campaigns",
+                "{{campaignId}}",
+                "funnel"
+              ]
+            },
+            "description": "Full 7-step participant conversion funnel: Registered → Scanned → QR Generated → QR Validated → Wheel Spun → Won → Claimed. Includes drop-off % per step and overall conversion rate."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "7. Survey (Visitor)",
       "description": "Visitor-facing survey endpoints. No authentication required.\n\n**Flow after QR scan:**\n1. `GET /campaigns/:campaignId/surveys/active?triggerEvent=booth_scan` → check for active survey\n2. If `hasSurvey=true` → render questions in the UI\n3. `GET .../response-status?participantId=X&scanLogId=Y` → skip if already answered\n4. `POST .../submit` → submit answers atomically",
       "item": [

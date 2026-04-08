@@ -110,6 +110,60 @@ const saveEntry = (entry) => {
   localStorage.setItem(entryKey(entry.eventTag), JSON.stringify(entry));
 };
 
+// ─── Landscape guard (mobile only) ───────────────────────────────────────────
+
+const isLandscapeMobile = () =>
+  window.innerWidth > window.innerHeight && window.innerWidth < 1024;
+
+const LandscapeGuard = () => {
+  const [landscape, setLandscape] = useState(isLandscapeMobile);
+
+  useEffect(() => {
+    const update = () => setLandscape(isLandscapeMobile());
+    window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+    };
+  }, []);
+
+  if (!landscape) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[99999] flex flex-col items-center justify-center gap-4 text-center px-8"
+      style={{ background: "#1E3A71", color: "#fff" }}
+    >
+      <motion.div
+        animate={{ rotate: [0, -15, 0] }}
+        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="64"
+          height="64"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="4" y="2" width="16" height="20" rx="2" />
+          <line x1="12" y1="18" x2="12.01" y2="18" />
+        </svg>
+      </motion.div>
+      <p style={{ fontSize: "1.1rem", fontWeight: 600, margin: 0 }}>
+        Please rotate your device
+      </p>
+      <p style={{ fontSize: "0.85rem", opacity: 0.7, margin: 0 }}>
+        This app works best in portrait mode
+      </p>
+    </div>
+  );
+};
+
 // ─── Desktop guard ────────────────────────────────────────────────────────────
 
 const DesktopGuard = () => {
@@ -707,7 +761,7 @@ const ImageMapsView = ({ campaignId }) => {
       <div className="space-y-5">
         {sites.map((site) => {
           const activeImages = site.images.filter(
-            (img) => img.isActive !== false,
+            (img) => img.isActive === 1 || img.isActive === true,
           );
           if (!activeImages.length) return null;
           const showCode = site.siteCode !== site.siteName;
@@ -715,27 +769,50 @@ const ImageMapsView = ({ campaignId }) => {
           return (
             <div key={site.siteCode}>
               {/* Site header */}
-              <div className="flex items-center gap-2 mb-3">
+              <div
+                className="flex items-center gap-3 mb-3 pb-2"
+                style={{ borderBottom: `2px solid ${t.cardBorder}` }}
+              >
                 <div
-                  className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
                   style={{ background: t.primaryBg }}
                 >
-                  <MapPin size={12} style={{ color: t.primary }} />
+                  <MapPin size={16} style={{ color: t.primary }} />
                 </div>
-                <span className="font-black text-sm" style={{ color: t.text }}>
-                  {site.siteName}
-                </span>
-                {showCode && (
+                <div className="flex-1 min-w-0">
+                  <div
+                    className="font-bold text-base leading-tight truncate"
+                    style={{ color: t.text }}
+                  >
+                    {site.siteName}
+                  </div>
+                  {showCode ? (
+                    <div
+                      className="text-[10px] font-mono mt-0.5 leading-none"
+                      style={{ color: t.muted }}
+                    >
+                      {site.siteCode} &middot; {activeImages.length} map{activeImages.length !== 1 ? "s" : ""}
+                    </div>
+                  ) : (
+                    <div
+                      className="text-[10px] font-mono mt-0.5 leading-none"
+                      style={{ color: t.muted }}
+                    >
+                      {activeImages.length} map{activeImages.length !== 1 ? "s" : ""}
+                    </div>
+                  )}
+                </div>
+                {showCode ? (
                   <span
-                    className="text-[10px] font-mono rounded-md px-1.5 py-0.5 leading-none"
+                    className="text-[10px] font-mono font-bold rounded-lg px-2 py-1 leading-none shrink-0"
                     style={{
-                      color: t.muted,
-                      border: `1px solid ${t.cardBorder}`,
+                      color: t.primary,
+                      background: t.primaryBg,
                     }}
                   >
                     {site.siteCode}
                   </span>
-                )}
+                ) : null}
               </div>
 
               {/* Image cards */}
@@ -1579,24 +1656,6 @@ const VisitorApp = () => {
   const { eventTag } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // ── Lock orientation to portrait ──
-  useEffect(() => {
-    const lock = async () => {
-      try {
-        await screen.orientation?.lock?.("portrait");
-      } catch {
-        // Not supported or not in fullscreen — CSS overlay handles landscape
-      }
-    };
-    lock();
-    return () => {
-      try {
-        screen.orientation?.unlock?.();
-      } catch {
-        /* ignore */
-      }
-    };
-  }, []);
 
   // ── Theme ──
   const [isDark, setIsDark] = useState(
@@ -2364,7 +2423,7 @@ const VisitorApp = () => {
         return (
           <div className="px-4 pb-24 pt-4">
             <h2 className="font-bold text-sm mb-4" style={{ color: t.text }}>
-              Venue Maps
+              Maps &amp; Directories
             </h2>
             <ImageMapsView campaignId={campaign?.id} />
           </div>
@@ -2392,6 +2451,7 @@ const VisitorApp = () => {
   return (
     <ThemeContext.Provider value={t}>
       <DesktopGuard />
+      <LandscapeGuard />
 
       <div
         className="md:hidden min-h-screen font-sans"
@@ -2483,7 +2543,7 @@ const VisitorApp = () => {
           {[
             { id: "home", icon: <Zap size={18} />, label: "Home" },
             { id: "scan", icon: <ScanLine size={18} />, label: "Scan" },
-            { id: "map", icon: <MapPin size={18} />, label: "Map" },
+            { id: "map", icon: <MapPin size={18} />, label: "Directories" },
             { id: "share", icon: <Share2 size={18} />, label: "Share" },
             { id: "events", icon: <Gift size={18} />, label: "Events" },
           ].map((tab) => (

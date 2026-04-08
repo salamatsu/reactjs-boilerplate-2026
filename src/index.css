@@ -51,33 +51,3 @@
   border-color: #1890ff;
 }
 
-/* ── Portrait-lock overlay ── */
-#landscape-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 99999;
-  background: #1E3A71;
-  color: #fff;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  text-align: center;
-  padding: 2rem;
-}
-
-#landscape-overlay svg {
-  animation: rotate-hint 1.5s ease-in-out infinite alternate;
-}
-
-@keyframes rotate-hint {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(-15deg); }
-}
-
-@media screen and (orientation: landscape) and (max-width: 1024px) {
-  #landscape-overlay {
-    display: flex;
-  }
-}

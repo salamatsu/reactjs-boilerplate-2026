@@ -40,6 +40,7 @@ import {
   GripVertical,
   ToggleLeft,
   ToggleRight,
+  RotateCcw,
 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -144,71 +145,208 @@ const InlineEdit = ({ value, onSave, placeholder = "Edit…", className = "" }) 
 
 // ─── Analytics panel ──────────────────────────────────────────────────────────
 
-const AnalyticsPanel = ({ campaignId, surveyId, onClose }) => {
-  const { data, isLoading } = useGetSurveyAnalytics({ campaignId, surveyId });
+// ─── Analytics helpers ────────────────────────────────────────────────────────
 
-  // Response shape: { data: { survey: { id, surveyName }, analytics: [...] } }
+const BAR_COLORS = [
+  "#f97316", "#f59e0b", "#10b981", "#3b82f6",
+  "#8b5cf6", "#ec4899", "#14b8a6", "#ef4444",
+];
+
+const QuestionTypeTag = ({ type }) => {
+  const label = QUESTION_TYPES.find((t) => t.value === type)?.label ?? type;
+  return (
+    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400 uppercase tracking-wide">
+      {label}
+    </span>
+  );
+};
+
+// ─── Analytics Drawer ─────────────────────────────────────────────────────────
+
+const AnalyticsDrawer = ({ campaignId, surveyId, open, onClose }) => {
+  const { data, isLoading, refetch } = useGetSurveyAnalytics({ campaignId, surveyId });
+
   const survey    = data?.data?.survey;
   const questions = data?.data?.analytics ?? [];
 
+  // Aggregate totals across all questions
+  const totalAnswers    = questions.reduce((s, q) => s + (q.totalAnswers ?? 0), 0);
+  const answeredQuestions = questions.filter((q) => q.totalAnswers > 0).length;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <Card className="w-full max-w-lg max-h-[80vh] flex flex-col">
-        <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <BarChart2 size={18} className="text-orange-500" />
-            <div>
-              <h2 className="font-black text-base text-gray-800">Survey Analytics</h2>
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/30 transition-opacity duration-300"
+        style={{ opacity: open ? 1 : 0, pointerEvents: open ? "auto" : "none" }}
+        onClick={onClose}
+      />
+
+      {/* Drawer */}
+      <div
+        className="fixed top-0 right-0 h-full z-50 flex flex-col bg-white shadow-2xl transition-transform duration-300"
+        style={{
+          width: "min(520px, 100vw)",
+          transform: open ? "translateX(0)" : "translateX(100%)",
+        }}
+      >
+        {/* Header */}
+        <div className="shrink-0 px-6 py-4 border-b border-gray-100 flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
+              <BarChart2 size={18} className="text-orange-500" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-black text-base text-gray-800 leading-tight">Survey Analytics</h2>
               {survey ? (
-                <p className="text-xs text-gray-400 mt-0.5">{survey.surveyName}</p>
+                <p className="text-xs text-gray-400 truncate mt-0.5">{survey.surveyName}</p>
               ) : null}
             </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-gray-400 hover:bg-gray-100">
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={refetch}
+              className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
+              title="Refresh"
+            >
+              <RotateCcw size={15} />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5">
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto">
           {isLoading ? (
             <Spinner />
           ) : questions.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">No analytics data yet.</p>
+            <div className="flex flex-col items-center justify-center h-full gap-3 px-6">
+              <BarChart2 size={40} className="text-gray-200" />
+              <p className="text-sm text-gray-400 text-center">No responses yet. Analytics will appear once participants start submitting.</p>
+            </div>
           ) : (
-            <div className="space-y-4">
-              {questions.map((q) => (
-                <div key={q.questionId} className="rounded-xl border border-gray-100 p-4">
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <p className="text-sm font-semibold text-gray-700">{q.questionText}</p>
-                    <span className="shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-400">
-                      {q.totalAnswers} answer{q.totalAnswers !== 1 ? "s" : ""}
-                    </span>
+            <div className="p-5 space-y-5">
+
+              {/* Summary row */}
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: "Total Answers", value: totalAnswers, color: "#f97316", bg: "#fff7ed" },
+                  { label: "Questions Answered", value: `${answeredQuestions} / ${questions.length}`, color: "#10b981", bg: "#ecfdf5" },
+                ].map(({ label, value, color, bg }) => (
+                  <div
+                    key={label}
+                    className="rounded-2xl p-4 text-center"
+                    style={{ background: bg }}
+                  >
+                    <p className="text-2xl font-black" style={{ color }}>{value}</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5 font-medium">{label}</p>
                   </div>
-                  <div className="space-y-2">
-                    {(q.data?.breakdown ?? []).map((b) => (
-                      <div key={b.optionId}>
-                        <div className="flex justify-between text-xs text-gray-500 mb-1">
-                          <span>{b.optionText}</span>
-                          <span className="font-semibold">
-                            {b.count} <span className="text-gray-300">·</span> {b.percentage}%
-                          </span>
-                        </div>
-                        <div className="w-full h-1.5 rounded-full bg-gray-100">
-                          <div
-                            className="h-1.5 rounded-full bg-gradient-to-r from-orange-400 to-amber-300 transition-all"
-                            style={{ width: `${b.percentage}%` }}
-                          />
+                ))}
+              </div>
+
+              {/* Per-question cards */}
+              {questions.map((q, qi) => {
+                const breakdown = q.data?.breakdown ?? [];
+                const topOption = breakdown.reduce(
+                  (best, b) => (b.count > (best?.count ?? -1) ? b : best),
+                  null,
+                );
+
+                return (
+                  <div
+                    key={q.questionId}
+                    className="rounded-2xl border border-gray-100 overflow-hidden"
+                  >
+                    {/* Question header */}
+                    <div className="px-4 pt-4 pb-3 bg-gray-50/60 border-b border-gray-100">
+                      <div className="flex items-start gap-2">
+                        <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-500 text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">
+                          {qi + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 leading-snug">{q.questionText}</p>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <QuestionTypeTag type={q.questionType} />
+                            <span className="text-[11px] text-gray-400">
+                              {q.totalAnswers} answer{q.totalAnswers !== 1 ? "s" : ""}
+                            </span>
+                            {topOption && topOption.count > 0 ? (
+                              <span className="text-[11px] text-orange-500 font-semibold">
+                                Top: {topOption.optionText} ({topOption.percentage}%)
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
-                    ))}
+                    </div>
+
+                    {/* Breakdown */}
+                    {breakdown.length > 0 ? (
+                      <div className="px-4 py-3 space-y-3">
+                        {breakdown.map((b, bi) => {
+                          const color = BAR_COLORS[bi % BAR_COLORS.length];
+                          const isTop = b.optionId === topOption?.optionId && b.count > 0;
+                          return (
+                            <div key={b.optionId}>
+                              <div className="flex items-center justify-between mb-1 gap-2">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  {isTop ? (
+                                    <span className="shrink-0 text-[10px]">🏆</span>
+                                  ) : null}
+                                  <span
+                                    className="text-xs truncate"
+                                    style={{ color: isTop ? "#1f2937" : "#6b7280", fontWeight: isTop ? 600 : 400 }}
+                                  >
+                                    {b.optionText}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="text-xs font-bold text-gray-600">{b.count}</span>
+                                  <span
+                                    className="text-[11px] font-bold w-10 text-right"
+                                    style={{ color }}
+                                  >
+                                    {b.percentage}%
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="w-full h-2 rounded-full bg-gray-100">
+                                <div
+                                  className="h-2 rounded-full transition-all duration-500"
+                                  style={{
+                                    width: `${b.percentage}%`,
+                                    background: color,
+                                    opacity: b.count === 0 ? 0.25 : 1,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="px-4 py-3 text-xs text-gray-400">No breakdown available for this question type.</p>
+                    )}
+
+                    {/* Zero-answer notice */}
+                    {q.totalAnswers === 0 ? (
+                      <div className="px-4 pb-3">
+                        <p className="text-[11px] text-gray-300 italic">No responses yet</p>
+                      </div>
+                    ) : null}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
-      </Card>
-    </div>
+      </div>
+    </>
   );
 };
 
@@ -551,9 +689,12 @@ const SurveyDetail = ({ campaignId, surveyId, onDelete }) => {
         </div>
       </div>
 
-      {showAnalytics && (
-        <AnalyticsPanel campaignId={campaignId} surveyId={surveyId} onClose={() => setShowAnalytics(false)} />
-      )}
+      <AnalyticsDrawer
+        campaignId={campaignId}
+        surveyId={surveyId}
+        open={showAnalytics}
+        onClose={() => setShowAnalytics(false)}
+      />
     </div>
   );
 };
