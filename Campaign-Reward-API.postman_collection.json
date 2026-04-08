@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "campaign-reward-api-v4",
     "name": "Campaign Reward API",
-    "description": "**Two surfaces:**\n\n**Admin** (`/api/v1/raffles/admin/...`) — requires `Authorization: Bearer <token>`. Log in first via `POST /auth/login` to get a token.\n\n**Participant** (`/api/v1/raffles/campaigns/...`) — public, no auth required.\n\n---\n\n**Admin happy path:**\n1. `POST /auth/login` → save token\n2. `POST /admin/campaigns` → create campaign\n3. `POST /admin/campaigns/:campaignId/booths` → add booths\n4. `POST /admin/campaigns/:campaignId/prizes` → add wheel prizes\n5. `POST /admin/campaigns/:campaignId/images` → upload site images\n6. `PATCH /admin/campaigns/:campaignId` → set status to active\n\n**Participant happy path:**\n1. `GET /campaigns/event/:eventTag` — load campaign + booth list\n2. Client scans booths locally (no API call per scan)\n3. `POST /campaigns/:campaignId/generate-raffle-qr` — submit booth codes → get encrypted QR\n4. Staff station: `POST /campaigns/:campaignId/validate-raffle` → get `raffleEntryId`\n5. `GET /campaigns/:campaignId/prizes` — load prize list to render wheel\n6. Wheel spins client-side → `POST /campaigns/:campaignId/spin-wheel` → send `prizeId` (win) or null (lose)\n\n---\n\n**Seeded campaign ID:** `1` | **Event tag:** `WORLDBEX2026` | **Threshold:** 300 pts",
+    "description": "**Two surfaces:**\n\n**Admin** (`/api/v1/raffles/admin/...`) — requires `Authorization: Bearer <token>`. Log in first via `POST /auth/login` to get a token.\n\n**Participant** (`/api/v1/raffles/campaigns/...`) — public, no auth required.\n\n---\n\n**Admin happy path:**\n1. `POST /auth/login` → save token\n2. `POST /admin/campaigns` → create campaign\n3. `POST /admin/campaigns/:campaignId/booths` → add booths\n4. `POST /admin/campaigns/:campaignId/prizes` → add wheel prizes\n5. `POST /admin/campaigns/:campaignId/images` → upload site images\n6. `PATCH /admin/campaigns/:campaignId` → set status to active\n\n**Participant happy path:**\n1. `GET /campaigns/event/:eventTag` — load campaign + booth list\n2. Client scans booths locally (no API call per scan)\n3. `POST /campaigns/:campaignId/generate-raffle-qr` — submit booth codes → get encrypted QR\n4. Staff station: `POST /campaigns/:campaignId/validate-raffle` → get `raffleEntryId`\n5. `GET /campaigns/:campaignId/prizes` — load prize list to render wheel\n6. Wheel spins client-side → `POST /campaigns/:campaignId/spin-wheel` → send `prizeId` (win) or null (lose)\n\n---\n\n**Seeded campaign ID:** `1` | **Event tag:** `WORLDBEX2026` | **Threshold:** 300 pts\n\n**Survey admin path:**\n1. `POST /admin/campaigns/:campaignId/surveys` → create survey\n2. `POST .../surveys/:surveyId/questions` → add questions\n3. `POST .../questions/:questionId/options` → add options\n4. `POST .../questions/:questionId/matrix-rows` → add rows (matrix only)\n\n**Survey visitor path (after QR validation):**\n1. `GET /campaigns/:campaignId/surveys/active?triggerEvent=booth_scan` → fetch active survey\n2. `POST /campaigns/:campaignId/surveys/:surveyId/submit` → submit answers",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -63,6 +63,36 @@
       "value": "",
       "type": "string",
       "description": "Auto-filled from Upload Image or set manually"
+    },
+    {
+      "key": "surveyId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-filled from Create Survey"
+    },
+    {
+      "key": "questionId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-filled from Create Question"
+    },
+    {
+      "key": "optionId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-filled from Create Option"
+    },
+    {
+      "key": "rowId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-filled from Create Matrix Row"
+    },
+    {
+      "key": "responseId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-filled from Submit Survey"
     }
   ],
   "item": [
@@ -93,15 +123,25 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"your_password_here\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/auth/login",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             },
             "description": "Rate-limited. Returns a JWT Bearer token valid for 24h. Token is auto-saved to `admin_token`."
           },
@@ -110,21 +150,36 @@
               "name": "200 - Login Success",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": true,\n  \"message\": \"Login successful\",\n  \"data\": {\n    \"admin\": {\n      \"adminId\": \"uuid-here\",\n      \"username\": \"admin\",\n      \"email\": \"admin@example.com\",\n      \"fullName\": \"Admin User\"\n    },\n    \"accessToken\": \"eyJ...\",\n    \"tokenType\": \"Bearer\",\n    \"expiresIn\": \"24h\",\n    \"expiresAt\": \"2026-04-07T08:00:00.000Z\"\n  }\n}"
             },
             {
               "name": "401 - Invalid Credentials",
               "status": "Unauthorized",
               "code": 401,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": false,\n  \"message\": \"Invalid credentials\"\n}"
             },
             {
               "name": "403 - Account Inactive",
               "status": "Forbidden",
               "code": 403,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": false,\n  \"message\": \"Account is inactive\"\n}"
             }
           ]
@@ -151,12 +206,20 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
             ],
             "url": {
               "raw": "{{base_url}}/auth/me",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "me"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
             },
             "description": "Verify your token is valid and see the authenticated admin's profile."
           },
@@ -165,7 +228,12 @@
               "name": "200 - Admin Profile",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": true,\n  \"message\": \"Admin retrieved\",\n  \"data\": {\n    \"admin\": {\n      \"adminId\": \"uuid-here\",\n      \"username\": \"admin\",\n      \"email\": \"admin@example.com\",\n      \"fullName\": \"Admin User\",\n      \"isActive\": 1,\n      \"lastLoginAt\": \"2026-04-06T08:00:00.000Z\",\n      \"dateCreated\": \"2026-04-01T00:00:00.000Z\"\n    }\n  }\n}"
             }
           ]
@@ -198,12 +266,20 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
             ],
             "url": {
               "raw": "{{base_url}}/admin/campaigns",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns"
+              ]
             }
           },
           "response": []
@@ -229,12 +305,21 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
             ],
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}"
+              ]
             }
           },
           "response": []
@@ -261,8 +346,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -270,8 +361,13 @@
             },
             "url": {
               "raw": "{{base_url}}/admin/campaigns",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns"
+              ]
             },
             "description": "`campaignId` is auto-saved."
           },
@@ -297,8 +393,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -306,8 +408,14 @@
             },
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}"
+              ]
             }
           },
           "response": []
@@ -331,12 +439,21 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
             ],
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}"
+              ]
             },
             "description": "Only campaigns with status=draft can be deleted."
           },
@@ -369,11 +486,23 @@
           ],
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/prizes",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}", "prizes"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "prizes"
+              ]
             },
             "description": "Returns all prizes (active and inactive) ordered by sortOrder."
           },
@@ -382,7 +511,12 @@
               "name": "200 - Prize List",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": true,\n  \"message\": \"Prizes retrieved\",\n  \"data\": {\n    \"total\": 5,\n    \"prizes\": [\n      { \"id\": 1, \"prizeName\": \"Samsung 65-inch TV\", \"description\": null, \"quantity\": 1, \"sortOrder\": 1, \"isPool\": true, \"isActive\": true },\n      { \"id\": 2, \"prizeName\": \"iPhone 16 Pro\",      \"description\": null, \"quantity\": 3, \"sortOrder\": 2, \"isPool\": true, \"isActive\": true },\n      { \"id\": 3, \"prizeName\": \"No Prize\",           \"description\": null, \"quantity\": 99, \"sortOrder\": 9, \"isPool\": false, \"isActive\": true }\n    ]\n  }\n}"
             }
           ]
@@ -410,8 +544,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -419,8 +559,15 @@
             },
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/prizes",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}", "prizes"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "prizes"
+              ]
             },
             "description": "`prizeId` is auto-saved. Create a 'No Prize' entry with `isPool: false` for the losing wheel segment."
           },
@@ -429,7 +576,12 @@
               "name": "201 - Prize Created",
               "status": "Created",
               "code": 201,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": true,\n  \"message\": \"Prize created successfully\",\n  \"data\": {\n    \"prize\": {\n      \"id\": 1,\n      \"prizeName\": \"Samsung 65-inch TV\",\n      \"description\": \"Grand prize\",\n      \"quantity\": 1,\n      \"sortOrder\": 1,\n      \"isPool\": true,\n      \"isActive\": true\n    }\n  }\n}"
             }
           ]
@@ -455,8 +607,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -464,8 +622,16 @@
             },
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/prizes/{{prizeId}}",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}", "prizes", "{{prizeId}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "prizes",
+                "{{prizeId}}"
+              ]
             },
             "description": "Partial update — at least one field required."
           },
@@ -489,11 +655,24 @@
           ],
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/prizes/{{prizeId}}",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}", "prizes", "{{prizeId}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "prizes",
+                "{{prizeId}}"
+              ]
             },
             "description": "Blocked if any claims reference this prize. Set `isActive: false` instead."
           },
@@ -502,14 +681,24 @@
               "name": "200 - Deleted",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": true,\n  \"message\": \"Prize deleted successfully\"\n}"
             },
             {
               "name": "409 - Claims Exist",
               "status": "Conflict",
               "code": 409,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": false,\n  \"message\": \"Cannot delete prize \\\"Samsung 65-inch TV\\\" — it has existing claims. Set isActive to false instead.\"\n}"
             }
           ]
@@ -542,12 +731,22 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
             ],
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/booths",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}", "booths"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "booths"
+              ]
             },
             "description": "Returns ALL booths (active and inactive). Ordered by sortOrder ASC."
           },
@@ -556,7 +755,12 @@
               "name": "200 - Booth List",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": true,\n  \"message\": \"Booths retrieved\",\n  \"data\": {\n    \"total\": 6,\n    \"booths\": [\n      { \"id\": 20260001, \"boothCode\": \"BOOTH-MAIN-01\", \"boothName\": \"Main Stage\",  \"qrValue\": \"BOOTH-MAIN-01\", \"points\": 100, \"maxScanPerUser\": 1, \"sortOrder\": 1, \"isActive\": true },\n      { \"id\": 20260006, \"boothCode\": \"BOOTH-PHOT-01\", \"boothName\": \"Photo Booth\", \"qrValue\": \"BOOTH-PHOT-01\", \"points\": 25,  \"maxScanPerUser\": 1, \"sortOrder\": 6, \"isActive\": false }\n    ]\n  }\n}"
             }
           ]
@@ -585,12 +789,23 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
             ],
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/booths/{{boothId}}",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}", "booths", "{{boothId}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "booths",
+                "{{boothId}}"
+              ]
             }
           },
           "response": [
@@ -598,7 +813,12 @@
               "name": "200 - Booth Found",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": true,\n  \"message\": \"Booth retrieved\",\n  \"data\": {\n    \"booth\": {\n      \"id\": 20260001,\n      \"boothCode\": \"BOOTH-MAIN-01\",\n      \"boothName\": \"Main Stage\",\n      \"qrValue\": \"BOOTH-MAIN-01\",\n      \"points\": 100,\n      \"maxScanPerUser\": 1,\n      \"sortOrder\": 1,\n      \"isActive\": true,\n      \"metadata\": null\n    }\n  }\n}"
             }
           ]
@@ -626,8 +846,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -635,8 +861,15 @@
             },
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/booths",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}", "booths"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "booths"
+              ]
             },
             "description": "`qrValue` defaults to `boothCode` if omitted. `boothId` is auto-saved."
           },
@@ -645,14 +878,24 @@
               "name": "201 - Booth Created",
               "status": "Created",
               "code": 201,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": true,\n  \"message\": \"Booth created successfully\",\n  \"data\": {\n    \"booth\": {\n      \"id\": 20260007,\n      \"boothCode\": \"BOOTH-NEW-01\",\n      \"boothName\": \"New Booth\",\n      \"qrValue\": \"BOOTH-NEW-01\",\n      \"points\": 50,\n      \"maxScanPerUser\": 1,\n      \"sortOrder\": 10,\n      \"isActive\": true,\n      \"metadata\": null\n    }\n  }\n}"
             },
             {
               "name": "409 - Duplicate boothCode",
               "status": "Conflict",
               "code": 409,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": false,\n  \"message\": \"boothCode \\\"BOOTH-NEW-01\\\" already exists in this campaign\"\n}"
             }
           ]
@@ -678,8 +921,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -687,8 +936,16 @@
             },
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/booths/{{boothId}}",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}", "booths", "{{boothId}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "booths",
+                "{{boothId}}"
+              ]
             },
             "description": "Partial update — send only the fields to change. At least one field required."
           },
@@ -697,7 +954,12 @@
               "name": "200 - Booth Updated",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": true,\n  \"message\": \"Booth updated successfully\",\n  \"data\": {\n    \"booth\": {\n      \"id\": 20260007,\n      \"boothCode\": \"BOOTH-NEW-01\",\n      \"boothName\": \"Updated Booth Name\",\n      \"qrValue\": \"BOOTH-NEW-01\",\n      \"points\": 75,\n      \"maxScanPerUser\": 1,\n      \"sortOrder\": 10,\n      \"isActive\": false,\n      \"metadata\": null\n    }\n  }\n}"
             }
           ]
@@ -721,12 +983,23 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
             ],
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/booths/{{boothId}}",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}", "booths", "{{boothId}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "booths",
+                "{{boothId}}"
+              ]
             },
             "description": "Blocked if any scan logs reference this booth. Use `PATCH { isActive: false }` instead."
           },
@@ -735,14 +1008,24 @@
               "name": "200 - Deleted",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": true,\n  \"message\": \"Booth deleted successfully\"\n}"
             },
             {
               "name": "409 - Scan Logs Exist",
               "status": "Conflict",
               "code": 409,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": false,\n  \"message\": \"Cannot delete booth \\\"BOOTH-NEW-01\\\" — it has existing scan records. Deactivate it instead (isActive: false).\"\n}"
             }
           ]
@@ -775,11 +1058,23 @@
           ],
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/images",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}", "images"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "images"
+              ]
             },
             "description": "Returns all images grouped by siteCode, ordered by siteCode → sortOrder."
           },
@@ -788,7 +1083,12 @@
               "name": "200 - Image List",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": true,\n  \"message\": \"Image maps retrieved\",\n  \"data\": {\n    \"total\": 3,\n    \"sites\": [\n      {\n        \"siteCode\": \"BLDG-A\",\n        \"siteName\": \"Building A\",\n        \"images\": [\n          { \"id\": 1, \"imageUrl\": \"campaigns/1/images/abc123.jpg\", \"altText\": \"Building A entrance\", \"sortOrder\": 1, \"isActive\": true }\n        ]\n      },\n      {\n        \"siteCode\": \"MAIN-HALL\",\n        \"siteName\": \"Main Hall\",\n        \"images\": [\n          { \"id\": 2, \"imageUrl\": \"campaigns/1/images/def456.jpg\", \"altText\": null, \"sortOrder\": 1, \"isActive\": true },\n          { \"id\": 3, \"imageUrl\": \"campaigns/1/images/ghi789.jpg\", \"altText\": \"Stage view\",       \"sortOrder\": 2, \"isActive\": true }\n        ]\n      }\n    ]\n  }\n}"
             }
           ]
@@ -815,11 +1115,24 @@
           ],
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/images/{{imageId}}",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}", "images", "{{imageId}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "images",
+                "{{imageId}}"
+              ]
             }
           },
           "response": []
@@ -846,22 +1159,64 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "image",     "type": "file",  "src": "",                  "description": "Image file (jpg/png/webp/gif, max 5MB)" },
-                { "key": "siteCode",  "type": "text",  "value": "MAIN-HALL",       "description": "Programmatic site key" },
-                { "key": "siteName",  "type": "text",  "value": "Main Hall",       "description": "Display label" },
-                { "key": "altText",   "type": "text",  "value": "Main hall view",  "description": "Optional accessibility text" },
-                { "key": "sortOrder", "type": "text",  "value": "1",               "description": "Display order within site" },
-                { "key": "isActive",  "type": "text",  "value": "true",            "description": "true or false" }
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "",
+                  "description": "Image file (jpg/png/webp/gif, max 5MB)"
+                },
+                {
+                  "key": "siteCode",
+                  "type": "text",
+                  "value": "MAIN-HALL",
+                  "description": "Programmatic site key"
+                },
+                {
+                  "key": "siteName",
+                  "type": "text",
+                  "value": "Main Hall",
+                  "description": "Display label"
+                },
+                {
+                  "key": "altText",
+                  "type": "text",
+                  "value": "Main hall view",
+                  "description": "Optional accessibility text"
+                },
+                {
+                  "key": "sortOrder",
+                  "type": "text",
+                  "value": "1",
+                  "description": "Display order within site"
+                },
+                {
+                  "key": "isActive",
+                  "type": "text",
+                  "value": "true",
+                  "description": "true or false"
+                }
               ]
             },
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/images",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}", "images"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "images"
+              ]
             },
             "description": "Multipart form upload. Field name must be `image`. Supported types: jpg, jpeg, png, webp, gif, svg, bmp, tiff. Max 5 MB. `imageId` is auto-saved."
           },
@@ -870,21 +1225,36 @@
               "name": "201 - Uploaded",
               "status": "Created",
               "code": 201,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": true,\n  \"message\": \"Image uploaded successfully\",\n  \"data\": {\n    \"image\": {\n      \"id\": 1,\n      \"siteCode\": \"MAIN-HALL\",\n      \"siteName\": \"Main Hall\",\n      \"imageUrl\": \"campaigns/1/images/abc123def456.jpg\",\n      \"altText\": \"Main hall view\",\n      \"sortOrder\": 1,\n      \"isActive\": true\n    }\n  }\n}"
             },
             {
               "name": "400 - No File",
               "status": "Bad Request",
               "code": 400,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": false,\n  \"message\": \"Image file is required\"\n}"
             },
             {
               "name": "400 - File Too Large",
               "status": "Bad Request",
               "code": 400,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": false,\n  \"error\": \"File too large\",\n  \"message\": \"File size exceeds the maximum allowed size\"\n}"
             }
           ]
@@ -911,8 +1281,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -920,8 +1296,16 @@
             },
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/images/{{imageId}}",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}", "images", "{{imageId}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "images",
+                "{{imageId}}"
+              ]
             },
             "description": "Update metadata only (siteCode, siteName, altText, sortOrder, isActive). Does not replace the file. At least one field required."
           },
@@ -947,17 +1331,36 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "image", "type": "file", "src": "", "description": "New image file to replace the existing one" }
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "",
+                  "description": "New image file to replace the existing one"
+                }
               ]
             },
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/images/{{imageId}}/replace",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}", "images", "{{imageId}}", "replace"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "images",
+                "{{imageId}}",
+                "replace"
+              ]
             },
             "description": "Upload a new file to replace the existing one. Old file is deleted from disk. Metadata (siteCode, siteName, etc.) is preserved."
           },
@@ -979,11 +1382,24 @@
           ],
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/images/{{imageId}}",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}", "images", "{{imageId}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "images",
+                "{{imageId}}"
+              ]
             },
             "description": "Deletes the DB record and removes the file from disk. Best-effort — request succeeds even if the file was already missing."
           },
@@ -992,7 +1408,12 @@
               "name": "200 - Deleted",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": true,\n  \"message\": \"Image deleted successfully\"\n}"
             }
           ]
@@ -1027,12 +1448,23 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
             ],
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/prizes/stats",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}", "prizes", "stats"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "prizes",
+                "stats"
+              ]
             },
             "description": "Claim history grouped by prize name + 50 most recent claims."
           },
@@ -1064,12 +1496,24 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
             ],
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/participant/{{participantId}}/progress",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns", "{{campaignId}}", "participant", "{{participantId}}", "progress"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "participant",
+                "{{participantId}}",
+                "progress"
+              ]
             },
             "description": "Full participant view: points (recomputed from scan logs), scans, raffle QR status, claim history. `participantId` is auto-filled from Validate Raffle."
           },
@@ -1110,8 +1554,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/campaigns/event/{{eventTag}}",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "event", "{{eventTag}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "event",
+                "{{eventTag}}"
+              ]
             }
           },
           "response": [
@@ -1119,21 +1569,36 @@
               "name": "200 - Campaign + Booths",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": true,\n  \"message\": \"Campaign retrieved\",\n  \"data\": {\n    \"campaign\": {\n      \"id\": 1,\n      \"campaignCode\": \"RFFL-2026-001\",\n      \"campaignName\": \"Worldbex 2026 Raffle Campaign\",\n      \"eventTag\": \"WORLDBEX2026\",\n      \"description\": \"Collect points from all booths and join the grand raffle draw.\",\n      \"thresholdPoints\": 300,\n      \"startDate\": \"2026-04-01T00:00:00.000Z\",\n      \"endDate\": \"2026-04-05T23:59:59.000Z\",\n      \"status\": \"active\"\n    },\n    \"booths\": [\n      { \"id\": 20260001, \"boothCode\": \"BOOTH-MAIN-01\", \"boothName\": \"Main Stage\",     \"points\": 100, \"maxScanPerUser\": 1, \"sortOrder\": 1 },\n      { \"id\": 20260002, \"boothCode\": \"BOOTH-TECH-01\", \"boothName\": \"Tech Zone\",      \"points\": 75,  \"maxScanPerUser\": 1, \"sortOrder\": 2 },\n      { \"id\": 20260003, \"boothCode\": \"BOOTH-FOOD-01\", \"boothName\": \"Food Court\",     \"points\": 50,  \"maxScanPerUser\": 1, \"sortOrder\": 3 },\n      { \"id\": 20260004, \"boothCode\": \"BOOTH-INNO-01\", \"boothName\": \"Innovation Hub\", \"points\": 75,  \"maxScanPerUser\": 1, \"sortOrder\": 4 },\n      { \"id\": 20260005, \"boothCode\": \"BOOTH-SPON-01\", \"boothName\": \"Sponsors Area\",  \"points\": 50,  \"maxScanPerUser\": 1, \"sortOrder\": 5 }\n    ],\n    \"thresholdPoints\": 300,\n    \"totalBoothPoints\": 350\n  }\n}"
             },
             {
               "name": "400 - Campaign Not Active",
               "status": "Bad Request",
               "code": 400,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": false,\n  \"message\": \"Campaign is not active\"\n}"
             },
             {
               "name": "404 - Not Found",
               "status": "Not Found",
               "code": 404,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": false,\n  \"message\": \"Campaign not found\"\n}"
             }
           ]
@@ -1169,15 +1634,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"boothCodes\": [\n    \"BOOTH-MAIN-01\",\n    \"BOOTH-TECH-01\",\n    \"BOOTH-FOOD-01\",\n    \"BOOTH-INNO-01\",\n    \"BOOTH-SPON-01\"\n  ],\n  \"participantInfo\": {\n    \"participantCode\": \"CLIENT-DEVICE-ABC123\",\n    \"fullName\": \"Juan dela Cruz\",\n    \"mobileNumber\": \"09171234567\",\n    \"email\": \"juan@example.com\"\n  }\n}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/generate-raffle-qr",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "generate-raffle-qr"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "generate-raffle-qr"
+              ]
             },
             "description": "All 5 active booths = 350pts ≥ threshold 300. `encryptedQr` is auto-saved."
           },
@@ -1186,7 +1662,12 @@
               "name": "200 - QR Generated",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": true,\n  \"message\": \"Raffle QR generated successfully\",\n  \"data\": {\n    \"raffleQrId\": 1,\n    \"encryptedQr\": \"<url_safe_encrypted_string>\",\n    \"participantId\": 1,\n    \"participantCode\": \"CLIENT-DEVICE-ABC123\",\n    \"totalPoints\": 350,\n    \"thresholdPoints\": 300,\n    \"boothCount\": 5,\n    \"generatedAt\": \"2026-04-01T08:00:00.000Z\"\n  }\n}"
             }
           ]
@@ -1211,15 +1692,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"boothCodes\": [\n    \"BOOTH-MAIN-01\",\n    \"BOOTH-TECH-01\",\n    \"BOOTH-FOOD-01\",\n    \"BOOTH-INNO-01\",\n    \"BOOTH-SPON-01\"\n  ]\n}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/generate-raffle-qr",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "generate-raffle-qr"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "generate-raffle-qr"
+              ]
             },
             "description": "participantInfo is fully optional. A generated code (PART-N) is assigned."
           },
@@ -1245,15 +1737,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"boothCodes\": [\n    \"BOOTH-FOOD-01\",\n    \"BOOTH-SPON-01\"\n  ],\n  \"participantInfo\": {\n    \"participantCode\": \"CLIENT-DEVICE-XYZ999\",\n    \"mobileNumber\": \"09187654321\"\n  }\n}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/generate-raffle-qr",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "generate-raffle-qr"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "generate-raffle-qr"
+              ]
             },
             "description": "2 booths = 125pts. Threshold is 300."
           },
@@ -1279,15 +1782,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"boothCodes\": [\n    \"BOOTH-MAIN-01\",\n    \"BOOTH-FAKE-99\"\n  ],\n  \"participantInfo\": {\n    \"participantCode\": \"CLIENT-DEVICE-TEST01\"\n  }\n}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/generate-raffle-qr",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "generate-raffle-qr"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "generate-raffle-qr"
+              ]
             }
           },
           "response": []
@@ -1311,15 +1825,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"boothCodes\": [\n    \"BOOTH-MAIN-01\",\n    \"BOOTH-TECH-01\",\n    \"BOOTH-FOOD-01\",\n    \"BOOTH-INNO-01\",\n    \"BOOTH-SPON-01\"\n  ],\n  \"participantInfo\": {\n    \"participantCode\": \"CLIENT-DEVICE-ABC123\"\n  }\n}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/generate-raffle-qr",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "generate-raffle-qr"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "generate-raffle-qr"
+              ]
             },
             "description": "Re-submit the same participantCode — should return 409."
           },
@@ -1358,15 +1883,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"encryptedQr\": \"{{encryptedQr}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/validate-raffle",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "validate-raffle"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "validate-raffle"
+              ]
             },
             "description": "Uses `encryptedQr` saved from Step 2. `raffleEntryId` and `participantId` are auto-saved."
           },
@@ -1375,21 +1911,36 @@
               "name": "200 - Validated",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": true,\n  \"message\": \"Raffle QR validated. Participant is eligible to spin.\",\n  \"data\": {\n    \"raffleEntryId\": 1,\n    \"participantId\": 1,\n    \"participantCode\": \"CLIENT-DEVICE-ABC123\",\n    \"fullName\": \"Juan dela Cruz\",\n    \"campaignId\": 1,\n    \"totalPoints\": 350,\n    \"thresholdPoints\": 300,\n    \"status\": \"pending\",\n    \"dateCreated\": \"2026-04-01T08:05:00.000Z\"\n  }\n}"
             },
             {
               "name": "409 - QR Already Used",
               "status": "Conflict",
               "code": 409,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": false,\n  \"message\": \"Raffle entry already exists for this QR\"\n}"
             },
             {
               "name": "400 - Tampered QR",
               "status": "Bad Request",
               "code": 400,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": false,\n  \"message\": \"Invalid or tampered QR code\"\n}"
             }
           ]
@@ -1413,15 +1964,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"encryptedQr\": \"{{encryptedQr}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/validate-raffle",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "validate-raffle"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "validate-raffle"
+              ]
             },
             "description": "Re-submit the same QR to confirm it cannot be used twice."
           },
@@ -1446,15 +2008,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"encryptedQr\": \"this_is_not_a_valid_encrypted_qr_string\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/validate-raffle",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "validate-raffle"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "validate-raffle"
+              ]
             }
           },
           "response": []
@@ -1493,8 +2066,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/prizes",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "prizes"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "prizes"
+              ]
             },
             "description": "Public endpoint. Returns active prizes only. Use the returned `id` values as `prizeId` in spin-wheel."
           },
@@ -1503,7 +2082,12 @@
               "name": "200 - Active Prizes",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": true,\n  \"message\": \"Prizes retrieved\",\n  \"data\": {\n    \"prizes\": [\n      { \"id\": 1, \"prizeName\": \"Samsung 65-inch TV\", \"description\": \"Grand prize\", \"quantity\": 1, \"sortOrder\": 1, \"isPool\": true },\n      { \"id\": 2, \"prizeName\": \"iPhone 16 Pro\",      \"description\": null,          \"quantity\": 3, \"sortOrder\": 2, \"isPool\": true },\n      { \"id\": 3, \"prizeName\": \"No Prize\",           \"description\": null,          \"quantity\": 99, \"sortOrder\": 9, \"isPool\": false }\n    ]\n  }\n}"
             }
           ]
@@ -1538,15 +2122,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"raffleEntryId\": \"{{raffleEntryId}}\",\n  \"prizeId\": {{prizeId}},\n  \"wheelResult\": \"Samsung 65-inch TV\",\n  \"claimedBy\": \"Event Staff - Maria\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/spin-wheel",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "spin-wheel"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "spin-wheel"
+              ]
             },
             "description": "Send `prizeId` from the catalog. Server looks up the prize name, creates a claim record, and decrements quantity."
           },
@@ -1555,7 +2150,12 @@
               "name": "200 - Win",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": true,\n  \"message\": \"Congratulations! Prize awarded.\",\n  \"data\": {\n    \"raffleEntryId\": \"1\",\n    \"participantId\": 1,\n    \"outcome\": \"won\",\n    \"wheelResult\": \"Samsung 65-inch TV\",\n    \"prize\": {\n      \"claimId\": 1,\n      \"prizeId\": 1,\n      \"prizeName\": \"Samsung 65-inch TV\",\n      \"claimedBy\": \"Event Staff - Maria\",\n      \"claimedAt\": \"2026-04-01T08:10:00.000Z\",\n      \"status\": \"won\"\n    }\n  }\n}"
             }
           ]
@@ -1581,15 +2181,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"raffleEntryId\": \"{{raffleEntryId}}\",\n  \"wheelResult\": \"No Prize\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/spin-wheel",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "spin-wheel"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "spin-wheel"
+              ]
             },
             "description": "Omit `prizeId` for a losing spin. No claim record is created. Entry marked as 'lost'."
           },
@@ -1598,7 +2209,12 @@
               "name": "200 - No Prize",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"success\": true,\n  \"message\": \"Better luck next time.\",\n  \"data\": {\n    \"raffleEntryId\": \"1\",\n    \"participantId\": 1,\n    \"outcome\": \"lost\",\n    \"wheelResult\": \"No Prize\",\n    \"prize\": null\n  }\n}"
             }
           ]
@@ -1623,15 +2239,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"raffleEntryId\": \"{{raffleEntryId}}\",\n  \"prizeId\": {{prizeId}},\n  \"wheelResult\": \"Samsung 65-inch TV\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/spin-wheel",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "spin-wheel"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "spin-wheel"
+              ]
             },
             "description": "Re-spin the same entry after it has been processed."
           },
@@ -1653,15 +2280,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"raffleEntryId\": \"{{raffleEntryId}}\",\n  \"prizeId\": 99999,\n  \"wheelResult\": \"Fake Prize\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/spin-wheel",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "spin-wheel"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "spin-wheel"
+              ]
             }
           },
           "response": []
@@ -1688,15 +2326,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"participantInfo\": {\n    \"participantCode\": \"CLIENT-DEVICE-001\"\n  }\n}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/generate-raffle-qr",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "generate-raffle-qr"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "generate-raffle-qr"
+              ]
             }
           },
           "response": []
@@ -1717,15 +2366,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"boothCodes\": []\n}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/generate-raffle-qr",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "generate-raffle-qr"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "generate-raffle-qr"
+              ]
             }
           },
           "response": []
@@ -1746,15 +2406,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/validate-raffle",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "validate-raffle"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "validate-raffle"
+              ]
             }
           },
           "response": []
@@ -1775,15 +2446,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"raffleEntryId\": \"{{raffleEntryId}}\",\n  \"wheelResult\": \"iPhone 16 Pro\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/campaigns/{{campaignId}}/spin-wheel",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "{{campaignId}}", "spin-wheel"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "spin-wheel"
+              ]
             }
           },
           "response": []
@@ -1807,8 +2489,13 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/admin/campaigns",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "campaigns"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns"
+              ]
             },
             "description": "Hit an admin endpoint without a token — should return 401."
           },
@@ -1833,8 +2520,1621 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/campaigns/event/DOESNOTEXIST",
-              "host": ["{{base_url}}"],
-              "path": ["campaigns", "event", "DOESNOTEXIST"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "event",
+                "DOESNOTEXIST"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "F. Admin — Survey Management",
+      "description": "Full CRUD for surveys, questions, options, matrix rows, responses, and analytics.\n\nAll requests require `Authorization: Bearer {{admin_token}}`.\n\nBase path: `{{base_url}}/admin/campaigns/{{campaignId}}/surveys`",
+      "item": [
+        {
+          "name": "List Surveys",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns surveys', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.success).to.be.true;",
+                  "  pm.expect(j.data.surveys).to.be.an('array');",
+                  "  console.log('Total surveys:', j.data.total);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys"
+              ]
+            },
+            "description": "List all surveys for the campaign with active question count and total response count."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Survey (with Questions)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Survey has questions', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.data.survey.questions).to.be.an('array');",
+                  "  console.log('Questions:', j.data.survey.questions.length);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}"
+              ]
+            },
+            "description": "Returns the full survey with nested questions, options per question, and matrix rows."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Survey",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Survey created', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.success).to.be.true;",
+                  "  pm.collectionVariables.set('surveyId', j.data.survey.id);",
+                  "  console.log('Survey ID saved:', j.data.survey.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys"
+              ]
+            },
+            "description": "Create a survey. `triggerEvent`: `booth_scan` | `raffle_entry` | `prize_claim`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"surveyName\": \"Booth Visitor Feedback\",\n  \"description\": \"Quick feedback after scanning the booth QR\",\n  \"triggerEvent\": \"booth_scan\",\n  \"isRequired\": false,\n  \"isActive\": true,\n  \"sortOrder\": 0\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Survey",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Updated', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}"
+              ]
+            },
+            "description": "Update any survey fields. All fields optional.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"surveyName\": \"Updated Feedback Survey\",\n  \"isRequired\": true\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Survey",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Deleted or 409 blocked', () => {",
+                  "  pm.expect([200, 409]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}"
+              ]
+            },
+            "description": "Delete survey. Blocked (409) if responses exist — deactivate with isActive=false instead."
+          },
+          "response": []
+        },
+        {
+          "name": "List Questions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns questions', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.data.questions).to.be.an('array');",
+                  "  console.log('Questions:', j.data.total);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions"
+              ]
+            },
+            "description": "List all questions for a survey."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Question — single_choice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Question created', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.collectionVariables.set('questionId', j.data.question.id);",
+                  "  console.log('Question ID saved:', j.data.question.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions"
+              ]
+            },
+            "description": "Radio-button style question. Add selectable options via POST .../options after creating.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionText\": \"How did you hear about this event?\",\n  \"questionType\": \"single_choice\",\n  \"isRequired\": true,\n  \"sortOrder\": 0\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Question — multiple_choice",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions"
+              ]
+            },
+            "description": "Checkbox style — participant can pick multiple options. Stored as answerJson array.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionText\": \"Which booths did you find most useful? (Select all that apply)\",\n  \"questionType\": \"multiple_choice\",\n  \"isRequired\": false,\n  \"sortOrder\": 1,\n  \"validationRules\": {\n    \"minSelections\": 1,\n    \"maxSelections\": 5\n  }\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Question — rating",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions"
+              ]
+            },
+            "description": "Star/numeric rating. validationRules.min and max define the allowed scale. Stored as answerNumeric.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionText\": \"How would you rate your overall experience?\",\n  \"questionType\": \"rating\",\n  \"isRequired\": true,\n  \"sortOrder\": 2,\n  \"validationRules\": {\n    \"min\": 1,\n    \"max\": 5\n  }\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Question — likert",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions"
+              ]
+            },
+            "description": "Likert scale. Add options: Strongly Agree, Agree, Neutral, Disagree, Strongly Disagree via .../options.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionText\": \"I would recommend this event to a friend.\",\n  \"questionType\": \"likert\",\n  \"isRequired\": true,\n  \"sortOrder\": 3\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Question — boolean",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions"
+              ]
+            },
+            "description": "Yes/No question. Add exactly 2 options (Yes, No) via .../options. Stored as answerOptionId.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionText\": \"Have you attended this event before?\",\n  \"questionType\": \"boolean\",\n  \"isRequired\": true,\n  \"sortOrder\": 4\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Question — text",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions"
+              ]
+            },
+            "description": "Short free-text answer. Stored as answerText.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionText\": \"What is your company name?\",\n  \"questionType\": \"text\",\n  \"isRequired\": false,\n  \"sortOrder\": 5,\n  \"validationRules\": {\n    \"maxLength\": 255\n  }\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Question — long_text",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions"
+              ]
+            },
+            "description": "Paragraph/essay answer. Stored as answerText.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionText\": \"Any comments or suggestions?\",\n  \"questionType\": \"long_text\",\n  \"isRequired\": false,\n  \"sortOrder\": 6,\n  \"validationRules\": {\n    \"maxLength\": 500\n  }\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Question — number",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions"
+              ]
+            },
+            "description": "Numeric input. Stored as answerNumeric — supports AVG/SUM in analytics.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionText\": \"How many employees does your company have?\",\n  \"questionType\": \"number\",\n  \"isRequired\": false,\n  \"sortOrder\": 7,\n  \"validationRules\": {\n    \"min\": 1,\n    \"max\": 100000\n  }\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Question — date",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions"
+              ]
+            },
+            "description": "Date picker. Stored as answerDate (YYYY-MM-DD).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionText\": \"What is your expected project start date?\",\n  \"questionType\": \"date\",\n  \"isRequired\": false,\n  \"sortOrder\": 8\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Question — ranking",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions"
+              ]
+            },
+            "description": "Drag-to-rank question. Add items via .../options. Stored as answerJson [{optionId, rank}].",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionText\": \"Rank these event features from most to least valuable.\",\n  \"questionType\": \"ranking\",\n  \"isRequired\": false,\n  \"sortOrder\": 9\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Question — matrix",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Matrix question created', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.collectionVariables.set('questionId', j.data.question.id);",
+                  "  console.log('Matrix Question ID saved:', j.data.question.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions"
+              ]
+            },
+            "description": "Grid question. Add column headers via .../options and row sub-questions via .../matrix-rows. Stored as answerJson [{rowId, optionId}].",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionText\": \"How would you rate the following aspects of the event?\",\n  \"questionType\": \"matrix\",\n  \"isRequired\": true,\n  \"sortOrder\": 10\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Question",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions/{{questionId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions",
+                "{{questionId}}"
+              ]
+            },
+            "description": "Update any question field. All fields optional.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isRequired\": false,\n  \"sortOrder\": 99\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Question",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Deleted or 409 blocked', () => pm.expect([200,409]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions/{{questionId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions",
+                "{{questionId}}"
+              ]
+            },
+            "description": "Delete a question. Blocked (409) if answers exist — set isActive=false instead."
+          },
+          "response": []
+        },
+        {
+          "name": "List Options",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns options', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.data.options).to.be.an('array');",
+                  "  console.log('Question type:', j.data.questionType, '| Options:', j.data.total);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions/{{questionId}}/options",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions",
+                "{{questionId}}",
+                "options"
+              ]
+            },
+            "description": "List all options for a question. Returns questionType so the client knows context."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Option",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Option created', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.collectionVariables.set('optionId', j.data.option.id);",
+                  "  console.log('Option ID saved:', j.data.option.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions/{{questionId}}/options",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions",
+                "{{questionId}}",
+                "options"
+              ]
+            },
+            "description": "Add a selectable option. Works for: single_choice, multiple_choice, dropdown, boolean, likert, ranking, and matrix (column headers).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"optionText\": \"Social Media\",\n  \"optionValue\": \"social_media\",\n  \"sortOrder\": 0\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Option",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions/{{questionId}}/options/{{optionId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions",
+                "{{questionId}}",
+                "options",
+                "{{optionId}}"
+              ]
+            },
+            "description": "Update an option. All fields optional.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"optionText\": \"Online / Social Media\",\n  \"sortOrder\": 0\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Option",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Deleted or 409 blocked', () => pm.expect([200,409]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions/{{questionId}}/options/{{optionId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions",
+                "{{questionId}}",
+                "options",
+                "{{optionId}}"
+              ]
+            },
+            "description": "Delete an option. Blocked (409) if answers reference it — set isActive=false instead."
+          },
+          "response": []
+        },
+        {
+          "name": "List Matrix Rows",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions/{{questionId}}/matrix-rows",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions",
+                "{{questionId}}",
+                "matrix-rows"
+              ]
+            },
+            "description": "List all row sub-questions for a matrix-type question. Returns 400 if question type is not matrix."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Matrix Row",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Row created', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.collectionVariables.set('rowId', j.data.row.id);",
+                  "  console.log('Row ID saved:', j.data.row.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions/{{questionId}}/matrix-rows",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions",
+                "{{questionId}}",
+                "matrix-rows"
+              ]
+            },
+            "description": "Add a row sub-question to a matrix question. Only valid for matrix-type questions.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rowText\": \"Staff friendliness\",\n  \"sortOrder\": 0\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Matrix Row",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions/{{questionId}}/matrix-rows/{{rowId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions",
+                "{{questionId}}",
+                "matrix-rows",
+                "{{rowId}}"
+              ]
+            },
+            "description": "Update a matrix row.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rowText\": \"Staff helpfulness & knowledge\",\n  \"sortOrder\": 0\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Matrix Row",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Deleted', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/questions/{{questionId}}/matrix-rows/{{rowId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "questions",
+                "{{questionId}}",
+                "matrix-rows",
+                "{{rowId}}"
+              ]
+            },
+            "description": "Delete a matrix row."
+          },
+          "response": []
+        },
+        {
+          "name": "List Survey Responses",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Stats present', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.data.stats).to.have.property('total');",
+                  "  console.log('Total:', j.data.stats.total, '| Completed:', j.data.stats.completed);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/responses",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "responses"
+              ]
+            },
+            "description": "List all responses with participant info. Includes aggregate stats (total, completed, incomplete)."
+          },
+          "response": []
+        },
+        {
+          "name": "Survey Analytics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Analytics returned', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.data.analytics).to.be.an('array');",
+                  "  console.log('Questions analysed:', j.data.analytics.length);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/campaigns/{{campaignId}}/surveys/{{surveyId}}/analytics",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "analytics"
+              ]
+            },
+            "description": "Per-question aggregated analytics.\n\n- choice types → count + percentage per option\n- rating/number → avg, min, max\n- text/long_text → sample of last 20 answers\n- complex JSON types → response count only"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "7. Survey (Visitor)",
+      "description": "Visitor-facing survey endpoints. No authentication required.\n\n**Flow after QR scan:**\n1. `GET /campaigns/:campaignId/surveys/active?triggerEvent=booth_scan` → check for active survey\n2. If `hasSurvey=true` → render questions in the UI\n3. `GET .../response-status?participantId=X&scanLogId=Y` → skip if already answered\n4. `POST .../submit` → submit answers atomically",
+      "item": [
+        {
+          "name": "Get Active Survey",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Survey check', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.success).to.be.true;",
+                  "  console.log('Has survey:', j.data.hasSurvey);",
+                  "  if (j.data.hasSurvey) {",
+                  "    pm.collectionVariables.set('surveyId', j.data.survey.id);",
+                  "    console.log('Survey ID saved:', j.data.survey.id);",
+                  "    console.log('Questions:', j.data.survey.questionCount);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/surveys/active?triggerEvent=booth_scan",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "active"
+              ]
+            },
+            "description": "Fetch the active survey for a campaign by trigger event.\n\n`hasSurvey=false` when no survey is configured — client should skip the survey step.\n\n`triggerEvent` query param: `booth_scan` (default) | `raffle_entry` | `prize_claim`"
+          },
+          "response": []
+        },
+        {
+          "name": "Check Response Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Status checked', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.data).to.have.property('hasResponded');",
+                  "  console.log('Already responded:', j.data.hasResponded, '| Complete:', j.data.isComplete);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/surveys/{{surveyId}}/response-status?participantId={{participantId}}&scanLogId=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "response-status"
+              ]
+            },
+            "description": "Check if a participant has already submitted this survey for a given scan. Use to skip the survey UI without re-asking.\n\nQuery params: `participantId` (required), `scanLogId` (optional)"
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Survey — Mixed Types",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Survey submitted', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.success).to.be.true;",
+                  "  pm.collectionVariables.set('responseId', j.data.responseId);",
+                  "  console.log('Response ID:', j.data.responseId);",
+                  "  console.log('Answers recorded:', j.data.answersRecorded);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/surveys/{{surveyId}}/submit",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "submit"
+              ]
+            },
+            "description": "Submit survey answers atomically. All required questions must be answered.\n\n**Answer column by questionType:**\n\n| Type | Column | Example |\n|---|---|---|\n| single_choice, dropdown, boolean, likert | `answerOptionId` | `3` |\n| rating, number | `answerNumeric` | `4.5` |\n| text, long_text | `answerText` | `\"Great event\"` |\n| date | `answerDate` | `\"2026-04-08\"` |\n| multiple_choice | `answerJson` | `[{optionId:5},{optionId:8}]` |\n| ranking | `answerJson` | `[{optionId:3,rank:1},{optionId:7,rank:2}]` |\n| matrix | `answerJson` | `[{rowId:1,optionId:4},{rowId:2,optionId:5}]` |\n\n**Idempotent** — re-submitting same `participantId+scanLogId` returns the already-completed response.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"participantId\": 1,\n  \"scanLogId\": 1,\n  \"answers\": [\n    {\n      \"questionId\": 1,\n      \"answerOptionId\": 3\n    },\n    {\n      \"questionId\": 2,\n      \"answerNumeric\": 4\n    },\n    {\n      \"questionId\": 3,\n      \"answerText\": \"Great event, loved the layout!\"\n    },\n    {\n      \"questionId\": 4,\n      \"answerJson\": [\n        {\n          \"rowId\": 1,\n          \"optionId\": 5\n        },\n        {\n          \"rowId\": 2,\n          \"optionId\": 6\n        }\n      ]\n    }\n  ]\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Survey — Multiple Choice",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/surveys/{{surveyId}}/submit",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "submit"
+              ]
+            },
+            "description": "Example for a `multiple_choice` question — `answerJson` is an array of selected optionIds.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"participantId\": 1,\n  \"scanLogId\": 2,\n  \"answers\": [\n    {\n      \"questionId\": 5,\n      \"answerJson\": [\n        {\n          \"optionId\": 10\n        },\n        {\n          \"optionId\": 12\n        }\n      ]\n    }\n  ]\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Survey — Ranking",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/surveys/{{surveyId}}/submit",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "submit"
+              ]
+            },
+            "description": "Example for a `ranking` question — `answerJson` is an array of `{optionId, rank}` ordered by rank ascending.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"participantId\": 1,\n  \"scanLogId\": 3,\n  \"answers\": [\n    {\n      \"questionId\": 6,\n      \"answerJson\": [\n        {\n          \"optionId\": 7,\n          \"rank\": 1\n        },\n        {\n          \"optionId\": 8,\n          \"rank\": 2\n        },\n        {\n          \"optionId\": 9,\n          \"rank\": 3\n        }\n      ]\n    }\n  ]\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Survey — 400 Empty Answers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/surveys/{{surveyId}}/submit",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "submit"
+              ]
+            },
+            "description": "Expect 400 — answers array must not be empty.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"participantId\": 1,\n  \"scanLogId\": 99,\n  \"answers\": []\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Survey — 409 Already Submitted (Idempotency)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Already submitted returns 200', () => pm.response.to.have.status(200));",
+                  "pm.test('alreadySubmitted flag is true', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.data.alreadySubmitted).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/campaigns/{{campaignId}}/surveys/{{surveyId}}/submit",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campaigns",
+                "{{campaignId}}",
+                "surveys",
+                "{{surveyId}}",
+                "submit"
+              ]
+            },
+            "description": "Re-submit the same participantId + scanLogId. Returns 200 with alreadySubmitted=true instead of creating a duplicate.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"participantId\": 1,\n  \"scanLogId\": 1,\n  \"answers\": [\n    {\n      \"questionId\": 1,\n      \"answerOptionId\": 3\n    }\n  ]\n}"
             }
           },
           "response": []

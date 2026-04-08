@@ -4,14 +4,14 @@
 //
 // Surfaces under /admin/*:
 //   /admin              → Login (unauthenticated only)
-//   /admin/prizes       → Roulette Prize CMS (CRUD)
-//   /admin/pool         → Prize Pool Config (isPool toggles)
+//   /admin/campaigns    → Campaign Manager (CRUD)
+//   /admin/surveys      → Survey Manager (CRUD)
 //
 // Access: ADMIN role can access all pages.
-//         STAFF role can access Prizes only.
+//         STAFF role can access Campaigns only.
 // ============================================
 
-import { Megaphone } from "lucide-react";
+import { ClipboardList, Megaphone } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import BasicLayout from "../../components/layout/BasicLayout";
@@ -19,8 +19,9 @@ import { ComponentLoader } from "../../components/LoadingFallback";
 import { Auth, UnAuth } from "../ValidateAuth";
 import { useAdminAuthStore, useCurrentActiveUserToken } from "../../store/useAdminAuthStore";
 
-const Login             = lazy(() => import("../../pages/admin/Login"));
-const CampaignManager   = lazy(() => import("../../pages/admin/CampaignManager"));
+const Login           = lazy(() => import("../../pages/admin/Login"));
+const CampaignManager = lazy(() => import("../../pages/admin/CampaignManager"));
+const SurveyManager   = lazy(() => import("../../pages/admin/SurveyManager"));
 
 // Combined store passed to BasicLayout — merges userData from admin store
 // with a reset that clears both auth stores.
@@ -46,6 +47,17 @@ const CmsRoute = () => {
       component: (
         <Suspense fallback={<ComponentLoader />}>
           <CampaignManager />
+        </Suspense>
+      ),
+    },
+    {
+      route: "/surveys",
+      name: "surveys",
+      label: "Surveys",
+      icon: <ClipboardList className="h-5 w-5" />,
+      component: (
+        <Suspense fallback={<ComponentLoader />}>
+          <SurveyManager />
         </Suspense>
       ),
     },

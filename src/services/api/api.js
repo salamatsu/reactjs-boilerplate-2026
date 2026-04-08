@@ -593,3 +593,278 @@ export const uploadFileApi = async (data) => {
     throw error;
   }
 };
+
+// ============================================
+// SURVEY — Public (no auth)
+// Base: /api/v1/raffles/campaigns/:campaignId/surveys
+//
+// GET  /surveys/active?triggerEvent=booth_scan|raffle_entry|prize_claim
+// GET  /surveys/:surveyId/response-status?participantId=X
+// POST /surveys/:surveyId/submit
+// ============================================
+
+export const getActiveSurveyApi = async (campaignId, triggerEvent = "raffle_entry") => {
+  try {
+    const response = await axiosInstance.get(
+      `${RAFFLE_BASE}/campaigns/${campaignId}/surveys/active?triggerEvent=${triggerEvent}`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const checkSurveyResponseStatusApi = async (campaignId, surveyId, participantId) => {
+  try {
+    const response = await axiosInstance.get(
+      `${RAFFLE_BASE}/campaigns/${campaignId}/surveys/${surveyId}/response-status?participantId=${participantId}`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const submitSurveyApi = async ({ campaignId, surveyId, ...payload }) => {
+  try {
+    const response = await axiosInstance.post(
+      `${RAFFLE_BASE}/campaigns/${campaignId}/surveys/${surveyId}/submit`,
+      payload,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+// ============================================
+// SURVEY MANAGEMENT — Admin CMS
+// Base: /api/v1/raffles/admin/campaigns/:campaignId/surveys
+//
+// GET    /surveys                → list all
+// GET    /surveys/:surveyId      → get by id (includes questions)
+// POST   /surveys                → create
+// PATCH  /surveys/:surveyId      → update
+// DELETE /surveys/:surveyId      → delete
+//
+// Questions: /surveys/:surveyId/questions
+// GET    /questions
+// POST   /questions
+// PATCH  /questions/:questionId
+// DELETE /questions/:questionId
+//
+// Options: /questions/:questionId/options
+// POST   /options
+// PATCH  /options/:optionId
+// DELETE /options/:optionId
+//
+// Matrix rows: /questions/:questionId/matrix-rows
+// POST   /matrix-rows
+// PATCH  /matrix-rows/:rowId
+// DELETE /matrix-rows/:rowId
+//
+// Responses + Analytics
+// GET /surveys/:surveyId/responses
+// GET /surveys/:surveyId/analytics
+// ============================================
+
+export const listSurveysApi = async (campaignId) => {
+  try {
+    const response = await axios.get(`${RAFFLE_BASE}/admin/campaigns/${campaignId}/surveys`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const getSurveyByIdApi = async ({ campaignId, surveyId }) => {
+  try {
+    const response = await axios.get(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/surveys/${surveyId}`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const createSurveyApi = async ({ campaignId, ...data }) => {
+  try {
+    const response = await axios.post(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/surveys`,
+      data,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const updateSurveyApi = async ({ campaignId, surveyId, ...data }) => {
+  try {
+    const response = await axios.patch(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/surveys/${surveyId}`,
+      data,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const deleteSurveyApi = async ({ campaignId, surveyId }) => {
+  try {
+    const response = await axios.delete(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/surveys/${surveyId}`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const createSurveyQuestionApi = async ({ campaignId, surveyId, ...data }) => {
+  try {
+    const response = await axios.post(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/surveys/${surveyId}/questions`,
+      data,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const updateSurveyQuestionApi = async ({ campaignId, surveyId, questionId, ...data }) => {
+  try {
+    const response = await axios.patch(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/surveys/${surveyId}/questions/${questionId}`,
+      data,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const deleteSurveyQuestionApi = async ({ campaignId, surveyId, questionId }) => {
+  try {
+    const response = await axios.delete(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/surveys/${surveyId}/questions/${questionId}`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const createQuestionOptionApi = async ({ campaignId, surveyId, questionId, ...data }) => {
+  try {
+    const response = await axios.post(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/surveys/${surveyId}/questions/${questionId}/options`,
+      data,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const updateQuestionOptionApi = async ({ campaignId, surveyId, questionId, optionId, ...data }) => {
+  try {
+    const response = await axios.patch(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/surveys/${surveyId}/questions/${questionId}/options/${optionId}`,
+      data,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const deleteQuestionOptionApi = async ({ campaignId, surveyId, questionId, optionId }) => {
+  try {
+    const response = await axios.delete(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/surveys/${surveyId}/questions/${questionId}/options/${optionId}`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const createMatrixRowApi = async ({ campaignId, surveyId, questionId, ...data }) => {
+  try {
+    const response = await axios.post(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/surveys/${surveyId}/questions/${questionId}/matrix-rows`,
+      data,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const updateMatrixRowApi = async ({ campaignId, surveyId, questionId, rowId, ...data }) => {
+  try {
+    const response = await axios.patch(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/surveys/${surveyId}/questions/${questionId}/matrix-rows/${rowId}`,
+      data,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const deleteMatrixRowApi = async ({ campaignId, surveyId, questionId, rowId }) => {
+  try {
+    const response = await axios.delete(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/surveys/${surveyId}/questions/${questionId}/matrix-rows/${rowId}`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const listSurveyResponsesApi = async ({ campaignId, surveyId }) => {
+  try {
+    const response = await axios.get(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/surveys/${surveyId}/responses`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const getSurveyAnalyticsApi = async ({ campaignId, surveyId }) => {
+  try {
+    const response = await axios.get(
+      `${RAFFLE_BASE}/admin/campaigns/${campaignId}/surveys/${surveyId}/analytics`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};

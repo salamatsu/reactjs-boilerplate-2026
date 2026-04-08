@@ -45,6 +45,22 @@ import {
   replaceCampaignImageApi,
   deleteCampaignImageApi,
   getParticipantProgressApi,
+  listSurveysApi,
+  getSurveyByIdApi,
+  createSurveyApi,
+  updateSurveyApi,
+  deleteSurveyApi,
+  createSurveyQuestionApi,
+  updateSurveyQuestionApi,
+  deleteSurveyQuestionApi,
+  createQuestionOptionApi,
+  updateQuestionOptionApi,
+  deleteQuestionOptionApi,
+  createMatrixRowApi,
+  updateMatrixRowApi,
+  deleteMatrixRowApi,
+  listSurveyResponsesApi,
+  getSurveyAnalyticsApi,
 } from "../api/api";
 
 // ============================================
@@ -378,5 +394,162 @@ export const useGetParticipantProgress = ({ campaignId, participantId }) => {
     queryKey: ["participant-progress", campaignId, participantId],
     queryFn: () => getParticipantProgressApi({ campaignId, participantId }),
     enabled: !!campaignId && !!participantId,
+  });
+};
+
+// ============================================
+// SURVEY MANAGEMENT — Admin CMS
+// ============================================
+
+export const useListSurveys = (campaignId) => {
+  return useQuery({
+    queryKey: ["surveys", campaignId],
+    queryFn: () => listSurveysApi(campaignId),
+    enabled: !!campaignId,
+  });
+};
+
+export const useGetSurveyById = ({ campaignId, surveyId }) => {
+  return useQuery({
+    queryKey: ["survey", campaignId, surveyId],
+    queryFn: () => getSurveyByIdApi({ campaignId, surveyId }),
+    enabled: !!campaignId && !!surveyId,
+  });
+};
+
+export const useCreateSurvey = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createSurveyApi,
+    onSuccess: (_, { campaignId }) => {
+      queryClient.invalidateQueries({ queryKey: ["surveys", campaignId] });
+    },
+  });
+};
+
+export const useUpdateSurvey = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateSurveyApi,
+    onSuccess: (_, { campaignId, surveyId }) => {
+      queryClient.invalidateQueries({ queryKey: ["surveys", campaignId] });
+      queryClient.invalidateQueries({ queryKey: ["survey", campaignId, surveyId] });
+    },
+  });
+};
+
+export const useDeleteSurvey = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteSurveyApi,
+    onSuccess: (_, { campaignId }) => {
+      queryClient.invalidateQueries({ queryKey: ["surveys", campaignId] });
+    },
+  });
+};
+
+export const useCreateSurveyQuestion = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createSurveyQuestionApi,
+    onSuccess: (_, { campaignId, surveyId }) => {
+      queryClient.invalidateQueries({ queryKey: ["survey", campaignId, surveyId] });
+    },
+  });
+};
+
+export const useUpdateSurveyQuestion = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateSurveyQuestionApi,
+    onSuccess: (_, { campaignId, surveyId }) => {
+      queryClient.invalidateQueries({ queryKey: ["survey", campaignId, surveyId] });
+    },
+  });
+};
+
+export const useDeleteSurveyQuestion = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteSurveyQuestionApi,
+    onSuccess: (_, { campaignId, surveyId }) => {
+      queryClient.invalidateQueries({ queryKey: ["survey", campaignId, surveyId] });
+    },
+  });
+};
+
+export const useCreateQuestionOption = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createQuestionOptionApi,
+    onSuccess: (_, { campaignId, surveyId }) => {
+      queryClient.invalidateQueries({ queryKey: ["survey", campaignId, surveyId] });
+    },
+  });
+};
+
+export const useUpdateQuestionOption = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateQuestionOptionApi,
+    onSuccess: (_, { campaignId, surveyId }) => {
+      queryClient.invalidateQueries({ queryKey: ["survey", campaignId, surveyId] });
+    },
+  });
+};
+
+export const useDeleteQuestionOption = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteQuestionOptionApi,
+    onSuccess: (_, { campaignId, surveyId }) => {
+      queryClient.invalidateQueries({ queryKey: ["survey", campaignId, surveyId] });
+    },
+  });
+};
+
+export const useCreateMatrixRow = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createMatrixRowApi,
+    onSuccess: (_, { campaignId, surveyId }) => {
+      queryClient.invalidateQueries({ queryKey: ["survey", campaignId, surveyId] });
+    },
+  });
+};
+
+export const useUpdateMatrixRow = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateMatrixRowApi,
+    onSuccess: (_, { campaignId, surveyId }) => {
+      queryClient.invalidateQueries({ queryKey: ["survey", campaignId, surveyId] });
+    },
+  });
+};
+
+export const useDeleteMatrixRow = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteMatrixRowApi,
+    onSuccess: (_, { campaignId, surveyId }) => {
+      queryClient.invalidateQueries({ queryKey: ["survey", campaignId, surveyId] });
+    },
+  });
+};
+
+export const useListSurveyResponses = ({ campaignId, surveyId }) => {
+  return useQuery({
+    queryKey: ["survey-responses", campaignId, surveyId],
+    queryFn: () => listSurveyResponsesApi({ campaignId, surveyId }),
+    enabled: !!campaignId && !!surveyId,
+  });
+};
+
+export const useGetSurveyAnalytics = ({ campaignId, surveyId }) => {
+  return useQuery({
+    queryKey: ["survey-analytics", campaignId, surveyId],
+    queryFn: () => getSurveyAnalyticsApi({ campaignId, surveyId }),
+    enabled: !!campaignId && !!surveyId,
   });
 };

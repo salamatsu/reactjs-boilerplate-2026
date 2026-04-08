@@ -25,6 +25,9 @@ import {
   Gift,
   Star,
   Zap,
+  ChevronUp,
+  ChevronDown,
+  ClipboardList,
 } from "lucide-react";
 import {
   useGetCampaignByEventTag,
@@ -32,6 +35,11 @@ import {
   useValidateRaffle,
   useSpinWheel,
 } from "../../services/requests/useApi";
+import {
+  getActiveSurveyApi,
+  checkSurveyResponseStatusApi,
+  submitSurveyApi,
+} from "../../services/api/api";
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 
@@ -102,7 +110,7 @@ const clearStation = () => localStorage.removeItem(STATION_KEY);
 
 // ─── Steps ────────────────────────────────────────────────────────────────────
 
-const STEPS = ["scan", "spin", "done"];
+const STEPS = ["scan", "survey", "spin", "done"];
 
 // ─── Vibrant wheel color palette ─────────────────────────────────────────────
 
@@ -1057,12 +1065,577 @@ const DoneStep = ({ outcome, prizeName, onReset }) => {
   );
 };
 
+// ─── Survey: build answer payload entry ──────────────────────────────────────
+
+const buildAnswerEntry = (question, value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const entry = { questionId: question.id };
+  switch (question.questionType) {
+    case "single_choice":
+    case "dropdown":
+    case "boolean":
+    case "likert":
+      entry.answerOptionId = value;
+      break;
+    case "rating":
+    case "number":
+      entry.answerNumeric = Number(value);
+      break;
+    case "text":
+    case "long_text":
+      entry.answerText = String(value).trim();
+      break;
+    case "date":
+      entry.answerDate = value;
+      break;
+    case "multiple_choice":
+      if (!Array.isArray(value) || !value.length) return null;
+      entry.answerJson = value.map((id) => ({ optionId: id }));
+      break;
+    case "ranking":
+      if (!Array.isArray(value) || !value.length) return null;
+      entry.answerJson = value.map((optionId, i) => ({ optionId, rank: i + 1 }));
+      break;
+    case "matrix":
+      if (!Array.isArray(value) || !value.length) return null;
+      entry.answerJson = value;
+      break;
+    default:
+      return null;
+  }
+  return entry;
+};
+
+// ─── Survey: question renderers ───────────────────────────────────────────────
+
+const SurveyQuestion = ({ question, value, onChange, error }) => {
+  const t = useRT();
+
+  const inputStyle = {
+    background: t.inputBg,
+    border: `1px solid ${error ? "#f87171" : t.inputBorder}`,
+    color: t.text,
+    outline: "none",
+    width: "100%",
+    borderRadius: 12,
+    padding: "10px 14px",
+    fontSize: 14,
+  };
+
+  const optionBtn = (selected, label, onClick) => (
+    <button
+      key={label}
+      onClick={onClick}
+      className="text-left rounded-xl px-4 py-2.5 text-sm font-medium transition-all active:scale-[0.98]"
+      style={
+        selected
+          ? { background: t.primary, color: "#fff", border: `1px solid ${t.primary}` }
+          : { background: t.inputBg, color: t.text, border: `1px solid ${t.inputBorder}` }
+      }
+    >
+      {label}
+    </button>
+  );
+
+  const { questionType: qt, options = [], matrixRows = [], validationRules } = question;
+
+  if (qt === "single_choice" || qt === "dropdown" || qt === "likert") {
+    return (
+      <div className={`flex ${qt === "likert" ? "flex-row flex-wrap" : "flex-col"} gap-2`}>
+        {options.map((o) => optionBtn(value === o.id, o.optionText, () => onChange(o.id)))}
+      </div>
+    );
+  }
+
+  if (qt === "boolean") {
+    return (
+      <div className="flex gap-3">
+        {options.map((o) => optionBtn(value === o.id, o.optionText, () => onChange(o.id)))}
+      </div>
+    );
+  }
+
+  if (qt === "multiple_choice") {
+    const selected = value ?? [];
+    return (
+      <div className="flex flex-col gap-2">
+        {options.map((o) => {
+          const checked = selected.includes(o.id);
+          return (
+            <button
+              key={o.id}
+              onClick={() =>
+                onChange(checked ? selected.filter((id) => id !== o.id) : [...selected, o.id])
+              }
+              className="flex items-center gap-3 text-left rounded-xl px-4 py-2.5 text-sm font-medium transition-all"
+              style={
+                checked
+                  ? { background: t.primary + "22", color: t.text, border: `1px solid ${t.primary}` }
+                  : { background: t.inputBg, color: t.text, border: `1px solid ${t.inputBorder}` }
+              }
+            >
+              <div
+                className="w-4 h-4 rounded flex items-center justify-center shrink-0"
+                style={{ background: checked ? t.primary : "transparent", border: `2px solid ${checked ? t.primary : t.inputBorder}` }}
+              >
+                {checked && <CheckCircle size={10} className="text-white" />}
+              </div>
+              {o.optionText}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (qt === "text") {
+    return (
+      <input
+        type="text"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        maxLength={validationRules?.maxLength}
+        placeholder="Type your answer…"
+        style={inputStyle}
+      />
+    );
+  }
+
+  if (qt === "long_text") {
+    const max = validationRules?.maxLength;
+    const len = (value ?? "").length;
+    return (
+      <div>
+        <textarea
+          rows={4}
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+          maxLength={max}
+          placeholder="Type your answer…"
+          style={{ ...inputStyle, resize: "vertical" }}
+        />
+        {max && (
+          <p className="text-xs mt-1 text-right" style={{ color: t.muted }}>
+            {len}/{max}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (qt === "number") {
+    return (
+      <input
+        type="number"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+        min={validationRules?.min}
+        max={validationRules?.max}
+        placeholder={validationRules ? `${validationRules.min ?? ""}–${validationRules.max ?? ""}` : "Enter number"}
+        style={inputStyle}
+      />
+    );
+  }
+
+  if (qt === "date") {
+    return (
+      <input
+        type="date"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        style={inputStyle}
+      />
+    );
+  }
+
+  if (qt === "rating") {
+    const min = validationRules?.min ?? 1;
+    const max = validationRules?.max ?? 5;
+    const stars = Array.from({ length: max - min + 1 }, (_, i) => i + min);
+    return (
+      <div className="flex gap-2 flex-wrap">
+        {stars.map((n) => (
+          <button
+            key={n}
+            onClick={() => onChange(n)}
+            className="text-2xl transition-transform active:scale-90"
+            style={{ opacity: value && n > value ? 0.3 : 1 }}
+          >
+            ★
+          </button>
+        ))}
+        {value && (
+          <span className="text-sm self-center ml-1" style={{ color: t.muted }}>
+            {value}/{max}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  if (qt === "ranking") {
+    const ranked = value ?? options.map((o) => o.id);
+    const move = (from, to) => {
+      const arr = [...ranked];
+      const [item] = arr.splice(from, 1);
+      arr.splice(to, 0, item);
+      onChange(arr);
+    };
+    return (
+      <div className="space-y-2">
+        {ranked.map((optId, idx) => {
+          const opt = options.find((o) => o.id === optId);
+          return (
+            <div
+              key={optId}
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5"
+              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}` }}
+            >
+              <span className="text-xs font-black w-5 text-center" style={{ color: t.primary }}>
+                {idx + 1}
+              </span>
+              <span className="flex-1 text-sm" style={{ color: t.text }}>{opt?.optionText}</span>
+              <div className="flex flex-col">
+                <button disabled={idx === 0} onClick={() => move(idx, idx - 1)} style={{ color: idx === 0 ? t.muted : t.primary }}>
+                  <ChevronUp size={16} />
+                </button>
+                <button disabled={idx === ranked.length - 1} onClick={() => move(idx, idx + 1)} style={{ color: idx === ranked.length - 1 ? t.muted : t.primary }}>
+                  <ChevronDown size={16} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (qt === "matrix") {
+    const current = value ?? [];
+    const getRowAnswer = (rowId) => current.find((a) => a.rowId === rowId)?.optionId ?? null;
+    const setRowAnswer = (rowId, optionId) => {
+      const rest = current.filter((a) => a.rowId !== rowId);
+      onChange([...rest, { rowId, optionId }]);
+    };
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
+          <thead>
+            <tr>
+              <th className="text-left pb-2 pr-4" style={{ color: t.muted, fontWeight: 600 }}>
+                &nbsp;
+              </th>
+              {options.map((o) => (
+                <th key={o.id} className="pb-2 px-2 text-center" style={{ color: t.muted, fontWeight: 600, minWidth: 64 }}>
+                  {o.optionText}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {matrixRows.map((row, ri) => (
+              <tr key={row.id} style={{ background: ri % 2 === 0 ? t.inputBg : "transparent" }}>
+                <td className="py-2 pr-4 rounded-l-lg text-sm" style={{ color: t.text }}>{row.rowText}</td>
+                {options.map((o) => (
+                  <td key={o.id} className="py-2 px-2 text-center">
+                    <button
+                      onClick={() => setRowAnswer(row.id, o.id)}
+                      className="w-5 h-5 rounded-full border-2 mx-auto flex items-center justify-center transition-all"
+                      style={
+                        getRowAnswer(row.id) === o.id
+                          ? { borderColor: t.primary, background: t.primary }
+                          : { borderColor: t.inputBorder, background: "transparent" }
+                      }
+                    >
+                      {getRowAnswer(row.id) === o.id && (
+                        <div className="w-2 h-2 rounded-full bg-white" />
+                      )}
+                    </button>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  return null;
+};
+
+// ─── Step: Survey ─────────────────────────────────────────────────────────────
+
+const SurveyStep = ({ participant, station, onNext }) => {
+  const t = useRT();
+  const [checking, setChecking] = useState(true);
+  const [survey, setSurvey] = useState(null);
+  const [answers, setAnswers] = useState({});
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+
+  // On mount: check for active raffle_entry survey, check response status
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const res = await getActiveSurveyApi(station.campaignId, "raffle_entry");
+        if (cancelled) return;
+        if (!res?.data?.hasSurvey || !res.data.survey?.questions?.length) {
+          onNext();
+          return;
+        }
+        const s = res.data.survey;
+        const statusRes = await checkSurveyResponseStatusApi(
+          station.campaignId,
+          s.id,
+          participant.participantId,
+        );
+        if (cancelled) return;
+        if (statusRes?.data?.hasResponded && statusRes.data.isComplete) {
+          onNext();
+          return;
+        }
+        setSurvey(s);
+        setAnswers(
+          Object.fromEntries(
+            s.questions
+              .slice()
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map((q) => [q.id, q.questionType === "ranking" ? q.options.map((o) => o.id) : null]),
+          ),
+        );
+      } catch {
+        // On any error skip survey
+        if (!cancelled) onNext();
+      } finally {
+        if (!cancelled) setChecking(false);
+      }
+    };
+    check();
+    return () => { cancelled = true; };
+  }, []);
+
+  const setAnswer = (questionId, value) => {
+    setAnswers((prev) => ({ ...prev, [questionId]: value }));
+    setErrors((prev) => ({ ...prev, [questionId]: null }));
+  };
+
+  const visibleQuestions = survey
+    ? survey.questions
+        .slice()
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .filter((q) => {
+          if (!q.conditionalLogic?.showIf) return true;
+          const { questionId, optionId, answerValue } = q.conditionalLogic.showIf;
+          if (optionId !== undefined) return answers[questionId] === optionId;
+          if (answerValue !== undefined) return String(answers[questionId]) === String(answerValue);
+          return true;
+        })
+    : [];
+
+  const validate = () => {
+    const errs = {};
+    for (const q of visibleQuestions) {
+      if (!q.isRequired) continue;
+      const ans = answers[q.id];
+      if (ans === null || ans === undefined || ans === "") {
+        errs[q.id] = "Required";
+        continue;
+      }
+      if (Array.isArray(ans) && ans.length === 0) {
+        errs[q.id] = "Please select at least one option.";
+        continue;
+      }
+      if (q.questionType === "matrix") {
+        const answeredRowIds = new Set((ans ?? []).map((a) => a.rowId));
+        if (q.matrixRows.some((r) => !answeredRowIds.has(r.id)))
+          errs[q.id] = "Please answer all rows.";
+      }
+    }
+    return errs;
+  };
+
+  const handleSubmit = async () => {
+    const errs = validate();
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
+    }
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await submitSurveyApi({
+        campaignId: station.campaignId,
+        surveyId: survey.id,
+        participantId: participant.participantId,
+        scanLogId: null,
+        answers: visibleQuestions
+          .map((q) => buildAnswerEntry(q, answers[q.id]))
+          .filter(Boolean),
+      });
+      onNext();
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message || err?.message || "Submission failed. Please try again.";
+      const match = msg.match(/question ID\(s\): ([\d, ]+)/);
+      if (match) {
+        const ids = new Set(match[1].split(",").map((id) => parseInt(id.trim(), 10)));
+        const fieldErrs = {};
+        visibleQuestions.filter((q) => ids.has(q.id)).forEach((q) => {
+          fieldErrs[q.id] = "This question is required.";
+        });
+        setErrors(fieldErrs);
+      } else {
+        setSubmitError(msg);
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Checking for survey
+  if (checking) {
+    return (
+      <div className="relative h-full flex flex-col items-center justify-center gap-4 z-10">
+        <div className="relative flex items-center justify-center">
+          {[0, 1].map((i) => (
+            <motion.div
+              key={i}
+              className="absolute rounded-full border-2"
+              style={{ borderColor: t.primary, width: 64, height: 64 }}
+              animate={{ scale: [1, 2], opacity: [0.6, 0] }}
+              transition={{ duration: 1.4, delay: i * 0.6, repeat: Infinity, ease: "easeOut" }}
+            />
+          ))}
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center z-10"
+            style={{ background: `linear-gradient(135deg, ${t.primary}, #f59e0b)` }}
+          >
+            <ClipboardList size={28} className="text-white" />
+          </div>
+        </div>
+        <p className="text-sm font-semibold" style={{ color: t.muted }}>Checking for survey…</p>
+      </div>
+    );
+  }
+
+  // No survey — shouldn't render (onNext called), but safety fallback
+  if (!survey) return null;
+
+  return (
+    <div className="relative h-full flex items-center justify-center z-10 px-6 py-4 overflow-hidden">
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="w-full max-w-2xl flex flex-col rounded-3xl overflow-hidden"
+        style={{
+          background: t.card,
+          border: `1px solid ${t.primaryBorder}`,
+          maxHeight: "calc(100vh - 140px)",
+        }}
+      >
+        {/* Header */}
+        <div
+          className="shrink-0 px-6 py-4 flex items-center justify-between"
+          style={{ borderBottom: `1px solid ${t.primaryBorder}` }}
+        >
+          <div>
+            <div className="flex items-center gap-2">
+              <ClipboardList size={18} style={{ color: t.primary }} />
+              <h2 className="font-black text-lg" style={{ color: t.text }}>
+                {survey.surveyName}
+              </h2>
+            </div>
+            {survey.description && (
+              <p className="text-xs mt-0.5" style={{ color: t.muted }}>{survey.description}</p>
+            )}
+          </div>
+          <span
+            className="shrink-0 text-xs font-bold px-3 py-1 rounded-full"
+            style={{ background: t.primaryBg, color: t.primary }}
+          >
+            {visibleQuestions.length} question{visibleQuestions.length !== 1 ? "s" : ""}
+          </span>
+        </div>
+
+        {/* Questions — scrollable */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+          {visibleQuestions.map((q, idx) => (
+            <div key={q.id}>
+              <div className="flex items-start gap-2 mb-3">
+                <span
+                  className="shrink-0 w-6 h-6 rounded-full text-xs font-black flex items-center justify-center mt-0.5"
+                  style={{ background: errors[q.id] ? "#fca5a522" : t.primaryBg, color: errors[q.id] ? "#f87171" : t.primary }}
+                >
+                  {idx + 1}
+                </span>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold" style={{ color: t.text }}>
+                    {q.questionText}
+                    {q.isRequired && <span className="text-red-400 ml-1">*</span>}
+                  </p>
+                  {errors[q.id] && (
+                    <p className="text-xs text-red-400 mt-0.5">{errors[q.id]}</p>
+                  )}
+                </div>
+              </div>
+              <div className="ml-8">
+                <SurveyQuestion
+                  question={q}
+                  value={answers[q.id]}
+                  onChange={(v) => setAnswer(q.id, v)}
+                  error={!!errors[q.id]}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div
+          className="shrink-0 px-6 py-4 flex items-center gap-3"
+          style={{ borderTop: `1px solid ${t.primaryBorder}` }}
+        >
+          {!survey.isRequired && (
+            <button
+              onClick={onNext}
+              className="flex-1 rounded-2xl py-3 text-sm font-bold transition-all active:scale-95"
+              style={{ background: t.pill, color: t.muted, border: `1px solid ${t.pillBorder}` }}
+            >
+              Skip
+            </button>
+          )}
+          {submitError && (
+            <p className="flex-1 text-xs text-red-400 text-center bg-red-500/10 rounded-xl px-3 py-2">
+              {submitError}
+            </p>
+          )}
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="flex-1 text-white rounded-2xl py-3 font-black text-sm flex items-center justify-center gap-2 disabled:opacity-60 active:scale-95 transition-all shadow-lg"
+            style={{ background: `linear-gradient(to right, ${t.primary}, #f59e0b)` }}
+          >
+            {submitting ? (
+              <><Loader2 size={16} className="animate-spin" /> Submitting…</>
+            ) : (
+              <>Submit & Continue</>
+            )}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 // ─── Step progress indicator ─────────────────────────────────────────────────
 
 const StepIndicator = ({ currentStep }) => {
   const t = useRT();
-  const labels = ["Scan", "Spin", "Done"];
-  const icons = ["📷", "🎡", "🏆"];
+  const labels = ["Scan", "Survey", "Spin", "Done"];
+  const icons = ["📷", "📋", "🎡", "🏆"];
   const currentIndex = STEPS.indexOf(currentStep);
   return (
     <div className="shrink-0 flex items-center justify-center gap-2 py-2 relative z-10">
@@ -1211,9 +1784,10 @@ const RedeemPortal = () => {
               transition={{ duration: 0.25 }}
               className="h-full"
             >
-              {step === "scan" && <ScanStep station={station} onNext={advance} />}
-              {step === "spin" && <SpinStep participant={sessionData} station={station} onNext={advance} onReset={reset} />}
-              {step === "done" && <DoneStep outcome={sessionData.outcome} prizeName={sessionData.prizeName} onReset={reset} />}
+              {step === "scan"   && <ScanStep station={station} onNext={advance} />}
+              {step === "survey" && <SurveyStep participant={sessionData} station={station} onNext={advance} />}
+              {step === "spin"   && <SpinStep participant={sessionData} station={station} onNext={advance} onReset={reset} />}
+              {step === "done"   && <DoneStep outcome={sessionData.outcome} prizeName={sessionData.prizeName} onReset={reset} />}
             </motion.div>
           </AnimatePresence>
         </div>
