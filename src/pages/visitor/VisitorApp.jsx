@@ -791,14 +791,16 @@ const ImageMapsView = ({ campaignId }) => {
                       className="text-[10px] font-mono mt-0.5 leading-none"
                       style={{ color: t.muted }}
                     >
-                      {site.siteCode} &middot; {activeImages.length} map{activeImages.length !== 1 ? "s" : ""}
+                      {site.siteCode} &middot; {activeImages.length} map
+                      {activeImages.length !== 1 ? "s" : ""}
                     </div>
                   ) : (
                     <div
                       className="text-[10px] font-mono mt-0.5 leading-none"
                       style={{ color: t.muted }}
                     >
-                      {activeImages.length} map{activeImages.length !== 1 ? "s" : ""}
+                      {activeImages.length} map
+                      {activeImages.length !== 1 ? "s" : ""}
                     </div>
                   )}
                 </div>
@@ -1634,9 +1636,23 @@ const GoalModal = ({
           <QRCodeSVG value={encryptedQr} size={180} level="H" />
         </div>
 
-        <p className="text-xs mb-5" style={{ color: t.muted }}>
+        <p className="text-xs mb-3" style={{ color: t.muted }}>
           This QR code is unique to you. Do not share it.
         </p>
+
+        <div
+          className="w-full rounded-xl px-4 py-3 mb-5 text-left text-xs leading-relaxed"
+          style={{
+            background: "#FFF7ED",
+            border: "1px solid #FED7AA",
+            color: "#92400E",
+          }}
+        >
+          <span className="font-bold">⚠️ Important:</span> Please claim your
+          prize immediately after spinning. If your prize is currently
+          unavailable, you may return on the next event day to claim it —
+          present this QR code at the prize booth.
+        </div>
         <button
           onClick={onClose}
           className="w-full text-white rounded-xl py-3 font-bold"
@@ -1655,7 +1671,6 @@ const GoalModal = ({
 const VisitorApp = () => {
   const { eventTag } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-
 
   // ── Theme ──
   const [isDark, setIsDark] = useState(
@@ -2349,6 +2364,23 @@ const VisitorApp = () => {
                 </div>
               )}
 
+              {/* ── Disclaimer ── */}
+              {!isQualified && (
+                <div
+                  className="w-full rounded-xl px-4 py-3 text-left text-xs leading-relaxed"
+                  style={{
+                    background: "#FFF7ED",
+                    border: "1px solid #FED7AA",
+                    color: "#92400E",
+                  }}
+                >
+                  <span className="font-bold">⚠️ Important:</span> Please claim
+                  your prize immediately after spinning. If your prize is
+                  currently unavailable, you may return on the next event day to
+                  claim it — present your raffle QR code at the prize booth.
+                </div>
+              )}
+
               {/* ── CTA ── */}
               <button
                 onClick={() => setActiveTab("scan")}
@@ -2394,17 +2426,32 @@ const VisitorApp = () => {
                   : "Generate Raffle QR"}
               </button>
             ) : (
-              <button
-                onClick={() => setShowScanner(true)}
-                className="w-full flex items-center justify-center gap-3 text-white rounded-2xl py-4 text-base font-black shadow-lg"
-                style={{
-                  background: `linear-gradient(to right, ${t.primary}, #F5A623)`,
-                }}
-                aria-label="Open camera QR scanner"
-              >
-                <Camera size={22} />
-                Scan Booth QR
-              </button>
+              <>
+                <div
+                  className="w-full rounded-xl px-4 py-3 text-left text-xs leading-relaxed"
+                  style={{
+                    background: "#FFF7ED",
+                    border: "1px solid #FED7AA",
+                    color: "#92400E",
+                  }}
+                >
+                  <span className="font-bold">⚠️ Important:</span> Please claim
+                  your prize immediately after spinning. If your prize is
+                  currently unavailable, you may return on the next event day to
+                  claim it — present your raffle QR code at the prize booth.
+                </div>
+                <button
+                  onClick={() => setShowScanner(true)}
+                  className="w-full flex items-center justify-center gap-3 text-white rounded-2xl py-4 text-base font-black shadow-lg"
+                  style={{
+                    background: `linear-gradient(to right, ${t.primary}, #F5A623)`,
+                  }}
+                  aria-label="Open camera QR scanner"
+                >
+                  <Camera size={22} />
+                  Scan Booth QR
+                </button>
+              </>
             )}
 
             {/* Booths list */}
@@ -2497,14 +2544,14 @@ const VisitorApp = () => {
             >
               <HelpCircle size={14} style={{ color: t.muted }} />
             </button>
-            <button
+            {/* <button
               onClick={() => setShowResetConfirm(true)}
               className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors"
               style={{ background: t.card }}
               aria-label="Reset progress"
             >
               <RotateCcw size={13} style={{ color: t.muted }} />
-            </button>
+            </button> */}
           </div>
         </div>
 

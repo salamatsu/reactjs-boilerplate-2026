@@ -11,7 +11,7 @@
 //         STAFF role can access Campaigns only.
 // ============================================
 
-import { ClipboardList, Megaphone } from "lucide-react";
+import { BarChart2, ClipboardList, Megaphone } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import BasicLayout from "../../components/layout/BasicLayout";
@@ -20,8 +20,9 @@ import { Auth, UnAuth } from "../ValidateAuth";
 import { useAdminAuthStore, useCurrentActiveUserToken } from "../../store/useAdminAuthStore";
 
 const Login           = lazy(() => import("../../pages/admin/Login"));
-const CampaignManager = lazy(() => import("../../pages/admin/CampaignManager"));
-const SurveyManager   = lazy(() => import("../../pages/admin/SurveyManager"));
+const CampaignManager    = lazy(() => import("../../pages/admin/CampaignManager"));
+const SurveyManager      = lazy(() => import("../../pages/admin/SurveyManager"));
+const AnalyticsDashboard = lazy(() => import("../../pages/admin/AnalyticsDashboard"));
 
 // Combined store passed to BasicLayout — merges userData from admin store
 // with a reset that clears both auth stores.
@@ -58,6 +59,17 @@ const CmsRoute = () => {
       component: (
         <Suspense fallback={<ComponentLoader />}>
           <SurveyManager />
+        </Suspense>
+      ),
+    },
+    {
+      route: "/analytics",
+      name: "analytics",
+      label: "Analytics",
+      icon: <BarChart2 className="h-5 w-5" />,
+      component: (
+        <Suspense fallback={<ComponentLoader />}>
+          <AnalyticsDashboard />
         </Suspense>
       ),
     },

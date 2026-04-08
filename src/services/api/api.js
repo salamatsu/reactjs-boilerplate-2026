@@ -868,3 +868,148 @@ export const getSurveyAnalyticsApi = async ({ campaignId, surveyId }) => {
     throw error;
   }
 };
+
+// ============================================
+// G. Admin — Analytics
+// Base: /api/v1/raffles/admin/analytics
+// ============================================
+
+export const getAnalyticsCampaignsOverviewApi = async () => {
+  try {
+    const response = await axios.get(`${RAFFLE_BASE}/admin/analytics/campaigns`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const getParticipantAnalyticsApi = async (campaignId) => {
+  try {
+    const response = await axios.get(
+      `${RAFFLE_BASE}/admin/analytics/campaigns/${campaignId}/participants`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const getBoothAnalyticsApi = async (campaignId) => {
+  try {
+    const response = await axios.get(
+      `${RAFFLE_BASE}/admin/analytics/campaigns/${campaignId}/booths`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const getRaffleQrAnalyticsApi = async (campaignId) => {
+  try {
+    const response = await axios.get(
+      `${RAFFLE_BASE}/admin/analytics/campaigns/${campaignId}/raffle-qrs`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const getEntryAnalyticsApi = async (campaignId) => {
+  try {
+    const response = await axios.get(
+      `${RAFFLE_BASE}/admin/analytics/campaigns/${campaignId}/entries`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const getPrizeAnalyticsApi = async (campaignId) => {
+  try {
+    const response = await axios.get(
+      `${RAFFLE_BASE}/admin/analytics/campaigns/${campaignId}/prizes`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const getFunnelAnalyticsApi = async (campaignId) => {
+  try {
+    const response = await axios.get(
+      `${RAFFLE_BASE}/admin/analytics/campaigns/${campaignId}/funnel`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+// ============================================
+// EXPORT — Admin CMS
+// Base: /api/v1/raffles/admin/analytics/campaigns/:campaignId/export
+//
+// GET /export/participants    → participants list
+// GET /export/claims          → claims list
+// GET /export/survey-responses → survey responses list
+// GET /export/full            → all three combined
+// ============================================
+
+export const exportParticipantsApi = async (campaignId) => {
+  try {
+    const response = await axios.get(
+      `${RAFFLE_BASE}/admin/analytics/campaigns/${campaignId}/export/participants`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const exportClaimsApi = async (campaignId) => {
+  try {
+    const response = await axios.get(
+      `${RAFFLE_BASE}/admin/analytics/campaigns/${campaignId}/export/claims`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const exportSurveyResponsesApi = async (campaignId) => {
+  try {
+    const response = await axios.get(
+      `${RAFFLE_BASE}/admin/analytics/campaigns/${campaignId}/export/survey-responses`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+export const exportFullApi = async (campaignId) => {
+  try {
+    const response = await axios.get(
+      `${RAFFLE_BASE}/admin/analytics/campaigns/${campaignId}/export/full`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};

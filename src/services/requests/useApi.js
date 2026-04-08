@@ -61,6 +61,17 @@ import {
   deleteMatrixRowApi,
   listSurveyResponsesApi,
   getSurveyAnalyticsApi,
+  getAnalyticsCampaignsOverviewApi,
+  getParticipantAnalyticsApi,
+  getBoothAnalyticsApi,
+  getRaffleQrAnalyticsApi,
+  getEntryAnalyticsApi,
+  getPrizeAnalyticsApi,
+  getFunnelAnalyticsApi,
+  exportParticipantsApi,
+  exportClaimsApi,
+  exportSurveyResponsesApi,
+  exportFullApi,
 } from "../api/api";
 
 // ============================================
@@ -553,3 +564,78 @@ export const useGetSurveyAnalytics = ({ campaignId, surveyId }) => {
     enabled: !!campaignId && !!surveyId,
   });
 };
+
+// ============================================
+// G. Admin — Analytics
+// ============================================
+
+export const useAnalyticsCampaignsOverview = () => {
+  return useQuery({
+    queryKey: ["analytics-campaigns-overview"],
+    queryFn: getAnalyticsCampaignsOverviewApi,
+  });
+};
+
+export const useParticipantAnalytics = (campaignId) => {
+  return useQuery({
+    queryKey: ["analytics-participants", campaignId],
+    queryFn: () => getParticipantAnalyticsApi(campaignId),
+    enabled: !!campaignId,
+  });
+};
+
+export const useBoothAnalytics = (campaignId) => {
+  return useQuery({
+    queryKey: ["analytics-booths", campaignId],
+    queryFn: () => getBoothAnalyticsApi(campaignId),
+    enabled: !!campaignId,
+  });
+};
+
+export const useRaffleQrAnalytics = (campaignId) => {
+  return useQuery({
+    queryKey: ["analytics-raffle-qrs", campaignId],
+    queryFn: () => getRaffleQrAnalyticsApi(campaignId),
+    enabled: !!campaignId,
+  });
+};
+
+export const useEntryAnalytics = (campaignId) => {
+  return useQuery({
+    queryKey: ["analytics-entries", campaignId],
+    queryFn: () => getEntryAnalyticsApi(campaignId),
+    enabled: !!campaignId,
+  });
+};
+
+export const usePrizeAnalytics = (campaignId) => {
+  return useQuery({
+    queryKey: ["analytics-prizes", campaignId],
+    queryFn: () => getPrizeAnalyticsApi(campaignId),
+    enabled: !!campaignId,
+  });
+};
+
+export const useFunnelAnalytics = (campaignId) => {
+  return useQuery({
+    queryKey: ["analytics-funnel", campaignId],
+    queryFn: () => getFunnelAnalyticsApi(campaignId),
+    enabled: !!campaignId,
+  });
+};
+
+// ============================================
+// EXPORT — Admin CMS (mutations — trigger download on demand)
+// ============================================
+
+export const useExportParticipants = () =>
+  useMutation({ mutationFn: exportParticipantsApi });
+
+export const useExportClaims = () =>
+  useMutation({ mutationFn: exportClaimsApi });
+
+export const useExportSurveyResponses = () =>
+  useMutation({ mutationFn: exportSurveyResponsesApi });
+
+export const useExportFull = () =>
+  useMutation({ mutationFn: exportFullApi });

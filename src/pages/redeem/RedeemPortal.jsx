@@ -12,7 +12,14 @@
 //   Step 7  POST /campaigns/:campaignId/spin-wheel       → record outcome
 // ============================================
 
-import { useState, useRef, useEffect, useCallback, createContext, useContext } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  createContext,
+  useContext,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Wheel } from "react-custom-roulette";
 import {
@@ -40,6 +47,7 @@ import {
   checkSurveyResponseStatusApi,
   submitSurveyApi,
 } from "../../services/api/api";
+import { logo } from "../../assets/images/logos";
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 
@@ -245,14 +253,23 @@ const SetupScreen = ({ onSetup }) => {
       <motion.div
         animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1] }}
         transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
-        className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-lg"
-        style={{ background: `linear-gradient(135deg, ${t.primary}, #f59e0b)` }}
+        className="w-20 h-20  flex items-center justify-center"
+        // style={{ background: `linear-gradient(135deg, ${t.primary}, #f59e0b)` }}
       >
-        <Settings size={40} className="text-white" />
+        <img
+          src={logo}
+          style={{
+            width: 70,
+            height: 70,
+          }}
+        />
+        {/* <Settings size={40} className="text-white" /> */}
       </motion.div>
 
       <div className="text-center">
-        <h2 className="text-3xl font-black" style={{ color: t.text }}>Station Setup</h2>
+        <h2 className="text-3xl font-black" style={{ color: t.text }}>
+          Station Setup
+        </h2>
         <p className="text-sm mt-1" style={{ color: t.muted }}>
           Enter the event tag to load the active raffle event.
         </p>
@@ -265,7 +282,11 @@ const SetupScreen = ({ onSetup }) => {
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
           placeholder="Event tag (e.g. WORLDBEX2026)"
           className="w-full rounded-2xl px-4 py-3 text-sm outline-none transition-all uppercase backdrop-blur-sm"
-          style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text }}
+          style={{
+            background: t.inputBg,
+            border: `1px solid ${t.inputBorder}`,
+            color: t.text,
+          }}
           aria-label="Event tag"
         />
         <input
@@ -273,7 +294,11 @@ const SetupScreen = ({ onSetup }) => {
           onChange={(e) => setStaffName(e.target.value)}
           placeholder="Staff name (optional)"
           className="w-full rounded-2xl px-4 py-3 text-sm outline-none transition-all backdrop-blur-sm"
-          style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text }}
+          style={{
+            background: t.inputBg,
+            border: `1px solid ${t.inputBorder}`,
+            color: t.text,
+          }}
           aria-label="Staff name"
         />
       </div>
@@ -295,7 +320,9 @@ const SetupScreen = ({ onSetup }) => {
         onClick={handleSubmit}
         disabled={!eventTag.trim() || isLoading}
         className="w-full text-white rounded-2xl py-4 font-black text-lg flex items-center justify-center gap-2 disabled:opacity-40 shadow-lg"
-        style={{ background: `linear-gradient(to right, ${t.primary}, #f59e0b)` }}
+        style={{
+          background: `linear-gradient(to right, ${t.primary}, #f59e0b)`,
+        }}
         aria-label="Load event"
       >
         {isLoading ? (
@@ -305,6 +332,13 @@ const SetupScreen = ({ onSetup }) => {
           </>
         ) : (
           <>
+            {/* <img
+              src={logo}
+              style={{
+                width: 28,
+                height: 28,
+              }}
+            /> */}
             <Zap size={20} />
             Load Event
           </>
@@ -429,12 +463,19 @@ const ScanStep = ({ station, onNext }) => {
                   className="absolute rounded-full border-2"
                   style={{ borderColor: scanColor, width: 80, height: 80 }}
                   animate={{ scale: [1, 2.4], opacity: [0.7, 0] }}
-                  transition={{ duration: 1.6, delay: i * 0.5, repeat: Infinity, ease: "easeOut" }}
+                  transition={{
+                    duration: 1.6,
+                    delay: i * 0.5,
+                    repeat: Infinity,
+                    ease: "easeOut",
+                  }}
                 />
               ))}
               <div
                 className="w-20 h-20 rounded-full flex items-center justify-center shadow-xl z-10"
-                style={{ background: `linear-gradient(135deg, ${scanColor}, #3b82f6)` }}
+                style={{
+                  background: `linear-gradient(135deg, ${scanColor}, #3b82f6)`,
+                }}
               >
                 <Loader2 size={36} className="text-white animate-spin" />
               </div>
@@ -445,16 +486,27 @@ const ScanStep = ({ station, onNext }) => {
                 {isPending ? "Validating…" : "Scanning…"}
               </h2>
               <p className="text-sm" style={{ color: t.muted }}>
-                {isPending ? "Checking QR code, please wait." : "Reading QR code data…"}
+                {isPending
+                  ? "Checking QR code, please wait."
+                  : "Reading QR code data…"}
               </p>
             </div>
 
-            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: t.pill }}>
+            <div
+              className="w-full h-1.5 rounded-full overflow-hidden"
+              style={{ background: t.pill }}
+            >
               <motion.div
                 className="h-full rounded-full"
-                style={{ background: `linear-gradient(to right, ${scanColor}, #3b82f6)` }}
+                style={{
+                  background: `linear-gradient(to right, ${scanColor}, #3b82f6)`,
+                }}
                 animate={{ x: ["-100%", "100%"] }}
-                transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
+                transition={{
+                  duration: 1.0,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
               />
             </div>
           </motion.div>
@@ -475,7 +527,9 @@ const ScanStep = ({ station, onNext }) => {
             </motion.div>
 
             <div className="space-y-2">
-              <h2 className="text-2xl font-black" style={{ color: t.text }}>Scan Failed</h2>
+              <h2 className="text-2xl font-black" style={{ color: t.text }}>
+                Scan Failed
+              </h2>
               <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2">
                 {apiError}
               </p>
@@ -486,7 +540,9 @@ const ScanStep = ({ station, onNext }) => {
               whileTap={{ scale: 0.96 }}
               onClick={handleRetry}
               className="w-full text-white rounded-2xl py-4 font-black text-lg flex items-center justify-center gap-2 shadow-lg"
-              style={{ background: `linear-gradient(to right, ${scanColor}, #3b82f6)` }}
+              style={{
+                background: `linear-gradient(to right, ${scanColor}, #3b82f6)`,
+              }}
             >
               <RotateCcw size={20} /> Try Again
             </motion.button>
@@ -501,14 +557,30 @@ const ScanStep = ({ station, onNext }) => {
           >
             {/* Animated scan frame */}
             <div className="relative w-44 h-44">
-              <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 rounded-tl-xl" style={{ borderColor: scanColor }} />
-              <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 rounded-tr-xl" style={{ borderColor: scanColor }} />
-              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 rounded-bl-xl" style={{ borderColor: scanColor }} />
-              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 rounded-br-xl" style={{ borderColor: scanColor }} />
+              <div
+                className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 rounded-tl-xl"
+                style={{ borderColor: scanColor }}
+              />
+              <div
+                className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 rounded-tr-xl"
+                style={{ borderColor: scanColor }}
+              />
+              <div
+                className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 rounded-bl-xl"
+                style={{ borderColor: scanColor }}
+              />
+              <div
+                className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 rounded-br-xl"
+                style={{ borderColor: scanColor }}
+              />
 
               <motion.div
                 animate={{ y: [0, 144, 0] }}
-                transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                transition={{
+                  duration: 2.4,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
                 className="absolute left-2 right-2 top-2 h-0.5 rounded-full"
                 style={{
                   background: `linear-gradient(90deg, transparent, ${scanColor}, ${scanColor}, transparent)`,
@@ -517,14 +589,19 @@ const ScanStep = ({ station, onNext }) => {
               />
 
               <div className="absolute inset-0 flex items-center justify-center">
-                <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 2, repeat: Infinity }}>
+                <motion.div
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
                   <ScanLine size={52} style={{ color: `${scanColor}99` }} />
                 </motion.div>
               </div>
             </div>
 
             <div className="text-center space-y-2">
-              <h2 className="text-3xl font-black" style={{ color: t.text }}>Ready to Scan</h2>
+              <h2 className="text-3xl font-black" style={{ color: t.text }}>
+                Ready to Scan
+              </h2>
               <p className="text-sm" style={{ color: t.muted }}>
                 Present the visitor's QR code to the scanner.
               </p>
@@ -532,14 +609,20 @@ const ScanStep = ({ station, onNext }) => {
 
             <div
               className="flex items-center gap-2 rounded-full px-5 py-2"
-              style={{ background: t.pill, border: `1px solid ${t.pillBorder}` }}
+              style={{
+                background: t.pill,
+                border: `1px solid ${t.pillBorder}`,
+              }}
             >
               <motion.div
                 animate={{ opacity: [1, 0.3, 1] }}
                 transition={{ duration: 1.2, repeat: Infinity }}
                 className="w-2 h-2 rounded-full bg-green-400"
               />
-              <span className="text-xs font-semibold tracking-wide" style={{ color: t.muted }}>
+              <span
+                className="text-xs font-semibold tracking-wide"
+                style={{ color: t.muted }}
+              >
                 Scanner active
               </span>
             </div>
@@ -695,7 +778,9 @@ const PrizeReveal = ({ winner, isWin, recording, spinApiError, onDismiss }) => {
             <button
               onClick={onDismiss}
               className="w-full py-2.5 rounded-xl font-black text-sm text-white"
-              style={{ background: "linear-gradient(135deg, #ec4899, #f97316)" }}
+              style={{
+                background: "linear-gradient(135deg, #ec4899, #f97316)",
+              }}
             >
               <RotateCcw size={14} className="inline mr-1.5 -mt-0.5" />
               Next Visitor
@@ -805,12 +890,21 @@ const SpinStep = ({ participant, station, onNext, onReset }) => {
             initial={{ x: -30, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             className="w-full rounded-3xl px-6 py-6 text-center backdrop-blur-sm"
-            style={{ background: t.card, border: `1px solid ${t.primaryBorder}` }}
+            style={{
+              background: t.card,
+              border: `1px solid ${t.primaryBorder}`,
+            }}
           >
-            <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: t.primary }}>
+            <p
+              className="text-xs font-semibold uppercase tracking-widest mb-2"
+              style={{ color: t.primary }}
+            >
               🎟 Participant
             </p>
-            <p className="font-black text-2xl leading-tight" style={{ color: t.text }}>
+            <p
+              className="font-black text-2xl leading-tight"
+              style={{ color: t.text }}
+            >
               {participant.fullName}
             </p>
             <p className="text-base font-bold mt-1 text-yellow-500">
@@ -829,13 +923,23 @@ const SpinStep = ({ participant, station, onNext, onReset }) => {
         </motion.h2>
 
         <p className="text-sm text-center" style={{ color: t.muted }}>
-          {mustSpin ? "Spinning…" : winner ? "Result recorded!" : "Press the button to spin the wheel!"}
+          {mustSpin
+            ? "Spinning…"
+            : winner
+              ? "Result recorded!"
+              : "Press the button to spin the wheel!"}
         </p>
 
         {loadingPrizes ? (
           <div className="flex flex-col items-center gap-3">
-            <Loader2 className="animate-spin" style={{ color: t.primary }} size={36} />
-            <p className="text-sm" style={{ color: t.muted }}>Loading prizes…</p>
+            <Loader2
+              className="animate-spin"
+              style={{ color: t.primary }}
+              size={36}
+            />
+            <p className="text-sm" style={{ color: t.muted }}>
+              Loading prizes…
+            </p>
           </div>
         ) : wheelData.length === 0 ? (
           <p className="text-sm text-center" style={{ color: t.muted }}>
@@ -849,12 +953,20 @@ const SpinStep = ({ participant, station, onNext, onReset }) => {
             whileTap={!mustSpin && !winner ? { scale: 0.95 } : {}}
             animate={
               !mustSpin && !winner
-                ? { boxShadow: [`0 0 20px ${t.primary}66`, `0 0 40px ${t.primary}99`, `0 0 20px ${t.primary}66`] }
+                ? {
+                    boxShadow: [
+                      `0 0 20px ${t.primary}66`,
+                      `0 0 40px ${t.primary}99`,
+                      `0 0 20px ${t.primary}66`,
+                    ],
+                  }
                 : {}
             }
             transition={{ duration: 1.5, repeat: Infinity }}
             className="w-full text-white rounded-2xl py-5 font-black text-2xl disabled:opacity-60 shadow-xl tracking-wider"
-            style={{ background: `linear-gradient(to right, ${t.primary}, #f59e0b, #facc15)` }}
+            style={{
+              background: `linear-gradient(to right, ${t.primary}, #f59e0b, #facc15)`,
+            }}
             aria-label="Spin the wheel"
           >
             {mustSpin ? (
@@ -875,11 +987,20 @@ const SpinStep = ({ participant, station, onNext, onReset }) => {
             className="w-72 h-72 rounded-full flex items-center justify-center"
             style={{ background: t.pill, border: `1px solid ${t.pillBorder}` }}
           >
-            <Loader2 className="animate-spin" style={{ color: t.primary }} size={48} />
+            <Loader2
+              className="animate-spin"
+              style={{ color: t.primary }}
+              size={48}
+            />
           </div>
         ) : wheelData.length > 0 ? (
           <div className="relative flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full blur-2xl opacity-30 scale-110" style={{ background: `linear-gradient(to right, ${t.primary}, #facc15, #a855f7)` }} />
+            <div
+              className="absolute inset-0 rounded-full blur-2xl opacity-30 scale-110"
+              style={{
+                background: `linear-gradient(to right, ${t.primary}, #facc15, #a855f7)`,
+              }}
+            />
             <Wheel
               mustStartSpinning={mustSpin}
               prizeNumber={prizeNumber}
@@ -945,9 +1066,15 @@ const DoneStep = ({ outcome, prizeName, onReset }) => {
           className="relative w-full max-w-lg rounded-3xl overflow-hidden text-center px-10 py-12 flex flex-col items-center gap-6"
           style={{
             background: isWin
-              ? t.isDark ? "linear-gradient(135deg,#1a1000,#2d1a00,#1a0d00)" : "linear-gradient(135deg,#fffbf0,#fff7ee)"
-              : t.isDark ? "linear-gradient(135deg,#0f0a1a,#1a0d2e)" : t.card,
-            border: isWin ? "1px solid rgba(255,200,0,0.3)" : `1px solid ${t.primaryBorder}`,
+              ? t.isDark
+                ? "linear-gradient(135deg,#1a1000,#2d1a00,#1a0d00)"
+                : "linear-gradient(135deg,#fffbf0,#fff7ee)"
+              : t.isDark
+                ? "linear-gradient(135deg,#0f0a1a,#1a0d2e)"
+                : t.card,
+            border: isWin
+              ? "1px solid rgba(255,200,0,0.3)"
+              : `1px solid ${t.primaryBorder}`,
             boxShadow: isWin
               ? "0 0 80px rgba(255,200,0,0.2), 0 0 160px rgba(255,100,0,0.1)"
               : "0 0 60px rgba(99,102,241,0.15)",
@@ -1094,7 +1221,10 @@ const buildAnswerEntry = (question, value) => {
       break;
     case "ranking":
       if (!Array.isArray(value) || !value.length) return null;
-      entry.answerJson = value.map((optionId, i) => ({ optionId, rank: i + 1 }));
+      entry.answerJson = value.map((optionId, i) => ({
+        optionId,
+        rank: i + 1,
+      }));
       break;
     case "matrix":
       if (!Array.isArray(value) || !value.length) return null;
@@ -1129,20 +1259,37 @@ const SurveyQuestion = ({ question, value, onChange, error }) => {
       className="text-left rounded-xl px-4 py-2.5 text-sm font-medium transition-all active:scale-[0.98]"
       style={
         selected
-          ? { background: t.primary, color: "#fff", border: `1px solid ${t.primary}` }
-          : { background: t.inputBg, color: t.text, border: `1px solid ${t.inputBorder}` }
+          ? {
+              background: t.primary,
+              color: "#fff",
+              border: `1px solid ${t.primary}`,
+            }
+          : {
+              background: t.inputBg,
+              color: t.text,
+              border: `1px solid ${t.inputBorder}`,
+            }
       }
     >
       {label}
     </button>
   );
 
-  const { questionType: qt, options = [], matrixRows = [], validationRules } = question;
+  const {
+    questionType: qt,
+    options = [],
+    matrixRows = [],
+    validationRules,
+  } = question;
 
   if (qt === "single_choice" || qt === "dropdown" || qt === "likert") {
     return (
-      <div className={`flex ${qt === "likert" ? "flex-row flex-wrap" : "flex-col"} gap-2`}>
-        {options.map((o) => optionBtn(value === o.id, o.optionText, () => onChange(o.id)))}
+      <div
+        className={`flex ${qt === "likert" ? "flex-row flex-wrap" : "flex-col"} gap-2`}
+      >
+        {options.map((o) =>
+          optionBtn(value === o.id, o.optionText, () => onChange(o.id)),
+        )}
       </div>
     );
   }
@@ -1150,7 +1297,9 @@ const SurveyQuestion = ({ question, value, onChange, error }) => {
   if (qt === "boolean") {
     return (
       <div className="flex gap-3">
-        {options.map((o) => optionBtn(value === o.id, o.optionText, () => onChange(o.id)))}
+        {options.map((o) =>
+          optionBtn(value === o.id, o.optionText, () => onChange(o.id)),
+        )}
       </div>
     );
   }
@@ -1165,20 +1314,37 @@ const SurveyQuestion = ({ question, value, onChange, error }) => {
             <button
               key={o.id}
               onClick={() =>
-                onChange(checked ? selected.filter((id) => id !== o.id) : [...selected, o.id])
+                onChange(
+                  checked
+                    ? selected.filter((id) => id !== o.id)
+                    : [...selected, o.id],
+                )
               }
               className="flex items-center gap-3 text-left rounded-xl px-4 py-2.5 text-sm font-medium transition-all"
               style={
                 checked
-                  ? { background: t.primary + "22", color: t.text, border: `1px solid ${t.primary}` }
-                  : { background: t.inputBg, color: t.text, border: `1px solid ${t.inputBorder}` }
+                  ? {
+                      background: t.primary + "22",
+                      color: t.text,
+                      border: `1px solid ${t.primary}`,
+                    }
+                  : {
+                      background: t.inputBg,
+                      color: t.text,
+                      border: `1px solid ${t.inputBorder}`,
+                    }
               }
             >
               <div
                 className="w-4 h-4 rounded flex items-center justify-center shrink-0"
-                style={{ background: checked ? t.primary : "transparent", border: `2px solid ${checked ? t.primary : t.inputBorder}` }}
+                style={{
+                  background: checked ? t.primary : "transparent",
+                  border: `2px solid ${checked ? t.primary : t.inputBorder}`,
+                }}
               >
-                {checked ? <CheckCircle size={10} className="text-white" /> : null}
+                {checked ? (
+                  <CheckCircle size={10} className="text-white" />
+                ) : null}
               </div>
               {o.optionText}
             </button>
@@ -1228,10 +1394,16 @@ const SurveyQuestion = ({ question, value, onChange, error }) => {
       <input
         type="number"
         value={value ?? ""}
-        onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+        onChange={(e) =>
+          onChange(e.target.value === "" ? null : Number(e.target.value))
+        }
         min={validationRules?.min}
         max={validationRules?.max}
-        placeholder={validationRules ? `${validationRules.min ?? ""}–${validationRules.max ?? ""}` : "Enter number"}
+        placeholder={
+          validationRules
+            ? `${validationRules.min ?? ""}–${validationRules.max ?? ""}`
+            : "Enter number"
+        }
         style={inputStyle}
       />
     );
@@ -1289,17 +1461,35 @@ const SurveyQuestion = ({ question, value, onChange, error }) => {
             <div
               key={optId}
               className="flex items-center gap-3 rounded-xl px-3 py-2.5"
-              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}` }}
+              style={{
+                background: t.inputBg,
+                border: `1px solid ${t.inputBorder}`,
+              }}
             >
-              <span className="text-xs font-black w-5 text-center" style={{ color: t.primary }}>
+              <span
+                className="text-xs font-black w-5 text-center"
+                style={{ color: t.primary }}
+              >
                 {idx + 1}
               </span>
-              <span className="flex-1 text-sm" style={{ color: t.text }}>{opt?.optionText}</span>
+              <span className="flex-1 text-sm" style={{ color: t.text }}>
+                {opt?.optionText}
+              </span>
               <div className="flex flex-col">
-                <button disabled={idx === 0} onClick={() => move(idx, idx - 1)} style={{ color: idx === 0 ? t.muted : t.primary }}>
+                <button
+                  disabled={idx === 0}
+                  onClick={() => move(idx, idx - 1)}
+                  style={{ color: idx === 0 ? t.muted : t.primary }}
+                >
                   <ChevronUp size={16} />
                 </button>
-                <button disabled={idx === ranked.length - 1} onClick={() => move(idx, idx + 1)} style={{ color: idx === ranked.length - 1 ? t.muted : t.primary }}>
+                <button
+                  disabled={idx === ranked.length - 1}
+                  onClick={() => move(idx, idx + 1)}
+                  style={{
+                    color: idx === ranked.length - 1 ? t.muted : t.primary,
+                  }}
+                >
                   <ChevronDown size={16} />
                 </button>
               </div>
@@ -1312,21 +1502,32 @@ const SurveyQuestion = ({ question, value, onChange, error }) => {
 
   if (qt === "matrix") {
     const current = value ?? [];
-    const getRowAnswer = (rowId) => current.find((a) => a.rowId === rowId)?.optionId ?? null;
+    const getRowAnswer = (rowId) =>
+      current.find((a) => a.rowId === rowId)?.optionId ?? null;
     const setRowAnswer = (rowId, optionId) => {
       const rest = current.filter((a) => a.rowId !== rowId);
       onChange([...rest, { rowId, optionId }]);
     };
     return (
       <div className="overflow-x-auto">
-        <table className="w-full text-xs" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
+        <table
+          className="w-full text-xs"
+          style={{ borderCollapse: "separate", borderSpacing: 0 }}
+        >
           <thead>
             <tr>
-              <th className="text-left pb-2 pr-4" style={{ color: t.muted, fontWeight: 600 }}>
+              <th
+                className="text-left pb-2 pr-4"
+                style={{ color: t.muted, fontWeight: 600 }}
+              >
                 &nbsp;
               </th>
               {options.map((o) => (
-                <th key={o.id} className="pb-2 px-2 text-center" style={{ color: t.muted, fontWeight: 600, minWidth: 64 }}>
+                <th
+                  key={o.id}
+                  className="pb-2 px-2 text-center"
+                  style={{ color: t.muted, fontWeight: 600, minWidth: 64 }}
+                >
                   {o.optionText}
                 </th>
               ))}
@@ -1334,8 +1535,16 @@ const SurveyQuestion = ({ question, value, onChange, error }) => {
           </thead>
           <tbody>
             {matrixRows.map((row, ri) => (
-              <tr key={row.id} style={{ background: ri % 2 === 0 ? t.inputBg : "transparent" }}>
-                <td className="py-2 pr-4 rounded-l-lg text-sm" style={{ color: t.text }}>{row.rowText}</td>
+              <tr
+                key={row.id}
+                style={{ background: ri % 2 === 0 ? t.inputBg : "transparent" }}
+              >
+                <td
+                  className="py-2 pr-4 rounded-l-lg text-sm"
+                  style={{ color: t.text }}
+                >
+                  {row.rowText}
+                </td>
                 {options.map((o) => (
                   <td key={o.id} className="py-2 px-2 text-center">
                     <button
@@ -1344,7 +1553,10 @@ const SurveyQuestion = ({ question, value, onChange, error }) => {
                       style={
                         getRowAnswer(row.id) === o.id
                           ? { borderColor: t.primary, background: t.primary }
-                          : { borderColor: t.inputBorder, background: "transparent" }
+                          : {
+                              borderColor: t.inputBorder,
+                              background: "transparent",
+                            }
                       }
                     >
                       {getRowAnswer(row.id) === o.id && (
@@ -1380,7 +1592,10 @@ const SurveyStep = ({ participant, station, onNext }) => {
     let cancelled = false;
     const check = async () => {
       try {
-        const res = await getActiveSurveyApi(station.campaignId, "raffle_entry");
+        const res = await getActiveSurveyApi(
+          station.campaignId,
+          "raffle_entry",
+        );
         if (cancelled) return;
         if (!res?.data?.hasSurvey || !res.data.survey?.questions?.length) {
           onNext();
@@ -1403,7 +1618,12 @@ const SurveyStep = ({ participant, station, onNext }) => {
             s.questions
               .slice()
               .sort((a, b) => a.sortOrder - b.sortOrder)
-              .map((q) => [q.id, q.questionType === "ranking" ? q.options.map((o) => o.id) : null]),
+              .map((q) => [
+                q.id,
+                q.questionType === "ranking"
+                  ? q.options.map((o) => o.id)
+                  : null,
+              ]),
           ),
         );
       } catch {
@@ -1414,7 +1634,9 @@ const SurveyStep = ({ participant, station, onNext }) => {
       }
     };
     check();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const setAnswer = (questionId, value) => {
@@ -1428,9 +1650,11 @@ const SurveyStep = ({ participant, station, onNext }) => {
         .sort((a, b) => a.sortOrder - b.sortOrder)
         .filter((q) => {
           if (!q.conditionalLogic?.showIf) return true;
-          const { questionId, optionId, answerValue } = q.conditionalLogic.showIf;
+          const { questionId, optionId, answerValue } =
+            q.conditionalLogic.showIf;
           if (optionId !== undefined) return answers[questionId] === optionId;
-          if (answerValue !== undefined) return String(answers[questionId]) === String(answerValue);
+          if (answerValue !== undefined)
+            return String(answers[questionId]) === String(answerValue);
           return true;
         })
     : [];
@@ -1478,14 +1702,20 @@ const SurveyStep = ({ participant, station, onNext }) => {
       onNext();
     } catch (err) {
       const msg =
-        err?.response?.data?.message || err?.message || "Submission failed. Please try again.";
+        err?.response?.data?.message ||
+        err?.message ||
+        "Submission failed. Please try again.";
       const match = msg.match(/question ID\(s\): ([\d, ]+)/);
       if (match) {
-        const ids = new Set(match[1].split(",").map((id) => parseInt(id.trim(), 10)));
+        const ids = new Set(
+          match[1].split(",").map((id) => parseInt(id.trim(), 10)),
+        );
         const fieldErrs = {};
-        visibleQuestions.filter((q) => ids.has(q.id)).forEach((q) => {
-          fieldErrs[q.id] = "This question is required.";
-        });
+        visibleQuestions
+          .filter((q) => ids.has(q.id))
+          .forEach((q) => {
+            fieldErrs[q.id] = "This question is required.";
+          });
         setErrors(fieldErrs);
       } else {
         setSubmitError(msg);
@@ -1506,17 +1736,26 @@ const SurveyStep = ({ participant, station, onNext }) => {
               className="absolute rounded-full border-2"
               style={{ borderColor: t.primary, width: 64, height: 64 }}
               animate={{ scale: [1, 2], opacity: [0.6, 0] }}
-              transition={{ duration: 1.4, delay: i * 0.6, repeat: Infinity, ease: "easeOut" }}
+              transition={{
+                duration: 1.4,
+                delay: i * 0.6,
+                repeat: Infinity,
+                ease: "easeOut",
+              }}
             />
           ))}
           <div
             className="w-16 h-16 rounded-full flex items-center justify-center z-10"
-            style={{ background: `linear-gradient(135deg, ${t.primary}, #f59e0b)` }}
+            style={{
+              background: `linear-gradient(135deg, ${t.primary}, #f59e0b)`,
+            }}
           >
             <ClipboardList size={28} className="text-white" />
           </div>
         </div>
-        <p className="text-sm font-semibold" style={{ color: t.muted }}>Checking for survey…</p>
+        <p className="text-sm font-semibold" style={{ color: t.muted }}>
+          Checking for survey…
+        </p>
       </div>
     );
   }
@@ -1549,14 +1788,17 @@ const SurveyStep = ({ participant, station, onNext }) => {
               </h2>
             </div>
             {survey.description && (
-              <p className="text-xs mt-0.5" style={{ color: t.muted }}>{survey.description}</p>
+              <p className="text-xs mt-0.5" style={{ color: t.muted }}>
+                {survey.description}
+              </p>
             )}
           </div>
           <span
             className="shrink-0 text-xs font-bold px-3 py-1 rounded-full"
             style={{ background: t.primaryBg, color: t.primary }}
           >
-            {visibleQuestions.length} question{visibleQuestions.length !== 1 ? "s" : ""}
+            {visibleQuestions.length} question
+            {visibleQuestions.length !== 1 ? "s" : ""}
           </span>
         </div>
 
@@ -1567,17 +1809,27 @@ const SurveyStep = ({ participant, station, onNext }) => {
               <div className="flex items-start gap-2 mb-3">
                 <span
                   className="shrink-0 w-6 h-6 rounded-full text-xs font-black flex items-center justify-center mt-0.5"
-                  style={{ background: errors[q.id] ? "#fca5a522" : t.primaryBg, color: errors[q.id] ? "#f87171" : t.primary }}
+                  style={{
+                    background: errors[q.id] ? "#fca5a522" : t.primaryBg,
+                    color: errors[q.id] ? "#f87171" : t.primary,
+                  }}
                 >
                   {idx + 1}
                 </span>
                 <div className="flex-1">
-                  <p className="text-sm font-semibold" style={{ color: t.text }}>
+                  <p
+                    className="text-sm font-semibold"
+                    style={{ color: t.text }}
+                  >
                     {q.questionText}
-                    {q.isRequired ? <span className="text-red-400 ml-1">*</span> : null}
+                    {q.isRequired ? (
+                      <span className="text-red-400 ml-1">*</span>
+                    ) : null}
                   </p>
                   {errors[q.id] && (
-                    <p className="text-xs text-red-400 mt-0.5">{errors[q.id]}</p>
+                    <p className="text-xs text-red-400 mt-0.5">
+                      {errors[q.id]}
+                    </p>
                   )}
                 </div>
               </div>
@@ -1602,7 +1854,11 @@ const SurveyStep = ({ participant, station, onNext }) => {
             <button
               onClick={onNext}
               className="flex-1 rounded-2xl py-3 text-sm font-bold transition-all active:scale-95"
-              style={{ background: t.pill, color: t.muted, border: `1px solid ${t.pillBorder}` }}
+              style={{
+                background: t.pill,
+                color: t.muted,
+                border: `1px solid ${t.pillBorder}`,
+              }}
             >
               Skip
             </button>
@@ -1616,10 +1872,14 @@ const SurveyStep = ({ participant, station, onNext }) => {
             onClick={handleSubmit}
             disabled={submitting}
             className="flex-1 text-white rounded-2xl py-3 font-black text-sm flex items-center justify-center gap-2 disabled:opacity-60 active:scale-95 transition-all shadow-lg"
-            style={{ background: `linear-gradient(to right, ${t.primary}, #f59e0b)` }}
+            style={{
+              background: `linear-gradient(to right, ${t.primary}, #f59e0b)`,
+            }}
           >
             {submitting ? (
-              <><Loader2 size={16} className="animate-spin" /> Submitting…</>
+              <>
+                <Loader2 size={16} className="animate-spin" /> Submitting…
+              </>
             ) : (
               <>Submit & Continue</>
             )}
@@ -1642,7 +1902,9 @@ const StepIndicator = ({ currentStep }) => {
       {labels.map((label, i) => (
         <div key={label} className="flex items-center">
           <motion.div
-            animate={i === currentIndex ? { scale: [1, 1.15, 1] } : { scale: 1 }}
+            animate={
+              i === currentIndex ? { scale: [1, 1.15, 1] } : { scale: 1 }
+            }
             transition={{ duration: 1, repeat: Infinity }}
             className="flex flex-col items-center gap-1"
           >
@@ -1650,9 +1912,17 @@ const StepIndicator = ({ currentStep }) => {
               className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black transition-all shadow-md"
               style={
                 i < currentIndex
-                  ? { background: "linear-gradient(135deg, #4ade80, #10b981)", color: "#fff" }
+                  ? {
+                      background: "linear-gradient(135deg, #4ade80, #10b981)",
+                      color: "#fff",
+                    }
                   : i === currentIndex
-                    ? { background: `linear-gradient(135deg, ${t.primary}, #f59e0b)`, color: "#fff", boxShadow: `0 0 12px ${t.primary}66`, outline: `2px solid ${t.primaryBorder}` }
+                    ? {
+                        background: `linear-gradient(135deg, ${t.primary}, #f59e0b)`,
+                        color: "#fff",
+                        boxShadow: `0 0 12px ${t.primary}66`,
+                        outline: `2px solid ${t.primaryBorder}`,
+                      }
                     : { background: t.pill, color: t.muted }
               }
             >
@@ -1669,9 +1939,10 @@ const StepIndicator = ({ currentStep }) => {
             <div
               className="w-10 h-1 mx-2 mb-4 rounded-full transition-all"
               style={{
-                background: i < currentIndex
-                  ? "linear-gradient(to right, #4ade80, #10b981)"
-                  : t.pill,
+                background:
+                  i < currentIndex
+                    ? "linear-gradient(to right, #4ade80, #10b981)"
+                    : t.pill,
               }}
             />
           )}
@@ -1689,7 +1960,7 @@ const RedeemPortal = () => {
   const [sessionData, setSessionData] = useState({});
 
   const [isDark, setIsDark] = useState(
-    () => (localStorage.getItem(REDEEM_THEME_KEY) ?? "light") !== "light"
+    () => (localStorage.getItem(REDEEM_THEME_KEY) ?? "light") !== "light",
   );
   const t = isDark ? DARK : LIGHT;
   const toggleTheme = () => {
@@ -1718,14 +1989,38 @@ const RedeemPortal = () => {
   if (!station) {
     return (
       <ThemeCtx.Provider value={t}>
-        <div className="h-screen flex flex-col overflow-hidden" style={{ background: t.bgGradient }}>
+        <div
+          className="h-screen flex flex-col overflow-hidden"
+          style={{ background: t.bgGradient }}
+        >
           {isDark ? <FloatingParticles /> : null}
           <div className="h-1 shrink-0" style={{ background: t.accentBar }} />
-          <div className="shrink-0 px-6 py-4 backdrop-blur-sm relative z-10 flex items-center justify-between" style={{ background: t.headerBg, borderBottom: `1px solid ${t.headerBorder}` }}>
-            <h1 className="font-black text-lg tracking-wide" style={{ color: t.primary }}>
-              🎡 Worldbex Scan2Win — Raffle Station
+          <div
+            className="shrink-0 px-6 py-4 backdrop-blur-sm relative z-10 flex items-center justify-between"
+            style={{
+              background: t.headerBg,
+              borderBottom: `1px solid ${t.headerBorder}`,
+            }}
+          >
+            <h1
+              className="flex items-center gap-2 font-black text-lg tracking-wide"
+              style={{ color: t.primary }}
+            >
+              <img
+                src={logo}
+                style={{
+                  width: 28,
+                  height: 28,
+                }}
+              />
+              Worldbex Scan2Win — Raffle Station
             </h1>
-            <button onClick={toggleTheme} className="w-8 h-8 flex items-center justify-center rounded-lg text-base" style={{ background: t.pill }} aria-label="Toggle theme">
+            <button
+              onClick={toggleTheme}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-base"
+              style={{ background: t.pill }}
+              aria-label="Toggle theme"
+            >
               {isDark ? "☀️" : "🌙"}
             </button>
           </div>
@@ -1739,16 +2034,28 @@ const RedeemPortal = () => {
 
   return (
     <ThemeCtx.Provider value={t}>
-      <div className="h-screen flex flex-col overflow-hidden" style={{ background: t.bgGradient }}>
+      <div
+        className="h-screen flex flex-col overflow-hidden"
+        style={{ background: t.bgGradient }}
+      >
         {isDark && <FloatingParticles />}
 
         {/* Top accent bar */}
         <div className="h-1 shrink-0" style={{ background: t.accentBar }} />
 
         {/* Header */}
-        <div className="shrink-0 px-6 py-3 flex items-center justify-between backdrop-blur-sm relative z-10" style={{ background: t.headerBg, borderBottom: `1px solid ${t.headerBorder}` }}>
+        <div
+          className="shrink-0 px-6 py-3 flex items-center justify-between backdrop-blur-sm relative z-10"
+          style={{
+            background: t.headerBg,
+            borderBottom: `1px solid ${t.headerBorder}`,
+          }}
+        >
           <div>
-            <h1 className="font-black text-lg tracking-wide" style={{ color: t.primary }}>
+            <h1
+              className="font-black text-lg tracking-wide"
+              style={{ color: t.primary }}
+            >
               🎡 Worldbex Scan2Win
             </h1>
             <p className="text-xs mt-0.5" style={{ color: t.muted }}>
@@ -1758,14 +2065,29 @@ const RedeemPortal = () => {
           </div>
           <div className="flex items-center gap-3">
             {step !== "scan" && (
-              <button onClick={reset} className="text-xs flex items-center gap-1 transition-colors" style={{ color: t.muted }} aria-label="Reset for next visitor">
+              <button
+                onClick={reset}
+                className="text-xs flex items-center gap-1 transition-colors"
+                style={{ color: t.muted }}
+                aria-label="Reset for next visitor"
+              >
                 <RotateCcw size={14} /> Reset
               </button>
             )}
-            <button onClick={toggleTheme} className="w-8 h-8 flex items-center justify-center rounded-lg text-base" style={{ background: t.pill }} aria-label="Toggle theme">
+            <button
+              onClick={toggleTheme}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-base"
+              style={{ background: t.pill }}
+              aria-label="Toggle theme"
+            >
               {isDark ? "☀️" : "🌙"}
             </button>
-            <button onClick={handleChangeStation} className="flex items-center gap-1 transition-colors" style={{ color: t.muted }} aria-label="Change event">
+            <button
+              onClick={handleChangeStation}
+              className="flex items-center gap-1 transition-colors"
+              style={{ color: t.muted }}
+              aria-label="Change event"
+            >
               <Settings size={14} />
             </button>
           </div>
@@ -1787,11 +2109,24 @@ const RedeemPortal = () => {
               {step === "scan" ? (
                 <ScanStep station={station} onNext={advance} />
               ) : step === "survey" ? (
-                <SurveyStep participant={sessionData} station={station} onNext={advance} />
+                <SurveyStep
+                  participant={sessionData}
+                  station={station}
+                  onNext={advance}
+                />
               ) : step === "spin" ? (
-                <SpinStep participant={sessionData} station={station} onNext={advance} onReset={reset} />
+                <SpinStep
+                  participant={sessionData}
+                  station={station}
+                  onNext={advance}
+                  onReset={reset}
+                />
               ) : step === "done" ? (
-                <DoneStep outcome={sessionData.outcome} prizeName={sessionData.prizeName} onReset={reset} />
+                <DoneStep
+                  outcome={sessionData.outcome}
+                  prizeName={sessionData.prizeName}
+                  onReset={reset}
+                />
               ) : null}
             </motion.div>
           </AnimatePresence>

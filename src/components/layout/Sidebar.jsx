@@ -10,8 +10,8 @@
 import { LoginOutlined } from "@ant-design/icons";
 import { App, Divider, Drawer, Layout, Menu } from "antd";
 import { motion } from "framer-motion";
-import { Zap } from "lucide-react";
 import { Link, useLocation } from "react-router";
+import { logo } from "../../assets/images/logos";
 import { useWindowSize } from "../../hooks/useWindowSize";
 import { generateItems, getItem } from "../../utils/itemFormat";
 
@@ -35,7 +35,13 @@ const Brand = ({ collapsed }) => (
     className="flex items-center justify-center gap-2 py-5 px-4"
     style={{ borderBottom: "1px solid rgba(253,145,20,0.15)" }}
   >
-    <Zap size={20} color="#fd9114" />
+    <img
+      src={logo}
+      style={{
+        width: 28,
+        height: 28,
+      }}
+    />
     {!collapsed && (
       <span className="font-black tracking-widest text-sm text-[#fd9114]">
         Worldbex Scan2Win

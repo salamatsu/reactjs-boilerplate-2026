@@ -357,7 +357,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"campaignCode\": \"RFFL-2026-TEST\",\n  \"campaignName\": \"Test Raffle Campaign\",\n  \"eventTag\": \"TESTFEST2026\",\n  \"description\": \"A test campaign.\",\n  \"thresholdPoints\": 100,\n  \"startDate\": \"2026-04-01\",\n  \"endDate\": \"2026-04-30\",\n  \"status\": \"draft\"\n}"
+              "raw": "{\n  \"campaignCode\": \"RFFL-2026-TEST\",\n  \"campaignName\": \"Test Raffle Campaign\",\n  \"eventTag\": \"TESTFEST2026\",\n  \"description\": \"A test campaign.\",\n  \"thresholdPoints\": 100,\n  \"startDate\": \"2026-04-01\",\n  \"endDate\": \"2026-04-30\",\n  \"status\": \"draft\",\n  \"dailySpinLimit\": null\n}"
             },
             "url": {
               "raw": "{{base_url}}/admin/campaigns",
@@ -404,7 +404,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"active\",\n  \"description\": \"Updated description.\"\n}"
+              "raw": "{\n  \"status\": \"active\",\n  \"description\": \"Updated description.\",\n  \"dailySpinLimit\": 50\n}"
             },
             "url": {
               "raw": "{{base_url}}/admin/campaigns/{{campaignId}}",
@@ -2093,6 +2093,49 @@
           ]
         }
       ]
+    },
+    {
+      "name": "4b. Get Spin Status (Daily Limit)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "pm.test('Spin status returned', () => {",
+              "  const j = pm.response.json();",
+              "  pm.expect(j.success).to.be.true;",
+              "  pm.expect(j.data).to.have.property('dailySpinLimit');",
+              "  pm.expect(j.data).to.have.property('spinsToday');",
+              "  pm.expect(j.data).to.have.property('spinsRemaining');",
+              "  pm.expect(j.data).to.have.property('limitReached');",
+              "  console.log('Daily limit:', j.data.dailySpinLimit);",
+              "  console.log('Spins today:', j.data.spinsToday);",
+              "  console.log('Remaining:', j.data.spinsRemaining);",
+              "  console.log('Limit reached:', j.data.limitReached);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/campaigns/{{campaignId}}/spin-status",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "campaigns",
+            "{{campaignId}}",
+            "spin-status"
+          ]
+        },
+        "description": "Returns today's spin count vs the daily limit.\n\n- `dailySpinLimit` — the configured cap, or `null` if unlimited\n- `spinsToday` — completed spins today (won + lost + claimed)\n- `spinsRemaining` — how many spins are left today, or `null` if unlimited\n- `limitReached` — `true` when no more spins are allowed today\n\nCall this before showing the wheel. If `limitReached: true`, display a \"Come back tomorrow\" message instead."
+      },
+      "response": []
     },
     {
       "name": "5. Spin Wheel",
@@ -4171,6 +4214,194 @@
               ]
             },
             "description": "Full 7-step participant conversion funnel: Registered → Scanned → QR Generated → QR Validated → Wheel Spun → Won → Claimed. Includes drop-off % per step and overall conversion rate."
+          },
+          "response": []
+        },
+        {
+          "name": "Export — Participants",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Participants export returned', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.success).to.be.true;",
+                  "  pm.expect(j.data.participants).to.be.an('array');",
+                  "  console.log('Total participants exported:', j.data.total);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/analytics/campaigns/{{campaignId}}/export/participants",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "campaigns",
+                "{{campaignId}}",
+                "export",
+                "participants"
+              ]
+            },
+            "description": "Returns all participant records for the campaign — participantCode, fullName, mobileNumber, email, totalPoints, totalScans, raffleQrGenerated, raffleQrGeneratedAt, status, dateCreated."
+          },
+          "response": []
+        },
+        {
+          "name": "Export — Claims",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Claims export returned', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.success).to.be.true;",
+                  "  pm.expect(j.data.claims).to.be.an('array');",
+                  "  console.log('Total claims exported:', j.data.total);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/analytics/campaigns/{{campaignId}}/export/claims",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "campaigns",
+                "{{campaignId}}",
+                "export",
+                "claims"
+              ]
+            },
+            "description": "Returns all prize claim records joined with participant info (participantCode, fullName, mobileNumber, email) and raffle entry details (wheelResult, entryStatus)."
+          },
+          "response": []
+        },
+        {
+          "name": "Export — Survey Responses",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Survey responses export returned', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.success).to.be.true;",
+                  "  pm.expect(j.data.responses).to.be.an('array');",
+                  "  console.log('Total survey responses exported:', j.data.total);",
+                  "  if (j.data.responses.length > 0) {",
+                  "    console.log('Sample answers count:', j.data.responses[0].answers.length);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/analytics/campaigns/{{campaignId}}/export/survey-responses",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "campaigns",
+                "{{campaignId}}",
+                "export",
+                "survey-responses"
+              ]
+            },
+            "description": "Returns all survey responses with participant info. Each response includes an `answers[]` array containing questionText, questionType, and the answer value (answerText, answerNumeric, answerDate, answerOptionText, or answerJson)."
+          },
+          "response": []
+        },
+        {
+          "name": "Export — Full (Participants + Claims + Surveys)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Full export returned', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.success).to.be.true;",
+                  "  pm.expect(j.data.participants).to.be.an('array');",
+                  "  console.log('Total participants in full export:', j.data.total);",
+                  "  if (j.data.participants.length > 0) {",
+                  "    const p = j.data.participants[0];",
+                  "    console.log('Claims on first participant:', p.claims.length);",
+                  "    console.log('Survey responses on first participant:', p.surveyResponses.length);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/analytics/campaigns/{{campaignId}}/export/full",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "campaigns",
+                "{{campaignId}}",
+                "export",
+                "full"
+              ]
+            },
+            "description": "Single call that returns one record per participant with their full journey nested inside: `claims[]` (prize won + status) and `surveyResponses[]` (each with `answers[]`). Use this for a complete data dump of the campaign."
           },
           "response": []
         }

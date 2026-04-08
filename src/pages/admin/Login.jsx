@@ -19,9 +19,8 @@ import {
 } from "antd";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Zap } from "lucide-react";
-import { useLoginAdminAuth } from "../../services/requests/useAuth";
 import { logo } from "../../assets/images/logos";
+import { useLoginAdminAuth } from "../../services/requests/useAuth";
 
 const { Title, Paragraph } = Typography;
 
@@ -95,7 +94,6 @@ const Login = () => {
               }}
             />
             <div className="flex items-center justify-center gap-2 mb-2">
-              {/* <Zap size={28/} color="#fd9114" /> */}
               <Title level={3} style={{ color: "#1A1A2E", margin: 0 }}>
                 Worldbex Scan2Win
               </Title>

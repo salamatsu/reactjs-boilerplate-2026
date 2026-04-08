@@ -898,6 +898,14 @@ const PrizesTab = ({ campaign }) => {
         >
           Add Prize
         </Button>
+        {prizes.length > 0 && (
+          <span className="text-sm" style={{ color: "#6B7280" }}>
+            Total qty:{" "}
+            <span className="font-bold" style={{ color: "#fd9114" }}>
+              {prizes.reduce((sum, p) => sum + (Number(p.quantity) || 0), 0)}
+            </span>
+          </span>
+        )}
       </div>
 
       {prizes.length === 0 ? (
@@ -927,12 +935,6 @@ const PrizesTab = ({ campaign }) => {
                   {v}
                 </span>
               ),
-            },
-            {
-              title: "Order",
-              dataIndex: "sortOrder",
-              key: "sortOrder",
-              width: 70,
             },
             {
               title: "Status",

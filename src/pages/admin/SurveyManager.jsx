@@ -46,28 +46,33 @@ import {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TRIGGER_OPTIONS = [
-  { value: "booth_scan",   label: "Booth Scan" },
+  // { value: "booth_scan",   label: "Booth Scan" },
   { value: "raffle_entry", label: "Raffle Entry" },
-  { value: "prize_claim",  label: "Prize Claim" },
+  // { value: "prize_claim",  label: "Prize Claim" },
 ];
 
 const QUESTION_TYPES = [
-  { value: "single_choice",  label: "Single Choice (radio)" },
-  { value: "multiple_choice",label: "Multiple Choice (checkbox)" },
-  { value: "dropdown",       label: "Dropdown" },
-  { value: "boolean",        label: "Yes / No" },
-  { value: "text",           label: "Short Text" },
-  { value: "long_text",      label: "Long Text" },
-  { value: "number",         label: "Number" },
-  { value: "date",           label: "Date" },
-  { value: "rating",         label: "Rating (stars)" },
-  { value: "likert",         label: "Likert Scale" },
-  { value: "ranking",        label: "Ranking" },
-  { value: "matrix",         label: "Matrix Grid" },
+  { value: "single_choice", label: "Single Choice (radio)" },
+  { value: "multiple_choice", label: "Multiple Choice (checkbox)" },
+  { value: "dropdown", label: "Dropdown" },
+  { value: "boolean", label: "Yes / No" },
+  { value: "text", label: "Short Text" },
+  { value: "long_text", label: "Long Text" },
+  { value: "number", label: "Number" },
+  { value: "date", label: "Date" },
+  { value: "rating", label: "Rating (stars)" },
+  { value: "likert", label: "Likert Scale" },
+  { value: "ranking", label: "Ranking" },
+  { value: "matrix", label: "Matrix Grid" },
 ];
 
 const TYPE_NEEDS_OPTIONS = [
-  "single_choice","multiple_choice","dropdown","boolean","likert","ranking",
+  "single_choice",
+  "multiple_choice",
+  "dropdown",
+  "boolean",
+  "likert",
+  "ranking",
 ];
 const TYPE_NEEDS_MATRIX_ROWS = ["matrix"];
 const TYPE_NEEDS_OPTIONS_AND_MATRIX = ["matrix"];
@@ -90,13 +95,17 @@ const btnDanger =
   "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium text-red-500 hover:bg-red-50 active:scale-95 transition-all";
 
 const Card = ({ children, className = "" }) => (
-  <div className={`rounded-2xl border border-gray-100 bg-white shadow-sm ${className}`}>
+  <div
+    className={`rounded-2xl border border-gray-100 bg-white shadow-sm ${className}`}
+  >
     {children}
   </div>
 );
 
 const SectionTitle = ({ children }) => (
-  <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">{children}</p>
+  <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">
+    {children}
+  </p>
 );
 
 const Spinner = () => (
@@ -107,7 +116,12 @@ const Spinner = () => (
 
 // ─── Inline editable text ─────────────────────────────────────────────────────
 
-const InlineEdit = ({ value, onSave, placeholder = "Edit…", className = "" }) => {
+const InlineEdit = ({
+  value,
+  onSave,
+  placeholder = "Edit…",
+  className = "",
+}) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
 
@@ -123,22 +137,41 @@ const InlineEdit = ({ value, onSave, placeholder = "Edit…", className = "" }) 
           autoFocus
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") save();
+            if (e.key === "Escape") setEditing(false);
+          }}
           className={`${inputCls} ${className}`}
         />
-        <button onClick={save} className="p-1 text-green-500 hover:bg-green-50 rounded-lg"><Check size={15} /></button>
-        <button onClick={() => setEditing(false)} className="p-1 text-gray-400 hover:bg-gray-100 rounded-lg"><X size={15} /></button>
+        <button
+          onClick={save}
+          className="p-1 text-green-500 hover:bg-green-50 rounded-lg"
+        >
+          <Check size={15} />
+        </button>
+        <button
+          onClick={() => setEditing(false)}
+          className="p-1 text-gray-400 hover:bg-gray-100 rounded-lg"
+        >
+          <X size={15} />
+        </button>
       </div>
     );
   }
 
   return (
     <button
-      onClick={() => { setDraft(value); setEditing(true); }}
+      onClick={() => {
+        setDraft(value);
+        setEditing(true);
+      }}
       className={`text-left hover:bg-orange-50 rounded-lg px-1 -mx-1 transition-colors group ${className}`}
     >
       {value || <span className="text-gray-300">{placeholder}</span>}
-      <Edit2 size={11} className="inline ml-1.5 opacity-0 group-hover:opacity-50 transition-opacity" />
+      <Edit2
+        size={11}
+        className="inline ml-1.5 opacity-0 group-hover:opacity-50 transition-opacity"
+      />
     </button>
   );
 };
@@ -148,8 +181,14 @@ const InlineEdit = ({ value, onSave, placeholder = "Edit…", className = "" }) 
 // ─── Analytics helpers ────────────────────────────────────────────────────────
 
 const BAR_COLORS = [
-  "#f97316", "#f59e0b", "#10b981", "#3b82f6",
-  "#8b5cf6", "#ec4899", "#14b8a6", "#ef4444",
+  "#f97316",
+  "#f59e0b",
+  "#10b981",
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899",
+  "#14b8a6",
+  "#ef4444",
 ];
 
 const QuestionTypeTag = ({ type }) => {
@@ -164,13 +203,16 @@ const QuestionTypeTag = ({ type }) => {
 // ─── Analytics Drawer ─────────────────────────────────────────────────────────
 
 const AnalyticsDrawer = ({ campaignId, surveyId, open, onClose }) => {
-  const { data, isLoading, refetch } = useGetSurveyAnalytics({ campaignId, surveyId });
+  const { data, isLoading, refetch } = useGetSurveyAnalytics({
+    campaignId,
+    surveyId,
+  });
 
-  const survey    = data?.data?.survey;
+  const survey = data?.data?.survey;
   const questions = data?.data?.analytics ?? [];
 
   // Aggregate totals across all questions
-  const totalAnswers    = questions.reduce((s, q) => s + (q.totalAnswers ?? 0), 0);
+  const totalAnswers = questions.reduce((s, q) => s + (q.totalAnswers ?? 0), 0);
   const answeredQuestions = questions.filter((q) => q.totalAnswers > 0).length;
 
   return (
@@ -197,9 +239,13 @@ const AnalyticsDrawer = ({ campaignId, surveyId, open, onClose }) => {
               <BarChart2 size={18} className="text-orange-500" />
             </div>
             <div className="min-w-0">
-              <h2 className="font-black text-base text-gray-800 leading-tight">Survey Analytics</h2>
+              <h2 className="font-black text-base text-gray-800 leading-tight">
+                Survey Analytics
+              </h2>
               {survey ? (
-                <p className="text-xs text-gray-400 truncate mt-0.5">{survey.surveyName}</p>
+                <p className="text-xs text-gray-400 truncate mt-0.5">
+                  {survey.surveyName}
+                </p>
               ) : null}
             </div>
           </div>
@@ -227,24 +273,40 @@ const AnalyticsDrawer = ({ campaignId, surveyId, open, onClose }) => {
           ) : questions.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 px-6">
               <BarChart2 size={40} className="text-gray-200" />
-              <p className="text-sm text-gray-400 text-center">No responses yet. Analytics will appear once participants start submitting.</p>
+              <p className="text-sm text-gray-400 text-center">
+                No responses yet. Analytics will appear once participants start
+                submitting.
+              </p>
             </div>
           ) : (
             <div className="p-5 space-y-5">
-
               {/* Summary row */}
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: "Total Answers", value: totalAnswers, color: "#f97316", bg: "#fff7ed" },
-                  { label: "Questions Answered", value: `${answeredQuestions} / ${questions.length}`, color: "#10b981", bg: "#ecfdf5" },
+                  {
+                    label: "Total Answers",
+                    value: totalAnswers,
+                    color: "#f97316",
+                    bg: "#fff7ed",
+                  },
+                  {
+                    label: "Questions Answered",
+                    value: `${answeredQuestions} / ${questions.length}`,
+                    color: "#10b981",
+                    bg: "#ecfdf5",
+                  },
                 ].map(({ label, value, color, bg }) => (
                   <div
                     key={label}
                     className="rounded-2xl p-4 text-center"
                     style={{ background: bg }}
                   >
-                    <p className="text-2xl font-black" style={{ color }}>{value}</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5 font-medium">{label}</p>
+                    <p className="text-2xl font-black" style={{ color }}>
+                      {value}
+                    </p>
+                    <p className="text-[11px] text-gray-400 mt-0.5 font-medium">
+                      {label}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -269,15 +331,19 @@ const AnalyticsDrawer = ({ campaignId, surveyId, open, onClose }) => {
                           {qi + 1}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-800 leading-snug">{q.questionText}</p>
+                          <p className="text-sm font-semibold text-gray-800 leading-snug">
+                            {q.questionText}
+                          </p>
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <QuestionTypeTag type={q.questionType} />
                             <span className="text-[11px] text-gray-400">
-                              {q.totalAnswers} answer{q.totalAnswers !== 1 ? "s" : ""}
+                              {q.totalAnswers} answer
+                              {q.totalAnswers !== 1 ? "s" : ""}
                             </span>
                             {topOption && topOption.count > 0 ? (
                               <span className="text-[11px] text-orange-500 font-semibold">
-                                Top: {topOption.optionText} ({topOption.percentage}%)
+                                Top: {topOption.optionText} (
+                                {topOption.percentage}%)
                               </span>
                             ) : null}
                           </div>
@@ -290,23 +356,31 @@ const AnalyticsDrawer = ({ campaignId, surveyId, open, onClose }) => {
                       <div className="px-4 py-3 space-y-3">
                         {breakdown.map((b, bi) => {
                           const color = BAR_COLORS[bi % BAR_COLORS.length];
-                          const isTop = b.optionId === topOption?.optionId && b.count > 0;
+                          const isTop =
+                            b.optionId === topOption?.optionId && b.count > 0;
                           return (
                             <div key={b.optionId}>
                               <div className="flex items-center justify-between mb-1 gap-2">
                                 <div className="flex items-center gap-1.5 min-w-0">
                                   {isTop ? (
-                                    <span className="shrink-0 text-[10px]">🏆</span>
+                                    <span className="shrink-0 text-[10px]">
+                                      🏆
+                                    </span>
                                   ) : null}
                                   <span
                                     className="text-xs truncate"
-                                    style={{ color: isTop ? "#1f2937" : "#6b7280", fontWeight: isTop ? 600 : 400 }}
+                                    style={{
+                                      color: isTop ? "#1f2937" : "#6b7280",
+                                      fontWeight: isTop ? 600 : 400,
+                                    }}
                                   >
                                     {b.optionText}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
-                                  <span className="text-xs font-bold text-gray-600">{b.count}</span>
+                                  <span className="text-xs font-bold text-gray-600">
+                                    {b.count}
+                                  </span>
                                   <span
                                     className="text-[11px] font-bold w-10 text-right"
                                     style={{ color }}
@@ -330,13 +404,17 @@ const AnalyticsDrawer = ({ campaignId, surveyId, open, onClose }) => {
                         })}
                       </div>
                     ) : (
-                      <p className="px-4 py-3 text-xs text-gray-400">No breakdown available for this question type.</p>
+                      <p className="px-4 py-3 text-xs text-gray-400">
+                        No breakdown available for this question type.
+                      </p>
                     )}
 
                     {/* Zero-answer notice */}
                     {q.totalAnswers === 0 ? (
                       <div className="px-4 pb-3">
-                        <p className="text-[11px] text-gray-300 italic">No responses yet</p>
+                        <p className="text-[11px] text-gray-300 italic">
+                          No responses yet
+                        </p>
                       </div>
                     ) : null}
                   </div>
@@ -354,28 +432,58 @@ const AnalyticsDrawer = ({ campaignId, surveyId, open, onClose }) => {
 
 const OptionEditor = ({ campaignId, surveyId, question }) => {
   const [newText, setNewText] = useState("");
-  const { mutateAsync: createOption, isPending: creating } = useCreateQuestionOption();
+  const { mutateAsync: createOption, isPending: creating } =
+    useCreateQuestionOption();
   const { mutateAsync: updateOption } = useUpdateQuestionOption();
   const { mutateAsync: deleteOption } = useDeleteQuestionOption();
 
   const add = async () => {
     if (!newText.trim()) return;
-    await createOption({ campaignId, surveyId, questionId: question.id, optionText: newText.trim(), optionValue: newText.trim().toLowerCase().replace(/\s+/g, "_") });
+    await createOption({
+      campaignId,
+      surveyId,
+      questionId: question.id,
+      optionText: newText.trim(),
+      optionValue: newText.trim().toLowerCase().replace(/\s+/g, "_"),
+    });
     setNewText("");
   };
 
   return (
     <div className="mt-3 space-y-1.5">
-      <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Options</p>
+      <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
+        Options
+      </p>
       {(question.options ?? []).map((opt) => (
-        <div key={opt.id} className="flex items-center gap-2 rounded-lg px-3 py-1.5 bg-gray-50 border border-gray-100">
+        <div
+          key={opt.id}
+          className="flex items-center gap-2 rounded-lg px-3 py-1.5 bg-gray-50 border border-gray-100"
+        >
           <GripVertical size={12} className="text-gray-300 shrink-0" />
           <InlineEdit
             value={opt.optionText}
-            onSave={(v) => updateOption({ campaignId, surveyId, questionId: question.id, optionId: opt.id, optionText: v })}
+            onSave={(v) =>
+              updateOption({
+                campaignId,
+                surveyId,
+                questionId: question.id,
+                optionId: opt.id,
+                optionText: v,
+              })
+            }
             className="flex-1 text-sm text-gray-700"
           />
-          <button onClick={() => deleteOption({ campaignId, surveyId, questionId: question.id, optionId: opt.id })} className="p-0.5 text-red-400 hover:bg-red-50 rounded">
+          <button
+            onClick={() =>
+              deleteOption({
+                campaignId,
+                surveyId,
+                questionId: question.id,
+                optionId: opt.id,
+              })
+            }
+            className="p-0.5 text-red-400 hover:bg-red-50 rounded"
+          >
             <X size={12} />
           </button>
         </div>
@@ -388,8 +496,16 @@ const OptionEditor = ({ campaignId, surveyId, question }) => {
           placeholder="Add option…"
           className={inputCls}
         />
-        <button onClick={add} disabled={creating || !newText.trim()} className={btnPrimary}>
-          {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+        <button
+          onClick={add}
+          disabled={creating || !newText.trim()}
+          className={btnPrimary}
+        >
+          {creating ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <Plus size={14} />
+          )}
         </button>
       </div>
     </div>
@@ -398,32 +514,65 @@ const OptionEditor = ({ campaignId, surveyId, question }) => {
 
 const MatrixEditor = ({ campaignId, surveyId, question }) => {
   const [newRow, setNewRow] = useState("");
-  const { mutateAsync: createRow, isPending: creatingRow } = useCreateMatrixRow();
+  const { mutateAsync: createRow, isPending: creatingRow } =
+    useCreateMatrixRow();
   const { mutateAsync: updateRow } = useUpdateMatrixRow();
   const { mutateAsync: deleteRow } = useDeleteMatrixRow();
 
   const addRow = async () => {
     if (!newRow.trim()) return;
-    await createRow({ campaignId, surveyId, questionId: question.id, rowText: newRow.trim() });
+    await createRow({
+      campaignId,
+      surveyId,
+      questionId: question.id,
+      rowText: newRow.trim(),
+    });
     setNewRow("");
   };
 
   return (
     <div className="mt-3 space-y-3">
       {/* Columns (options) */}
-      <OptionEditor campaignId={campaignId} surveyId={surveyId} question={question} />
+      <OptionEditor
+        campaignId={campaignId}
+        surveyId={surveyId}
+        question={question}
+      />
       {/* Rows */}
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Matrix Rows</p>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">
+          Matrix Rows
+        </p>
         {(question.matrixRows ?? []).map((row) => (
-          <div key={row.id} className="flex items-center gap-2 rounded-lg px-3 py-1.5 bg-blue-50 border border-blue-100 mb-1.5">
+          <div
+            key={row.id}
+            className="flex items-center gap-2 rounded-lg px-3 py-1.5 bg-blue-50 border border-blue-100 mb-1.5"
+          >
             <GripVertical size={12} className="text-blue-200 shrink-0" />
             <InlineEdit
               value={row.rowText}
-              onSave={(v) => updateRow({ campaignId, surveyId, questionId: question.id, rowId: row.id, rowText: v })}
+              onSave={(v) =>
+                updateRow({
+                  campaignId,
+                  surveyId,
+                  questionId: question.id,
+                  rowId: row.id,
+                  rowText: v,
+                })
+              }
               className="flex-1 text-sm text-gray-700"
             />
-            <button onClick={() => deleteRow({ campaignId, surveyId, questionId: question.id, rowId: row.id })} className="p-0.5 text-red-400 hover:bg-red-50 rounded">
+            <button
+              onClick={() =>
+                deleteRow({
+                  campaignId,
+                  surveyId,
+                  questionId: question.id,
+                  rowId: row.id,
+                })
+              }
+              className="p-0.5 text-red-400 hover:bg-red-50 rounded"
+            >
               <X size={12} />
             </button>
           </div>
@@ -436,8 +585,16 @@ const MatrixEditor = ({ campaignId, surveyId, question }) => {
             placeholder="Add row…"
             className={inputCls}
           />
-          <button onClick={addRow} disabled={creatingRow || !newRow.trim()} className={btnPrimary}>
-            {creatingRow ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+          <button
+            onClick={addRow}
+            disabled={creatingRow || !newRow.trim()}
+            className={btnPrimary}
+          >
+            {creatingRow ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Plus size={14} />
+            )}
           </button>
         </div>
       </div>
@@ -450,12 +607,15 @@ const MatrixEditor = ({ campaignId, surveyId, question }) => {
 const QuestionCard = ({ question, campaignId, surveyId, index }) => {
   const [expanded, setExpanded] = useState(false);
   const { mutateAsync: updateQuestion } = useUpdateSurveyQuestion();
-  const { mutateAsync: deleteQuestion, isPending: deleting } = useDeleteSurveyQuestion();
+  const { mutateAsync: deleteQuestion, isPending: deleting } =
+    useDeleteSurveyQuestion();
 
   const update = (patch) =>
     updateQuestion({ campaignId, surveyId, questionId: question.id, ...patch });
 
-  const typeLabel = QUESTION_TYPES.find((t) => t.value === question.questionType)?.label ?? question.questionType;
+  const typeLabel =
+    QUESTION_TYPES.find((t) => t.value === question.questionType)?.label ??
+    question.questionType;
   const needsOptions = TYPE_NEEDS_OPTIONS.includes(question.questionType);
   const needsMatrix = TYPE_NEEDS_MATRIX_ROWS.includes(question.questionType);
 
@@ -479,23 +639,34 @@ const QuestionCard = ({ question, campaignId, surveyId, index }) => {
           <button
             onClick={() => update({ isRequired: !question.isRequired })}
             className="flex items-center gap-1 text-xs rounded-lg px-2 py-1 transition-colors"
-            style={question.isRequired ? { color: "#f97316", background: "#fff7ed" } : { color: "#9ca3af", background: "#f9fafb" }}
+            style={
+              question.isRequired
+                ? { color: "#f97316", background: "#fff7ed" }
+                : { color: "#9ca3af", background: "#f9fafb" }
+            }
           >
-            {question.isRequired ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+            {question.isRequired ? (
+              <ToggleRight size={14} />
+            ) : (
+              <ToggleLeft size={14} />
+            )}
             {question.isRequired ? "Required" : "Optional"}
           </button>
-          <button
-            onClick={() => setExpanded((p) => !p)}
-            className={btnGhost}
-          >
+          <button onClick={() => setExpanded((p) => !p)} className={btnGhost}>
             {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
           </button>
           <button
-            onClick={() => deleteQuestion({ campaignId, surveyId, questionId: question.id })}
+            onClick={() =>
+              deleteQuestion({ campaignId, surveyId, questionId: question.id })
+            }
             disabled={deleting}
             className={btnDanger}
           >
-            {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            {deleting ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Trash2 size={14} />
+            )}
           </button>
         </div>
       </div>
@@ -511,7 +682,14 @@ const QuestionCard = ({ question, campaignId, surveyId, index }) => {
                 <input
                   type="number"
                   defaultValue={question.validationRules?.min ?? ""}
-                  onBlur={(e) => update({ validationRules: { ...question.validationRules, min: Number(e.target.value) } })}
+                  onBlur={(e) =>
+                    update({
+                      validationRules: {
+                        ...question.validationRules,
+                        min: Number(e.target.value),
+                      },
+                    })
+                  }
                   className={inputCls}
                 />
               </div>
@@ -520,7 +698,14 @@ const QuestionCard = ({ question, campaignId, surveyId, index }) => {
                 <input
                   type="number"
                   defaultValue={question.validationRules?.max ?? ""}
-                  onBlur={(e) => update({ validationRules: { ...question.validationRules, max: Number(e.target.value) } })}
+                  onBlur={(e) =>
+                    update({
+                      validationRules: {
+                        ...question.validationRules,
+                        max: Number(e.target.value),
+                      },
+                    })
+                  }
                   className={inputCls}
                 />
               </div>
@@ -528,21 +713,38 @@ const QuestionCard = ({ question, campaignId, surveyId, index }) => {
           )}
           {["text", "long_text"].includes(question.questionType) && (
             <div className="mb-3">
-              <label className="text-xs text-gray-500 mb-1 block">Max Length</label>
+              <label className="text-xs text-gray-500 mb-1 block">
+                Max Length
+              </label>
               <input
                 type="number"
                 defaultValue={question.validationRules?.maxLength ?? ""}
-                onBlur={(e) => update({ validationRules: { ...question.validationRules, maxLength: Number(e.target.value) } })}
+                onBlur={(e) =>
+                  update({
+                    validationRules: {
+                      ...question.validationRules,
+                      maxLength: Number(e.target.value),
+                    },
+                  })
+                }
                 className={inputCls}
               />
             </div>
           )}
           {/* Options */}
           {needsOptions && !needsMatrix && (
-            <OptionEditor campaignId={campaignId} surveyId={surveyId} question={question} />
+            <OptionEditor
+              campaignId={campaignId}
+              surveyId={surveyId}
+              question={question}
+            />
           )}
           {needsMatrix && (
-            <MatrixEditor campaignId={campaignId} surveyId={surveyId} question={question} />
+            <MatrixEditor
+              campaignId={campaignId}
+              surveyId={surveyId}
+              question={question}
+            />
           )}
         </div>
       )}
@@ -555,14 +757,17 @@ const QuestionCard = ({ question, campaignId, surveyId, index }) => {
 const SurveyDetail = ({ campaignId, surveyId, onDelete }) => {
   const { data, isLoading } = useGetSurveyById({ campaignId, surveyId });
   const { mutateAsync: updateSurvey } = useUpdateSurvey();
-  const { mutateAsync: createQuestion, isPending: creatingQ } = useCreateSurveyQuestion();
+  const { mutateAsync: createQuestion, isPending: creatingQ } =
+    useCreateSurveyQuestion();
   const { mutateAsync: deleteQuestion } = useDeleteSurveyQuestion();
   const [newQType, setNewQType] = useState("single_choice");
   const [newQText, setNewQText] = useState("");
   const [showAnalytics, setShowAnalytics] = useState(false);
 
   const survey = data?.data?.survey ?? data?.data;
-  const questions = (survey?.questions ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder);
+  const questions = (survey?.questions ?? [])
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 
   const addQuestion = async () => {
     if (!newQText.trim()) return;
@@ -578,7 +783,12 @@ const SurveyDetail = ({ campaignId, surveyId, onDelete }) => {
   };
 
   if (isLoading) return <Spinner />;
-  if (!survey) return <p className="text-sm text-gray-400 text-center py-10">Survey not found.</p>;
+  if (!survey)
+    return (
+      <p className="text-sm text-gray-400 text-center py-10">
+        Survey not found.
+      </p>
+    );
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -588,12 +798,16 @@ const SurveyDetail = ({ campaignId, surveyId, onDelete }) => {
           <div className="flex-1 min-w-0">
             <InlineEdit
               value={survey.surveyName}
-              onSave={(v) => updateSurvey({ campaignId, surveyId, surveyName: v })}
+              onSave={(v) =>
+                updateSurvey({ campaignId, surveyId, surveyName: v })
+              }
               className="font-black text-lg text-gray-800 w-full"
             />
             <InlineEdit
               value={survey.description ?? ""}
-              onSave={(v) => updateSurvey({ campaignId, surveyId, description: v })}
+              onSave={(v) =>
+                updateSurvey({ campaignId, surveyId, description: v })
+              }
               className="text-sm text-gray-500 mt-0.5 w-full"
               placeholder="Add description…"
             />
@@ -614,36 +828,84 @@ const SurveyDetail = ({ campaignId, surveyId, onDelete }) => {
             <label className="text-xs text-gray-400 block mb-1">Trigger</label>
             <select
               value={survey.triggerEvent}
-              onChange={(e) => updateSurvey({ campaignId, surveyId, triggerEvent: e.target.value })}
+              onChange={(e) =>
+                updateSurvey({
+                  campaignId,
+                  surveyId,
+                  triggerEvent: e.target.value,
+                })
+              }
               className={selectCls}
               style={{ width: "auto", minWidth: 160 }}
             >
               {TRIGGER_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
               ))}
             </select>
           </div>
           <div className="flex items-end">
             <button
-              onClick={() => updateSurvey({ campaignId, surveyId, isRequired: !survey.isRequired })}
+              onClick={() =>
+                updateSurvey({
+                  campaignId,
+                  surveyId,
+                  isRequired: !survey.isRequired,
+                })
+              }
               className="flex items-center gap-1.5 text-sm rounded-xl px-3 py-2 border transition-colors"
-              style={survey.isRequired
-                ? { color: "#f97316", borderColor: "#fed7aa", background: "#fff7ed" }
-                : { color: "#9ca3af", borderColor: "#e5e7eb", background: "#f9fafb" }}
+              style={
+                survey.isRequired
+                  ? {
+                      color: "#f97316",
+                      borderColor: "#fed7aa",
+                      background: "#fff7ed",
+                    }
+                  : {
+                      color: "#9ca3af",
+                      borderColor: "#e5e7eb",
+                      background: "#f9fafb",
+                    }
+              }
             >
-              {survey.isRequired ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+              {survey.isRequired ? (
+                <ToggleRight size={16} />
+              ) : (
+                <ToggleLeft size={16} />
+              )}
               {survey.isRequired ? "Required" : "Optional"}
             </button>
           </div>
           <div className="flex items-end">
             <button
-              onClick={() => updateSurvey({ campaignId, surveyId, isActive: !survey.isActive })}
+              onClick={() =>
+                updateSurvey({
+                  campaignId,
+                  surveyId,
+                  isActive: !survey.isActive,
+                })
+              }
               className="flex items-center gap-1.5 text-sm rounded-xl px-3 py-2 border transition-colors"
-              style={survey.isActive
-                ? { color: "#10b981", borderColor: "#a7f3d0", background: "#ecfdf5" }
-                : { color: "#9ca3af", borderColor: "#e5e7eb", background: "#f9fafb" }}
+              style={
+                survey.isActive
+                  ? {
+                      color: "#10b981",
+                      borderColor: "#a7f3d0",
+                      background: "#ecfdf5",
+                    }
+                  : {
+                      color: "#9ca3af",
+                      borderColor: "#e5e7eb",
+                      background: "#f9fafb",
+                    }
+              }
             >
-              {survey.isActive ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+              {survey.isActive ? (
+                <ToggleRight size={16} />
+              ) : (
+                <ToggleLeft size={16} />
+              )}
               {survey.isActive ? "Active" : "Inactive"}
             </button>
           </div>
@@ -654,10 +916,18 @@ const SurveyDetail = ({ campaignId, surveyId, onDelete }) => {
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
         <SectionTitle>Questions ({questions.length})</SectionTitle>
         {questions.length === 0 && (
-          <p className="text-sm text-gray-400 text-center py-6">No questions yet. Add one below.</p>
+          <p className="text-sm text-gray-400 text-center py-6">
+            No questions yet. Add one below.
+          </p>
         )}
         {questions.map((q, i) => (
-          <QuestionCard key={q.id} question={q} campaignId={campaignId} surveyId={surveyId} index={i} />
+          <QuestionCard
+            key={q.id}
+            question={q}
+            campaignId={campaignId}
+            surveyId={surveyId}
+            index={i}
+          />
         ))}
       </div>
 
@@ -679,11 +949,21 @@ const SurveyDetail = ({ campaignId, surveyId, onDelete }) => {
             style={{ width: "auto", minWidth: 160 }}
           >
             {QUESTION_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
             ))}
           </select>
-          <button onClick={addQuestion} disabled={creatingQ || !newQText.trim()} className={btnPrimary}>
-            {creatingQ ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
+          <button
+            onClick={addQuestion}
+            disabled={creatingQ || !newQText.trim()}
+            className={btnPrimary}
+          >
+            {creatingQ ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : (
+              <Plus size={15} />
+            )}
             Add
           </button>
         </div>
@@ -708,13 +988,16 @@ const SurveyManager = () => {
   const [newSurveyName, setNewSurveyName] = useState("");
   const [newTrigger, setNewTrigger] = useState("raffle_entry");
 
-  const { data: campaignsData, isLoading: loadingCampaigns } = useListCampaigns();
+  const { data: campaignsData, isLoading: loadingCampaigns } =
+    useListCampaigns();
   const campaigns = campaignsData?.data?.campaigns ?? campaignsData?.data ?? [];
 
-  const { data: surveysData, isLoading: loadingSurveys } = useListSurveys(selectedCampaignId);
+  const { data: surveysData, isLoading: loadingSurveys } =
+    useListSurveys(selectedCampaignId);
   const surveys = surveysData?.data?.surveys ?? surveysData?.data ?? [];
 
-  const { mutateAsync: createSurvey, isPending: creatingLoading } = useCreateSurvey();
+  const { mutateAsync: createSurvey, isPending: creatingLoading } =
+    useCreateSurvey();
   const { mutateAsync: deleteSurvey } = useDeleteSurvey();
 
   const handleCreate = async () => {
@@ -754,12 +1037,17 @@ const SurveyManager = () => {
           ) : (
             <select
               value={selectedCampaignId ?? ""}
-              onChange={(e) => { setSelectedCampaignId(e.target.value || null); setSelectedSurveyId(null); }}
+              onChange={(e) => {
+                setSelectedCampaignId(e.target.value || null);
+                setSelectedSurveyId(null);
+              }}
               className={selectCls}
             >
               <option value="">— Select campaign —</option>
               {campaigns.map((c) => (
-                <option key={c.id} value={c.id}>{c.campaignName}</option>
+                <option key={c.id} value={c.id}>
+                  {c.campaignName}
+                </option>
               ))}
             </select>
           )}
@@ -770,7 +1058,9 @@ const SurveyManager = () => {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <ClipboardList size={48} className="mx-auto text-gray-200 mb-3" />
-            <p className="text-gray-400 text-sm">Select a campaign to manage its surveys.</p>
+            <p className="text-gray-400 text-sm">
+              Select a campaign to manage its surveys.
+            </p>
           </div>
         </div>
       ) : (
@@ -804,14 +1094,28 @@ const SurveyManager = () => {
                   className={selectCls}
                 >
                   {TRIGGER_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
                   ))}
                 </select>
                 <div className="flex gap-2">
-                  <button onClick={handleCreate} disabled={creatingLoading || !newSurveyName.trim()} className={`${btnPrimary} flex-1 justify-center`}>
-                    {creatingLoading ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Create
+                  <button
+                    onClick={handleCreate}
+                    disabled={creatingLoading || !newSurveyName.trim()}
+                    className={`${btnPrimary} flex-1 justify-center`}
+                  >
+                    {creatingLoading ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Check size={14} />
+                    )}{" "}
+                    Create
                   </button>
-                  <button onClick={() => setCreating(false)} className={`${btnGhost} flex-1 justify-center`}>
+                  <button
+                    onClick={() => setCreating(false)}
+                    className={`${btnGhost} flex-1 justify-center`}
+                  >
                     <X size={14} /> Cancel
                   </button>
                 </div>
@@ -822,26 +1126,43 @@ const SurveyManager = () => {
               {loadingSurveys ? (
                 <Spinner />
               ) : surveys.length === 0 ? (
-                <p className="text-xs text-gray-400 text-center py-8 px-4">No surveys yet. Create one.</p>
+                <p className="text-xs text-gray-400 text-center py-8 px-4">
+                  No surveys yet. Create one.
+                </p>
               ) : (
                 surveys.map((s) => {
                   const active = selectedSurveyId === s.id;
-                  const triggerLabel = TRIGGER_OPTIONS.find((t) => t.value === s.triggerEvent)?.label ?? s.triggerEvent;
+                  const triggerLabel =
+                    TRIGGER_OPTIONS.find((t) => t.value === s.triggerEvent)
+                      ?.label ?? s.triggerEvent;
                   return (
                     <button
                       key={s.id}
                       onClick={() => setSelectedSurveyId(s.id)}
                       className="w-full text-left px-4 py-3 border-b border-gray-50 transition-colors hover:bg-orange-50"
-                      style={active ? { background: "#fff7ed", borderLeft: "3px solid #f97316" } : { borderLeft: "3px solid transparent" }}
+                      style={
+                        active
+                          ? {
+                              background: "#fff7ed",
+                              borderLeft: "3px solid #f97316",
+                            }
+                          : { borderLeft: "3px solid transparent" }
+                      }
                     >
-                      <p className="text-sm font-semibold text-gray-800 truncate">{s.surveyName}</p>
+                      <p className="text-sm font-semibold text-gray-800 truncate">
+                        {s.surveyName}
+                      </p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] text-gray-400">{triggerLabel}</span>
+                        <span className="text-[10px] text-gray-400">
+                          {triggerLabel}
+                        </span>
                         <span
                           className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                          style={s.isActive
-                            ? { background: "#ecfdf5", color: "#10b981" }
-                            : { background: "#f3f4f6", color: "#9ca3af" }}
+                          style={
+                            s.isActive
+                              ? { background: "#ecfdf5", color: "#10b981" }
+                              : { background: "#f3f4f6", color: "#9ca3af" }
+                          }
                         >
                           {s.isActive ? "Active" : "Inactive"}
                         </span>
@@ -851,7 +1172,10 @@ const SurveyManager = () => {
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-gray-300 mt-0.5">{s.questionCount ?? 0} questions · {s.responseCount ?? 0} responses</p>
+                      <p className="text-[10px] text-gray-300 mt-0.5">
+                        {s.questionCount ?? 0} questions ·{" "}
+                        {s.responseCount ?? 0} responses
+                      </p>
                     </button>
                   );
                 })
@@ -864,8 +1188,13 @@ const SurveyManager = () => {
             {!selectedSurveyId ? (
               <div className="h-full flex items-center justify-center">
                 <div className="text-center">
-                  <ClipboardList size={48} className="mx-auto text-gray-200 mb-3" />
-                  <p className="text-gray-400 text-sm">Select a survey to edit its questions.</p>
+                  <ClipboardList
+                    size={48}
+                    className="mx-auto text-gray-200 mb-3"
+                  />
+                  <p className="text-gray-400 text-sm">
+                    Select a survey to edit its questions.
+                  </p>
                 </div>
               </div>
             ) : (
