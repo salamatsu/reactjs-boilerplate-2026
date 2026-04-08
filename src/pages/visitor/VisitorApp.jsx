@@ -702,6 +702,7 @@ const SharePanel = ({ eventTag }) => {
 
 /** Venue image maps */
 const VITE_BASEURL_APP = import.meta.env.VITE_BASEURL_APP;
+const VITE_BASEURL = import.meta.env.VITE_BASEURL;
 
 const downloadImage = async (src, filename) => {
   try {
@@ -721,7 +722,11 @@ const downloadImage = async (src, filename) => {
 const ImageMapsView = ({ campaignId }) => {
   const t = useVT();
   const { data, isLoading } = useGetCampaignImagesPublic(campaignId);
-  const sites = data?.data?.imageSites ?? [];
+  const sites = (data?.data?.imageSites ?? []).slice().sort(
+    (a, b) =>
+      Math.min(...a.images.map((i) => i.sortOrder ?? 0)) -
+      Math.min(...b.images.map((i) => i.sortOrder ?? 0)),
+  );
   const [lightbox, setLightbox] = useState(null); // { src, alt, filename }
 
   if (isLoading)
@@ -760,9 +765,11 @@ const ImageMapsView = ({ campaignId }) => {
     <>
       <div className="space-y-5">
         {sites.map((site) => {
-          const activeImages = site.images.filter(
-            (img) => img.isActive === 1 || img.isActive === true,
-          );
+          const activeImages = site.images
+            .filter(
+              (img) => img.isActive === undefined || img.isActive === 1 || img.isActive === true,
+            )
+            .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
           if (!activeImages.length) return null;
           const showCode = site.siteCode !== site.siteName;
 
@@ -820,7 +827,7 @@ const ImageMapsView = ({ campaignId }) => {
               {/* Image cards */}
               <div className="space-y-3">
                 {activeImages.map((img) => {
-                  const src = `/${img.imageUrl}`;
+                  const src = `${VITE_BASEURL}/${img.imageUrl}`;
                   const ext = img.imageUrl.split(".").pop() || "jpg";
                   const filename = `${site.siteCode}.${ext}`;
                   return (

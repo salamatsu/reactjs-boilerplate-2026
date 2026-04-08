@@ -91,7 +91,7 @@ const STATUS_ACCENT = {
   cancelled: "#F5A623",
 };
 
-const IMG_BASE = import.meta.env.VITE_BASEURL_APP ?? "";
+const IMG_BASE = import.meta.env.VITE_BASEURL ?? "";
 
 const fmtDate = (iso) => (iso ? dayjs(iso).format("MMM DD, YYYY") : "—");
 const boothQrUrl = (eventTag, boothCode, points) =>
@@ -116,7 +116,11 @@ const copyText = (text) => {
 const StatCard = ({ icon, label, value, accent }) => (
   <div
     className="flex items-center gap-4 rounded-2xl px-5 py-4 flex-1"
-    style={{ backgroundColor: "#ffffff", border: `1px solid #E5E7EB`, borderLeft: `3px solid ${accent}` }}
+    style={{
+      backgroundColor: "#ffffff",
+      border: `1px solid #E5E7EB`,
+      borderLeft: `3px solid ${accent}`,
+    }}
   >
     <div
       className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
@@ -128,7 +132,10 @@ const StatCard = ({ icon, label, value, accent }) => (
       <p className="text-xs mb-0.5" style={{ color: "#6B7280" }}>
         {label}
       </p>
-      <p className="text-xl font-black leading-none" style={{ color: "#1A1A2E" }}>
+      <p
+        className="text-xl font-black leading-none"
+        style={{ color: "#1A1A2E" }}
+      >
         {value}
       </p>
     </div>
@@ -1251,8 +1258,16 @@ const ImageMapsTab = ({ campaign }) => {
     setMovingId(a.id);
     try {
       await Promise.all([
-        updateImage({ campaignId: campaign.id, imageId: a.id, sortOrder: b.sortOrder }),
-        updateImage({ campaignId: campaign.id, imageId: b.id, sortOrder: a.sortOrder }),
+        updateImage({
+          campaignId: campaign.id,
+          imageId: a.id,
+          sortOrder: b.sortOrder,
+        }),
+        updateImage({
+          campaignId: campaign.id,
+          imageId: b.id,
+          sortOrder: a.sortOrder,
+        }),
       ]);
     } catch (err) {
       message.error(err?.message || "Reorder failed.");
@@ -1263,7 +1278,11 @@ const ImageMapsTab = ({ campaign }) => {
 
   // drag-and-drop: reorder all images in site and batch-patch changed ones
   const handleDrop = async (sortedImgs, siteCode, targetIdx) => {
-    if (!dragSrc || dragSrc.siteCode !== siteCode || dragSrc.idx === targetIdx) {
+    if (
+      !dragSrc ||
+      dragSrc.siteCode !== siteCode ||
+      dragSrc.idx === targetIdx
+    ) {
       setDragSrc(null);
       setDragOver(null);
       return;
@@ -1284,10 +1303,16 @@ const ImageMapsTab = ({ campaign }) => {
     try {
       await Promise.all(
         updates.map(({ img, newOrder }) =>
-          updateImage({ campaignId: campaign.id, imageId: img.id, sortOrder: newOrder })
-        )
+          updateImage({
+            campaignId: campaign.id,
+            imageId: img.id,
+            sortOrder: newOrder,
+          }),
+        ),
       );
-      message.success(`Reordered ${updates.length} item${updates.length > 1 ? "s" : ""}.`);
+      message.success(
+        `Reordered ${updates.length} item${updates.length > 1 ? "s" : ""}.`,
+      );
     } catch (err) {
       message.error(err?.message || "Reorder failed.");
     } finally {
@@ -1320,179 +1345,251 @@ const ImageMapsTab = ({ campaign }) => {
       ) : (
         <div className="space-y-6">
           {sites.map((site) => {
-            const sortedImgs = [...site.images].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+            const sortedImgs = [...site.images].sort(
+              (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
+            );
             return (
-            <div key={site.siteCode}>
-              {/* Site header */}
-              <div className="flex items-center gap-3 mb-3 pb-2" style={{ borderBottom: "2px solid #E5E7EB" }}>
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0" style={{ background: "#EFF6FF" }}>
-                  <span className="text-xs font-black font-mono leading-none" style={{ color: "#1D4ED8" }}>
-                    {site.siteCode.slice(0, 3)}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-base font-bold leading-tight truncate" style={{ color: "#1A1A2E" }}>
-                    {site.siteName}
-                  </div>
-                  <div className="text-xs font-mono mt-0.5" style={{ color: "#6B7280" }}>
-                    {site.siteCode} &middot; {site.images.length} image{site.images.length !== 1 ? "s" : ""}
-                    {savingOrder ? " · saving order…" : " · drag to reorder"}
-                  </div>
-                </div>
-                <Tag color="blue" className="font-mono font-bold shrink-0">{site.siteCode}</Tag>
-              </div>
-
-              {/* Image cards */}
-              <div className="flex flex-col gap-2">
-                {sortedImgs.map((img, idx) => {
-                  const isDragSrc = dragSrc?.siteCode === site.siteCode && dragSrc?.idx === idx;
-                  const isDragOver = dragOver?.siteCode === site.siteCode && dragOver?.idx === idx;
-                  return (
+              <div key={site.siteCode}>
+                {/* Site header */}
+                <div
+                  className="flex items-center gap-3 mb-3 pb-2"
+                  style={{ borderBottom: "2px solid #E5E7EB" }}
+                >
                   <div
-                    key={img.id}
-                    draggable={!savingOrder && !reordering}
-                    onDragStart={() => setDragSrc({ siteCode: site.siteCode, idx })}
-                    onDragOver={(e) => { e.preventDefault(); setDragOver({ siteCode: site.siteCode, idx }); }}
-                    onDragEnd={() => { setDragSrc(null); setDragOver(null); }}
-                    onDrop={() => handleDrop(sortedImgs, site.siteCode, idx)}
-                    className="flex gap-3 rounded-xl p-3"
-                    style={{
-                      background: isDragOver ? "#EFF6FF" : "#ffffff",
-                      border: isDragOver
-                        ? "2px dashed #1D4ED8"
-                        : isDragSrc
-                        ? "2px dashed #D1D5DB"
-                        : "1px solid #E5E7EB",
-                      opacity: isDragSrc || movingId === img.id ? 0.45 : 1,
-                      cursor: savingOrder ? "wait" : "grab",
-                      transition: "all 0.15s",
-                    }}
+                    className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0"
+                    style={{ background: "#EFF6FF" }}
                   >
-                    {/* Sort handle — drag grip + ↑/↓ */}
-                    <div className="flex flex-col items-center justify-between shrink-0 py-0.5" style={{ width: 22 }}>
-                      {/* Grip dots */}
-                      <div className="flex flex-col items-center gap-[3px] mt-0.5 cursor-grab" style={{ color: "#D1D5DB" }}>
-                        {[0,1,2].map((r) => (
-                          <div key={r} className="flex gap-[3px]">
-                            <div className="w-[3px] h-[3px] rounded-full bg-current" />
-                            <div className="w-[3px] h-[3px] rounded-full bg-current" />
-                          </div>
-                        ))}
-                      </div>
-                      {/* Position badge */}
-                      <span
-                        className="text-[10px] font-mono font-bold leading-none rounded px-1 py-0.5 my-1"
-                        style={{ background: "#F3F4F6", color: "#6B7280" }}
-                      >
-                        {idx + 1}
-                      </span>
-                      {/* ↑/↓ arrows */}
-                      <div className="flex flex-col gap-0" onMouseDown={(e) => e.stopPropagation()}>
-                        <button
-                          disabled={idx === 0 || reordering || savingOrder}
-                          onClick={() => handleMove(sortedImgs, idx, "up")}
-                          title="Move up"
-                          style={{
-                            background: "none", border: "none", padding: "1px 0",
-                            cursor: idx === 0 ? "default" : "pointer",
-                            color: idx === 0 ? "#E5E7EB" : "#6B7280",
-                            lineHeight: 1,
-                          }}
-                        >
-                          <UpOutlined style={{ fontSize: 9 }} />
-                        </button>
-                        <button
-                          disabled={idx === sortedImgs.length - 1 || reordering || savingOrder}
-                          onClick={() => handleMove(sortedImgs, idx, "down")}
-                          title="Move down"
-                          style={{
-                            background: "none", border: "none", padding: "1px 0",
-                            cursor: idx === sortedImgs.length - 1 ? "default" : "pointer",
-                            color: idx === sortedImgs.length - 1 ? "#E5E7EB" : "#6B7280",
-                            lineHeight: 1,
-                          }}
-                        >
-                          <DownOutlined style={{ fontSize: 9 }} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Thumbnail */}
-                    <div
-                      className="w-16 h-16 rounded-lg overflow-hidden shrink-0 flex items-center justify-center"
-                      style={{ background: "#F0F2F5" }}
+                    <span
+                      className="text-xs font-black font-mono leading-none"
+                      style={{ color: "#1D4ED8" }}
                     >
-                      <Image
-                        src={`${IMG_BASE}/${img.imageUrl}`}
-                        width={64}
-                        height={64}
-                        style={{ objectFit: "cover" }}
-                        preview={{ mask: <EyeOutlined /> }}
-                        fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-                      />
+                      {site.siteCode.slice(0, 3)}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className="text-base font-bold leading-tight truncate"
+                      style={{ color: "#1A1A2E" }}
+                    >
+                      {site.siteName}
                     </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-1">
-                        <div className="min-w-0">
-                          <p
-                            className="text-xs font-bold truncate"
-                            style={{ color: "#1A1A2E" }}
-                          >
-                            {img.altText || img.siteName}
-                          </p>
-                          <p
-                            className="text-[10px] font-mono mt-0.5 truncate"
-                            style={{ color: "#6B7280" }}
-                          >
-                            #{img.id} · sort {img.sortOrder}
-                          </p>
-                        </div>
-                        <Tag
-                          color={img.isActive === 1 || img.isActive === true ? "success" : "default"}
-                          className="shrink-0 text-xs"
-                        >
-                          {img.isActive === 1 || img.isActive === true ? "Active" : "Inactive"}
-                        </Tag>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-1 mt-2">
-                        <Tooltip title="Edit metadata / replace image">
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<EditOutlined style={{ color: "#1D4ED8" }} />}
-                            onClick={() =>
-                              setImgModal({ open: true, record: img })
-                            }
-                          />
-                        </Tooltip>
-                        <Tooltip title="Delete">
-                          <Popconfirm
-                            title="Delete this image?"
-                            description="The file will be permanently removed."
-                            okText="Delete"
-                            okButtonProps={{ danger: true, loading: deleting }}
-                            onConfirm={() => handleDelete(img)}
-                          >
-                            <Button
-                              type="text"
-                              size="small"
-                              icon={
-                                <DeleteOutlined style={{ color: "#E94560" }} />
-                              }
-                            />
-                          </Popconfirm>
-                        </Tooltip>
-                      </div>
+                    <div
+                      className="text-xs font-mono mt-0.5"
+                      style={{ color: "#6B7280" }}
+                    >
+                      {site.siteCode} &middot; {site.images.length} image
+                      {site.images.length !== 1 ? "s" : ""}
+                      {savingOrder ? " · saving order…" : " · drag to reorder"}
                     </div>
                   </div>
-                  );
-                })}
+                  <Tag color="blue" className="font-mono font-bold shrink-0">
+                    {site.siteCode}
+                  </Tag>
+                </div>
+
+                {/* Image cards */}
+                <div className="flex flex-col gap-2">
+                  {sortedImgs.map((img, idx) => {
+                    const isDragSrc =
+                      dragSrc?.siteCode === site.siteCode &&
+                      dragSrc?.idx === idx;
+                    const isDragOver =
+                      dragOver?.siteCode === site.siteCode &&
+                      dragOver?.idx === idx;
+                    return (
+                      <div
+                        key={img.id}
+                        draggable={!savingOrder && !reordering}
+                        onDragStart={() =>
+                          setDragSrc({ siteCode: site.siteCode, idx })
+                        }
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setDragOver({ siteCode: site.siteCode, idx });
+                        }}
+                        onDragEnd={() => {
+                          setDragSrc(null);
+                          setDragOver(null);
+                        }}
+                        onDrop={() =>
+                          handleDrop(sortedImgs, site.siteCode, idx)
+                        }
+                        className="flex gap-3 rounded-xl p-3"
+                        style={{
+                          background: isDragOver ? "#EFF6FF" : "#ffffff",
+                          border: isDragOver
+                            ? "2px dashed #1D4ED8"
+                            : isDragSrc
+                              ? "2px dashed #D1D5DB"
+                              : "1px solid #E5E7EB",
+                          opacity: isDragSrc || movingId === img.id ? 0.45 : 1,
+                          cursor: savingOrder ? "wait" : "grab",
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        {/* Sort handle — drag grip + ↑/↓ */}
+                        <div
+                          className="flex flex-col items-center justify-between shrink-0 py-0.5"
+                          style={{ width: 22 }}
+                        >
+                          {/* Grip dots */}
+                          <div
+                            className="flex flex-col items-center gap-[3px] mt-0.5 cursor-grab"
+                            style={{ color: "#D1D5DB" }}
+                          >
+                            {[0, 1, 2].map((r) => (
+                              <div key={r} className="flex gap-[3px]">
+                                <div className="w-[3px] h-[3px] rounded-full bg-current" />
+                                <div className="w-[3px] h-[3px] rounded-full bg-current" />
+                              </div>
+                            ))}
+                          </div>
+                          {/* Position badge */}
+                          <span
+                            className="text-[10px] font-mono font-bold leading-none rounded px-1 py-0.5 my-1"
+                            style={{ background: "#F3F4F6", color: "#6B7280" }}
+                          >
+                            {idx + 1}
+                          </span>
+                          {/* ↑/↓ arrows */}
+                          <div
+                            className="flex flex-col gap-0"
+                            onMouseDown={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              disabled={idx === 0 || reordering || savingOrder}
+                              onClick={() => handleMove(sortedImgs, idx, "up")}
+                              title="Move up"
+                              style={{
+                                background: "none",
+                                border: "none",
+                                padding: "1px 0",
+                                cursor: idx === 0 ? "default" : "pointer",
+                                color: idx === 0 ? "#E5E7EB" : "#6B7280",
+                                lineHeight: 1,
+                              }}
+                            >
+                              <UpOutlined style={{ fontSize: 9 }} />
+                            </button>
+                            <button
+                              disabled={
+                                idx === sortedImgs.length - 1 ||
+                                reordering ||
+                                savingOrder
+                              }
+                              onClick={() =>
+                                handleMove(sortedImgs, idx, "down")
+                              }
+                              title="Move down"
+                              style={{
+                                background: "none",
+                                border: "none",
+                                padding: "1px 0",
+                                cursor:
+                                  idx === sortedImgs.length - 1
+                                    ? "default"
+                                    : "pointer",
+                                color:
+                                  idx === sortedImgs.length - 1
+                                    ? "#E5E7EB"
+                                    : "#6B7280",
+                                lineHeight: 1,
+                              }}
+                            >
+                              <DownOutlined style={{ fontSize: 9 }} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Thumbnail */}
+                        <div
+                          className="w-16 h-16 rounded-lg overflow-hidden shrink-0 flex items-center justify-center"
+                          style={{ background: "#F0F2F5" }}
+                        >
+                          <Image
+                            src={`${IMG_BASE}/${img.imageUrl}`}
+                            width={64}
+                            height={64}
+                            style={{ objectFit: "cover" }}
+                            preview={{ mask: <EyeOutlined /> }}
+                            fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+                          />
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-1">
+                            <div className="min-w-0">
+                              <p
+                                className="text-xs font-bold truncate"
+                                style={{ color: "#1A1A2E" }}
+                              >
+                                {img.altText || img.siteName}
+                              </p>
+                              <p
+                                className="text-[10px] font-mono mt-0.5 truncate"
+                                style={{ color: "#6B7280" }}
+                              >
+                                #{img.id} · sort {img.sortOrder}
+                              </p>
+                            </div>
+                            <Tag
+                              color={
+                                img.isActive === 1 || img.isActive === true
+                                  ? "success"
+                                  : "default"
+                              }
+                              className="shrink-0 text-xs"
+                            >
+                              {img.isActive === 1 || img.isActive === true
+                                ? "Active"
+                                : "Inactive"}
+                            </Tag>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-1 mt-2">
+                            <Tooltip title="Edit metadata / replace image">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={
+                                  <EditOutlined style={{ color: "#1D4ED8" }} />
+                                }
+                                onClick={() =>
+                                  setImgModal({ open: true, record: img })
+                                }
+                              />
+                            </Tooltip>
+                            <Tooltip title="Delete">
+                              <Popconfirm
+                                title="Delete this image?"
+                                description="The file will be permanently removed."
+                                okText="Delete"
+                                okButtonProps={{
+                                  danger: true,
+                                  loading: deleting,
+                                }}
+                                onConfirm={() => handleDelete(img)}
+                              >
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  icon={
+                                    <DeleteOutlined
+                                      style={{ color: "#E94560" }}
+                                    />
+                                  }
+                                />
+                              </Popconfirm>
+                            </Tooltip>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
             );
           })}
         </div>
@@ -1777,13 +1874,19 @@ const CampaignCard = ({ campaign, onView, onEdit, onDelete, deleting }) => {
               Duration
             </span>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-sm" style={{ color: "#1A1A2E" }}>
+              <span
+                className="font-semibold text-sm"
+                style={{ color: "#1A1A2E" }}
+              >
                 {fmtDate(campaign.startDate)}
               </span>
               <span className="text-xs" style={{ color: "#6B7280" }}>
                 →
               </span>
-              <span className="font-semibold text-sm" style={{ color: "#1A1A2E" }}>
+              <span
+                className="font-semibold text-sm"
+                style={{ color: "#1A1A2E" }}
+              >
                 {fmtDate(campaign.endDate)}
               </span>
             </div>
