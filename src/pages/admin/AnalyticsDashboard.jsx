@@ -10,10 +10,13 @@ import { formatUTC, DATE_FORMATS } from "../../utils/formatDate";
 import {
   App,
   Button,
+  Collapse,
   Empty,
   Input,
+  Progress,
   Select,
   Spin,
+  Statistic,
   Table,
   Tabs,
   Tag,
@@ -22,7 +25,12 @@ import {
 } from "antd";
 import {
   BarChartOutlined,
+  CheckCircleOutlined,
+  FileTextOutlined,
+  OrderedListOutlined,
+  PieChartOutlined,
   ReloadOutlined,
+  SearchOutlined,
   TrophyOutlined,
   UserOutlined,
   QrcodeOutlined,
@@ -145,7 +153,7 @@ const ParticipantsTab = ({ campaignId }) => {
   const topBooths = d.topBooths ?? [];
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       {/* KPI row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="Total Participants" value={fmt(totals.total)} color={C.info} icon={<UserOutlined />} />
@@ -158,7 +166,7 @@ const ParticipantsTab = ({ campaignId }) => {
         {/* By status */}
         {byStatus.length > 0 ? (
           <SectionCard title="By Status">
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1">
               {byStatus.map((s, i) => (
                 <Bar key={s.status} label={s.status} count={s.count} pct={s.percentage} color={BAR_COLORS[i % BAR_COLORS.length]} />
               ))}
@@ -169,7 +177,7 @@ const ParticipantsTab = ({ campaignId }) => {
         {/* Top booths by participants */}
         {topBooths.length > 0 ? (
           <SectionCard title="Top Booths by Participants">
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1">
               {topBooths.map((b, i) => (
                 <Bar key={b.boothId} label={b.boothName ?? `Booth ${b.boothId}`} count={b.participants} pct={b.percentage} color={BAR_COLORS[i % BAR_COLORS.length]} />
               ))}
@@ -211,7 +219,7 @@ const BoothsTab = ({ campaignId }) => {
   const byDay = d.scansByDay ?? d.byDay ?? [];
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="Total Scans" value={fmt(summary.totalScans)} color={C.info} icon={<ShopOutlined />} />
         {/* API field: participantsWhoScanned */}
@@ -246,7 +254,7 @@ const BoothsTab = ({ campaignId }) => {
 
       {byDay.length > 0 ? (
         <SectionCard title="Scan Volume by Day">
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1">
             {byDay.map((d, i) => (
               <Bar key={d.date} label={d.date} count={d.scans} color={BAR_COLORS[i % BAR_COLORS.length]} />
             ))}
@@ -267,7 +275,7 @@ const QrTab = ({ campaignId }) => {
   const d = data?.data ?? {};
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard label="Total Generated" value={fmt(d.total)} color={C.info} icon={<QrcodeOutlined />} />
         <StatCard label="Active" value={fmt(d.active)} color={C.success} />
@@ -279,7 +287,7 @@ const QrTab = ({ campaignId }) => {
 
       {/* Visual breakdown */}
       <SectionCard title="Status Breakdown">
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           {[
             { label: "Used", count: d.used, total: d.total, color: C.success },
             { label: "Active (unused)", count: d.active, total: d.total, color: C.info },
@@ -326,7 +334,7 @@ const EntriesTab = ({ campaignId }) => {
   }));
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="Total Spins" value={fmt(totals.total)} color={C.info} icon={<PlayCircleOutlined />} />
         <StatCard label="Won" value={fmt(totals.won)} color={C.success} />
@@ -337,7 +345,7 @@ const EntriesTab = ({ campaignId }) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {byOutcome.length > 0 ? (
           <SectionCard title="Wheel Results Breakdown">
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1">
               {byOutcome.map((o, i) => (
                 <Bar key={o.outcome} label={o.outcome} count={o.count} pct={o.percentage} color={BAR_COLORS[i % BAR_COLORS.length]} />
               ))}
@@ -347,7 +355,7 @@ const EntriesTab = ({ campaignId }) => {
 
         {byDay.length > 0 ? (
           <SectionCard title="Spins by Day">
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1">
               {byDay.map((d, i) => (
                 <Bar key={d.date} label={d.date} count={d.spins} color={BAR_COLORS[i % BAR_COLORS.length]} />
               ))}
@@ -372,7 +380,7 @@ const PrizesTab = ({ campaignId }) => {
   const byDay = d.claimsByDay ?? [];
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="Total Won" value={fmt(cs.total)} color={C.accent} icon={<GiftOutlined />} />
         <StatCard label="Claimed" value={fmt(cs.claimed)} color={C.success} />
@@ -421,7 +429,7 @@ const PrizesTab = ({ campaignId }) => {
 
       {byDay.length > 0 ? (
         <SectionCard title="Claims by Day">
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1">
             {byDay.map((d, i) => (
               <Bar key={d.date} label={d.date} count={d.claims} color={BAR_COLORS[i % BAR_COLORS.length]} />
             ))}
@@ -448,14 +456,14 @@ const FunnelTab = ({ campaignId }) => {
   const top = funnel[0]?.count || 1;
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <StatCard label="Overall Conversion Rate" value={pct(overall)} color={C.success} sub="Registered → Claimed" />
         <StatCard label="Total Registered" value={fmt(funnel[0]?.count)} color={C.info} sub="top of funnel" />
       </div>
 
       <SectionCard title="Conversion Funnel">
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3">
           {funnel.map((step, i) => {
             const widthPct = Math.round((step.count / top) * 100);
             // API field: dropOffFromPrev
@@ -622,7 +630,7 @@ const AnswerValue = ({ answer }) => {
     // Array of row objects: [{ rowText, columnText }, ...]
     if (Array.isArray(data)) {
       return (
-        <div className="space-y-0.5">
+        <div className="flex flex-col gap-0.5">
           {data.map((item, i) => {
             const rowLabel = item.rowText ?? item.row ?? item.label ?? item.name ?? `Row ${i + 1}`;
             const colLabel = label(item.columnText ?? item.answer ?? item.value ?? item);
@@ -639,7 +647,7 @@ const AnswerValue = ({ answer }) => {
 
     // Object: { "Row A": "Col X", "Row B": { ... } }
     return (
-      <div className="space-y-0.5">
+      <div className="flex flex-col gap-0.5">
         {Object.entries(data).map(([row, val]) => (
           <div key={row} className="flex items-center gap-1.5">
             <span className="text-xs shrink-0" style={{ color: C.muted }}>{row}:</span>
@@ -807,7 +815,7 @@ const ExportSection = ({ campaignId, type, label, description, color, mutation, 
           const claims = record.claims ?? [];
           const surveys = record.surveyResponses ?? [];
           return (
-            <div className="space-y-5 px-4 py-4">
+            <div className="flex flex-col gap-5 px-4 py-4">
               {/* Claims */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -840,7 +848,7 @@ const ExportSection = ({ campaignId, type, label, description, color, mutation, 
                   <Tag color="purple" className="!m-0">{surveys.length}</Tag>
                 </div>
                 {surveys.length ? (
-                  <div className="space-y-3">
+                  <div className="flex flex-col gap-3">
                     {surveys.map((s, si) => (
                       <div key={si} className="rounded-xl overflow-hidden" style={{ border: `1px solid ${C.border}` }}>
                         <div className="flex items-center justify-between px-3 py-2" style={{ background: `${C.purple}0a`, borderBottom: `1px solid ${C.border}` }}>
@@ -963,6 +971,497 @@ const ExportSection = ({ campaignId, type, label, description, color, mutation, 
   );
 };
 
+// ─── Survey Responses Section ─────────────────────────────────────────────────
+
+/** Decode HTML entities like &amp; &lt; &gt; &quot; &#39; */
+const decodeHtml = (str) => {
+  if (!str || typeof str !== "string") return str;
+  return str
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+};
+
+/** Return a plain string representation of an answer for export/search */
+const flatAnswerText = (answer) => {
+  if (!answer) return "";
+  const type = (answer.questionType ?? "").toLowerCase().replace(/[_\s-]/g, "");
+  if (type.includes("multiple") || type.includes("checkbox") || type.includes("multi")) {
+    const items = Array.isArray(answer.answerJson) ? answer.answerJson : [];
+    return items
+      .map((o) => decodeHtml(o?.optionText ?? o?.text ?? (o?.optionId != null ? `Option #${o.optionId}` : "")))
+      .filter(Boolean)
+      .join(", ");
+  }
+  const val = decodeHtml(answer.answerOptionText) ?? decodeHtml(answer.answerText) ?? (answer.answerNumeric != null ? String(answer.answerNumeric) : "");
+  return val ?? "";
+};
+
+/** Return array of decoded string labels for multi-select answers */
+const multiAnswerLabels = (answer) => {
+  if (!answer) return [];
+  const items = Array.isArray(answer.answerJson) ? answer.answerJson : [];
+  return items
+    .map((o) => decodeHtml(o?.optionText ?? o?.text ?? (o?.optionId != null ? `Option #${o.optionId}` : "")))
+    .filter(Boolean);
+};
+
+const Q_TYPE_ICON = {
+  likert: <PieChartOutlined />,
+  single_choice: <CheckCircleOutlined />,
+  multiple_choice: <OrderedListOutlined />,
+  long_text: <FileTextOutlined />,
+  short_text: <FileTextOutlined />,
+};
+const Q_TYPE_COLOR = {
+  likert: C.accent,
+  single_choice: C.info,
+  multiple_choice: C.teal,
+  long_text: C.muted,
+  short_text: C.muted,
+};
+
+// ── Answer frequency breakdown for choice-type questions ──────────────────────
+const AnswerBreakdown = ({ question, responses, totalResponses }) => {
+  const type = (question.questionType ?? "").toLowerCase().replace(/[_\s-]/g, "");
+  const isMulti = type.includes("multiple") || type.includes("checkbox") || type.includes("multi");
+  const isChoice = isMulti || type.includes("single") || type.includes("choice") || type.includes("likert");
+  if (!isChoice) return null;
+
+  // Count frequency per option
+  const freq = new Map();
+  responses.forEach((r) => {
+    const ans = (r.answers ?? []).find((a) => a.questionId === question.questionId);
+    if (!ans) return;
+    if (isMulti) {
+      multiAnswerLabels(ans).forEach((label) => freq.set(label, (freq.get(label) ?? 0) + 1));
+    } else {
+      const label = decodeHtml(ans.answerOptionText ?? ans.answerText);
+      if (label) freq.set(label, (freq.get(label) ?? 0) + 1);
+    }
+  });
+
+  if (!freq.size) return null;
+  const sorted = Array.from(freq.entries()).sort((a, b) => b[1] - a[1]);
+  const maxCount = sorted[0]?.[1] ?? 1;
+
+  return (
+    <div className="px-6 py-5" style={{ borderBottom: `1px solid ${C.border}`, background: C.bg }}>
+      <div className="text-[11px] font-bold tracking-wider mb-4" style={{ color: C.muted }}>ANSWER BREAKDOWN</div>
+      <div className="flex flex-col gap-3">
+        {sorted.map(([label, count], i) => {
+          const pctOfAnswered = Math.round((count / maxCount) * 100);
+          const pctOfTotal = totalResponses > 0 ? ((count / totalResponses) * 100).toFixed(1) : 0;
+          const barColor = BAR_COLORS[i % BAR_COLORS.length];
+          return (
+            <div key={label} className="flex items-center gap-4">
+              <div className="w-36 shrink-0 text-xs font-medium truncate" style={{ color: C.text }} title={label}>{label}</div>
+              <div className="flex-1 h-6 rounded-lg overflow-hidden" style={{ background: `${C.border}60` }}>
+                <div
+                  className="h-full rounded-lg transition-all duration-500"
+                  style={{ width: `${pctOfAnswered}%`, background: barColor, minWidth: count > 0 ? 4 : 0 }}
+                />
+              </div>
+              <div className="text-sm font-black w-8 text-right shrink-0" style={{ color: barColor }}>{count}</div>
+              <div className="text-xs w-12 text-right shrink-0 font-medium" style={{ color: C.muted }}>{pctOfTotal}%</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ── Respondent table for a single question ────────────────────────────────────
+const QuestionRespondentTable = ({ question, responses }) => {
+  const [search, setSearch] = useState("");
+  const type = (question.questionType ?? "").toLowerCase().replace(/[_\s-]/g, "");
+  const isMulti = type.includes("multiple") || type.includes("checkbox") || type.includes("multi");
+  const isChoice = isMulti || type.includes("single") || type.includes("choice") || type.includes("likert");
+
+  const rows = responses.map((r) => {
+    const ans = (r.answers ?? []).find((a) => a.questionId === question.questionId);
+    return {
+      participantCode: r.participantCode,
+      fullName: r.fullName,
+      mobileNumber: r.mobileNumber,
+      email: r.email,
+      submittedAt: r.submittedAt,
+      _answerFlat: flatAnswerText(ans),
+      _answerLabels: isMulti ? multiAnswerLabels(ans) : null,
+      _answerRaw: ans,
+    };
+  }).filter((r) => r._answerFlat !== "");
+
+  const filtered = search.trim()
+    ? rows.filter((r) =>
+        [r.participantCode, r.fullName, r.mobileNumber, r.email, r._answerFlat]
+          .some((v) => v && String(v).toLowerCase().includes(search.toLowerCase()))
+      )
+    : rows;
+
+  const cols = [
+    {
+      title: "Participant",
+      key: "participant",
+      width: 200,
+      fixed: "left",
+      render: (_, r) => (
+        <div>
+          <div className="font-semibold text-xs">{r.fullName ?? "—"}</div>
+          <div className="font-mono text-[10px]" style={{ color: C.muted }}>{r.participantCode ?? "—"}</div>
+        </div>
+      ),
+    },
+    { title: "Mobile", dataIndex: "mobileNumber", key: "mn", width: 130, render: (v) => v ?? "—" },
+    { title: "Email", dataIndex: "email", key: "em", width: 200, ellipsis: true, render: (v) => v ?? "—" },
+    {
+      title: "Answer",
+      key: "answer",
+      render: (_, r) => {
+        const v = r._answerFlat;
+        if (!v) return <span style={{ color: C.muted }}>—</span>;
+        if (isMulti && r._answerLabels?.length) {
+          return (
+            <div className="flex flex-wrap gap-1">
+              {r._answerLabels.map((t, i) => <Tag key={i} color="cyan" className="text-xs">{t}</Tag>)}
+            </div>
+          );
+        }
+        if (isChoice) return <Tag color="geekblue" className="text-xs">{v}</Tag>;
+        return <span className="text-xs leading-relaxed whitespace-pre-wrap">{v}</span>;
+      },
+    },
+    { title: "Submitted", dataIndex: "submittedAt", key: "sa", width: 150, render: (v) => <span className="text-xs">{fmtDate(v) ?? "—"}</span> },
+  ];
+
+  return (
+    <div className="px-6 py-5 flex flex-col gap-4">
+      <div className="flex items-center gap-3 flex-wrap">
+        <Input
+          prefix={<SearchOutlined style={{ color: C.muted, fontSize: 12 }} />}
+          placeholder="Search by name, code, or answer…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          allowClear
+          size="small"
+          style={{ maxWidth: 300 }}
+        />
+        {search.trim() && (
+          <span className="text-xs" style={{ color: C.muted }}>
+            {filtered.length} of {rows.length} match
+          </span>
+        )}
+      </div>
+      {filtered.length === 0 ? (
+        <Empty description={search ? `No matches for "${search}"` : "No responses"} image={Empty.PRESENTED_IMAGE_SIMPLE} className="py-6" />
+      ) : (
+        <Table
+          size="small"
+          dataSource={filtered.map((r, i) => ({ ...r, _k: i }))}
+          rowKey="_k"
+          columns={cols}
+          pagination={{ pageSize: 10, size: "small", showSizeChanger: true, pageSizeOptions: ["10", "20", "50"], showTotal: (t, [f, to]) => `${f}–${to} of ${t}` }}
+          scroll={{ x: "max-content" }}
+        />
+      )}
+    </div>
+  );
+};
+
+// ── Single question card ───────────────────────────────────────────────────────
+const QuestionCard = ({ question, responses, questionIndex, campaignId, totalSubmissions }) => {
+  const type = question.questionType ?? "";
+  const typeKey = type.toLowerCase().replace(/[_\s-]/g, "");
+  const icon = Q_TYPE_ICON[type] ?? <FileTextOutlined />;
+  const typeColor = Q_TYPE_COLOR[type] ?? C.muted;
+
+  const answered = responses.filter((r) =>
+    (r.answers ?? []).some((a) => a.questionId === question.questionId && flatAnswerText(a) !== "")
+  ).length;
+  const responseRate = totalSubmissions > 0 ? Math.round((answered / totalSubmissions) * 100) : 0;
+
+  // Export rows for this question
+  const exportRows = responses.map((r) => {
+    const ans = (r.answers ?? []).find((a) => a.questionId === question.questionId);
+    return {
+      participantCode: r.participantCode,
+      fullName: r.fullName,
+      mobileNumber: r.mobileNumber,
+      email: r.email,
+      submittedAt: fmtDate(r.submittedAt) ?? r.submittedAt ?? "",
+      answer: flatAnswerText(ans),
+    };
+  }).filter((r) => r.answer !== "");
+
+  const slug = decodeHtml(question.questionText ?? "").slice(0, 30).replace(/\s+/g, "-").toLowerCase();
+  const csvFilename = `q${questionIndex + 1}-${slug}-${campaignId}.csv`;
+  const jsonFilename = `q${questionIndex + 1}-${slug}-${campaignId}.json`;
+
+  const panelHeader = (
+    <div className="flex items-center gap-4 flex-1 min-w-0 py-1">
+      {/* Number badge */}
+      <div
+        className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-sm font-black"
+        style={{ background: `${typeColor}18`, color: typeColor }}
+      >
+        {questionIndex + 1}
+      </div>
+
+      {/* Question text + meta */}
+      <div className="flex-1 min-w-0">
+        <div className="font-semibold text-sm leading-snug mb-2" style={{ color: C.text }}>
+          {decodeHtml(question.questionText)}
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <Tag
+            icon={icon}
+            className="text-[10px] !m-0 px-2 py-0.5"
+            style={{ background: `${typeColor}15`, color: typeColor, border: "none" }}
+          >
+            {type.replace(/_/g, " ")}
+          </Tag>
+          <span className="text-xs" style={{ color: C.muted }}>
+            {answered} / {totalSubmissions} answered
+          </span>
+          <div className="flex items-center gap-2">
+            <Progress
+              percent={responseRate}
+              size="small"
+              showInfo={false}
+              strokeColor={typeColor}
+              trailColor={C.border}
+              style={{ width: 72, margin: 0 }}
+            />
+            <span className="text-xs font-bold" style={{ color: typeColor }}>{responseRate}%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Export buttons */}
+      {exportRows.length > 0 && (
+        <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+          <Tooltip title="Export this question as CSV">
+            <Button size="small" icon={<DownloadOutlined />} onClick={() => downloadCsv(exportRows, csvFilename)}>CSV</Button>
+          </Tooltip>
+          <Tooltip title="Export this question as JSON">
+            <Button size="small" icon={<DownloadOutlined />} onClick={() => downloadJson(exportRows, jsonFilename)} style={{ borderColor: typeColor, color: typeColor }}>JSON</Button>
+          </Tooltip>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <Collapse
+      defaultActiveKey={["q"]}
+      style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, overflow: "hidden" }}
+      items={[{
+        key: "q",
+        label: panelHeader,
+        children: (
+          <div style={{ padding: 0 }}>
+            <AnswerBreakdown question={question} responses={responses} totalResponses={totalSubmissions} />
+            <QuestionRespondentTable question={question} responses={responses} />
+          </div>
+        ),
+        style: { borderRadius: 0, padding: 0 },
+      }]}
+    />
+  );
+};
+
+// ── Main survey responses container ───────────────────────────────────────────
+const SurveyResponsesSection = ({ campaignId, mutation }) => {
+  const { notification } = App.useApp();
+  const [responses, setResponses] = useState(null);
+  const [loadedAt, setLoadedAt] = useState(null);
+  const [globalSearch, setGlobalSearch] = useState("");
+
+  const load = () => {
+    mutation.mutate(campaignId, {
+      onSuccess: (res) => {
+        const d = res?.data ?? res;
+        setResponses(d.responses ?? []);
+        setLoadedAt(dayjs());
+        setGlobalSearch("");
+      },
+      onError: () => notification.error({ message: "Failed to load survey responses" }),
+    });
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []);
+
+  // Derive sorted question list from all responses
+  const questions = (() => {
+    if (!responses?.length) return [];
+    const seen = new Map();
+    responses.forEach((r) => {
+      (r.answers ?? []).forEach((a) => {
+        if (!seen.has(a.questionId)) {
+          seen.set(a.questionId, {
+            questionId: a.questionId,
+            questionText: a.questionText,
+            questionType: a.questionType,
+          });
+        }
+      });
+    });
+    return Array.from(seen.values()).sort((a, b) => a.questionId - b.questionId);
+  })();
+
+  // Filter responses by global search (name / code / email / any answer)
+  const visibleResponses = globalSearch.trim()
+    ? (responses ?? []).filter((r) => {
+        const haystack = [r.participantCode, r.fullName, r.mobileNumber, r.email]
+          .concat((r.answers ?? []).map(flatAnswerText))
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(globalSearch.toLowerCase());
+      })
+    : (responses ?? []);
+
+  const surveyName = decodeHtml(responses?.[0]?.surveyName ?? "Survey Responses");
+  const totalSubmissions = responses?.length ?? 0;
+  const completeCount = (responses ?? []).filter((r) => r.isComplete).length;
+  const completeRate = totalSubmissions > 0 ? Math.round((completeCount / totalSubmissions) * 100) : 0;
+
+  // Export all: one row per respondent, one column per question (full text as header)
+  const exportAll = (format) => {
+    if (!responses?.length) return;
+    const allRows = responses.map((r) => {
+      const base = {
+        participantCode: r.participantCode,
+        fullName: r.fullName,
+        mobileNumber: r.mobileNumber,
+        email: r.email,
+        isComplete: r.isComplete ? "Yes" : "No",
+        submittedAt: fmtDate(r.submittedAt) ?? r.submittedAt ?? "",
+      };
+      questions.forEach((q, i) => {
+        const ans = (r.answers ?? []).find((a) => a.questionId === q.questionId);
+        // Use full question text as column header (truncated for CSV safety)
+        const header = `Q${i + 1}: ${decodeHtml(q.questionText ?? "").slice(0, 60)}`;
+        base[header] = flatAnswerText(ans);
+      });
+      return base;
+    });
+    if (format === "csv") downloadCsv(allRows, `survey-all-${campaignId}.csv`);
+    else downloadJson(allRows, `survey-all-${campaignId}.json`);
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* ── Summary header ── */}
+      <div className="rounded-2xl overflow-hidden" style={{ background: C.card, border: `1px solid ${C.border}` }}>
+        <div className="flex items-center justify-between px-5 py-4 flex-wrap gap-3" style={{ background: `${C.purple}08`, borderBottom: `1px solid ${C.border}` }}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${C.purple}20` }}>
+              <BarChartOutlined style={{ color: C.purple, fontSize: 18 }} />
+            </div>
+            <div>
+              <div className="font-bold text-base leading-tight" style={{ color: C.text }}>{surveyName}</div>
+              <div className="text-xs mt-0.5" style={{ color: C.muted }}>
+                {questions.length} question{questions.length !== 1 ? "s" : ""}
+                {loadedAt ? ` · refreshed ${loadedAt.format(DATE_FORMATS.TIME_SECONDS)}` : ""}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button size="small" icon={<ReloadOutlined />} loading={mutation.isPending} onClick={load}>Refresh</Button>
+            {totalSubmissions > 0 && (
+              <>
+                <Button size="small" icon={<DownloadOutlined />} onClick={() => exportAll("csv")}>Export All CSV</Button>
+                <Button
+                  size="small"
+                  type="primary"
+                  ghost
+                  icon={<DownloadOutlined />}
+                  onClick={() => exportAll("json")}
+                  style={{ borderColor: C.purple, color: C.purple }}
+                >
+                  Export All JSON
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Stats row */}
+        {totalSubmissions > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 divide-x" style={{ borderBottom: `1px solid ${C.border}` }}>
+            {[
+              { label: "Total Submissions", value: totalSubmissions, color: C.purple, suffix: "" },
+              { label: "Complete", value: completeCount, color: C.success, suffix: "" },
+              { label: "Incomplete", value: totalSubmissions - completeCount, color: C.warning, suffix: "" },
+              { label: "Completion Rate", value: completeRate, color: C.info, suffix: "%" },
+            ].map((s) => (
+              <div key={s.label} className="px-6 py-4 text-center">
+                <div className="text-2xl font-black leading-none" style={{ color: s.color }}>{s.value}{s.suffix}</div>
+                <div className="text-xs font-medium mt-1.5" style={{ color: C.muted }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Global search */}
+        {totalSubmissions > 0 && (
+          <div className="px-5 py-3.5 flex items-center gap-3 flex-wrap">
+            <Input
+              prefix={<SearchOutlined style={{ color: C.muted, fontSize: 12 }} />}
+              placeholder="Filter all questions by participant name, code, email, or answer…"
+              value={globalSearch}
+              onChange={(e) => setGlobalSearch(e.target.value)}
+              allowClear
+              size="small"
+              style={{ maxWidth: 440 }}
+            />
+            {globalSearch.trim() && (
+              <span className="text-xs" style={{ color: C.muted }}>
+                Showing responses from {visibleResponses.length} of {totalSubmissions} participants
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Loading */}
+      {mutation.isPending && (
+        <div className="flex flex-col items-center gap-3 py-20">
+          <Spin size="large" />
+          <div className="text-xs" style={{ color: C.muted }}>Loading survey responses…</div>
+        </div>
+      )}
+
+      {/* Empty */}
+      {!mutation.isPending && responses?.length === 0 && (
+        <Empty description="No survey responses found for this event" className="py-12" />
+      )}
+
+      {/* Question cards */}
+      {!mutation.isPending && questions.map((q, i) => (
+        <QuestionCard
+          key={q.questionId}
+          question={q}
+          responses={visibleResponses}
+          questionIndex={i}
+          campaignId={campaignId}
+          totalSubmissions={totalSubmissions}
+        />
+      ))}
+    </div>
+  );
+};
+
+// ─── Export Tab ───────────────────────────────────────────────────────────────
+
 const ExportTab = ({ campaignId }) => {
   const exportParticipants = useExportParticipants();
   const exportClaims = useExportClaims();
@@ -992,10 +1491,10 @@ const ExportTab = ({ campaignId }) => {
       key: "survey",
       type: "survey",
       label: "Survey Responses",
-      description: "Per-submission records with participant info — expand each row to see individual question answers",
+      description: null,
       color: C.purple,
       mutation: exportSurveyResponses,
-      filename: `export-survey-responses-${campaignId}.json`,
+      filename: null,
     },
     {
       key: "full",
@@ -1022,7 +1521,9 @@ const ExportTab = ({ campaignId }) => {
             <span>{s.label}</span>
           </span>
         ),
-        children: <ExportSection key={s.key} campaignId={campaignId} {...s} />,
+        children: s.key === "survey"
+          ? <SurveyResponsesSection campaignId={campaignId} mutation={s.mutation} />
+          : <ExportSection key={s.key} campaignId={campaignId} {...s} />,
       }))}
     />
   );
