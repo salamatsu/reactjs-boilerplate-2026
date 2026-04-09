@@ -965,20 +965,8 @@ const REGISTER_URL = "https://register.worldbexevents.com/";
 
 const EventDetailModal = ({ event, onClose }) => {
   const t = useVT();
-  const from = event.dateFrom
-    ? new Date(event.dateFrom).toLocaleDateString("en-PH", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      })
-    : null;
-  const to = event.dateTo
-    ? new Date(event.dateTo).toLocaleDateString("en-PH", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      })
-    : null;
+  const from = event.dateFrom ? formatDateTime(event.dateFrom, "MMMM D, YYYY") : null;
+  const to = event.dateTo ? formatDateTime(event.dateTo, "MMMM D, YYYY") : null;
 
   return (
     <div
@@ -1639,8 +1627,17 @@ const GoalModal = ({
           Show this QR code at the raffle station to spin the wheel.
         </p>
 
-        <div className="bg-white rounded-2xl p-4 inline-block mb-4">
-          <QRCodeSVG value={encryptedQr} size={180} level="H" />
+        <div
+          className="rounded-2xl p-4 inline-block mb-4"
+          style={{ backgroundColor: "#ffffff", colorScheme: "light" }}
+        >
+          <QRCodeSVG
+            value={encryptedQr}
+            size={180}
+            level="H"
+            bgColor="#ffffff"
+            fgColor="#000000"
+          />
         </div>
 
         <p className="text-xs mb-3" style={{ color: t.muted }}>

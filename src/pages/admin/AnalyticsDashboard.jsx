@@ -5,6 +5,8 @@
 // ============================================
 
 import { useState, useEffect } from "react";
+import dayjs from "dayjs";
+import { formatUTC, DATE_FORMATS } from "../../utils/formatDate";
 import {
   App,
   Button,
@@ -205,28 +207,38 @@ const BoothsTab = ({ campaignId }) => {
   const d = data?.data ?? {};
   const summary = d.summary ?? {};
   const booths = d.booths ?? [];
-  const byDay = d.byDay ?? [];
+  // API returns scansByDay
+  const byDay = d.scansByDay ?? d.byDay ?? [];
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="Total Scans" value={fmt(summary.totalScans)} color={C.info} icon={<ShopOutlined />} />
-        <StatCard label="Unique Participants" value={fmt(summary.uniqueParticipants)} color={C.success} />
-        <StatCard label="Points Distributed" value={fmt(summary.pointsDistributed)} color={C.accent} />
-        <StatCard label="Avg Scans / Booth" value={summary.avgScansPerBooth != null ? Number(summary.avgScansPerBooth).toFixed(1) : "—"} color={C.purple} />
+        {/* API field: participantsWhoScanned */}
+        <StatCard label="Unique Participants" value={fmt(summary.participantsWhoScanned ?? summary.uniqueParticipants)} color={C.success} />
+        {/* API field: totalPointsDistributed */}
+        <StatCard label="Points Distributed" value={fmt(summary.totalPointsDistributed ?? summary.pointsDistributed)} color={C.accent} />
+        {/* API field: avgBoothsPerParticipant */}
+        <StatCard label="Avg Booths / Participant" value={summary.avgBoothsPerParticipant != null ? Number(summary.avgBoothsPerParticipant).toFixed(1) : summary.avgScansPerBooth != null ? Number(summary.avgScansPerBooth).toFixed(1) : "—"} color={C.purple} />
       </div>
 
       {booths.length > 0 ? (
         <SectionCard title="Per-Booth Breakdown">
           <Table
             size="small"
-            dataSource={booths.map((b) => ({ ...b, key: b.boothId }))}
+            dataSource={booths.map((b) => ({ ...b, key: b.id ?? b.boothId }))}
             pagination={{ pageSize: 10, size: "small" }}
             columns={[
               { title: "Booth", dataIndex: "boothName", key: "boothName", render: (v, r) => <><div className="font-semibold text-xs">{v}</div><div className="text-[10px] font-mono" style={{ color: C.muted }}>{r.boothCode}</div></> },
               { title: "Scans", dataIndex: "totalScans", key: "totalScans", align: "right", render: (v) => fmt(v) },
               { title: "Unique", dataIndex: "uniqueParticipants", key: "uniqueParticipants", align: "right", render: (v) => fmt(v) },
-              { title: "Points", dataIndex: "pointsDistributed", key: "pointsDistributed", align: "right", render: (v) => fmt(v) },
+              {
+                title: "Points",
+                key: "points",
+                align: "right",
+                // API field: totalPointsDistributed
+                render: (_, r) => fmt(r.totalPointsDistributed ?? r.pointsDistributed),
+              },
             ]}
           />
         </SectionCard>
@@ -296,8 +308,22 @@ const EntriesTab = ({ campaignId }) => {
 
   const d = data?.data ?? {};
   const totals = d.totals ?? {};
-  const byDay = d.byDay ?? [];
-  const byOutcome = d.byOutcome ?? [];
+  // API: winRate is top-level, not inside totals
+  const winRate = d.winRate ?? totals.winRate;
+  // API: wheelResults instead of byOutcome
+  const rawOutcomes = d.wheelResults ?? d.byOutcome ?? [];
+  const totalOutcomeCount = rawOutcomes.reduce((s, o) => s + (o.count ?? 0), 0);
+  const byOutcome = rawOutcomes.map((o) => ({
+    outcome: o.wheelResult ?? o.outcome,
+    count: o.count,
+    percentage: totalOutcomeCount ? Math.round((o.count / totalOutcomeCount) * 100) : 0,
+  }));
+  // API: entriesByDay instead of byDay
+  const byDay = (d.entriesByDay ?? d.byDay ?? []).map((r) => ({
+    date: r.date,
+    // API field: entries; fallback to spins
+    spins: r.entries ?? r.spins,
+  }));
 
   return (
     <div className="space-y-4">
@@ -305,12 +331,12 @@ const EntriesTab = ({ campaignId }) => {
         <StatCard label="Total Spins" value={fmt(totals.total)} color={C.info} icon={<PlayCircleOutlined />} />
         <StatCard label="Won" value={fmt(totals.won)} color={C.success} />
         <StatCard label="Lost" value={fmt(totals.lost)} color={C.muted} />
-        <StatCard label="Win Rate" value={pct(totals.winRate)} color={C.accent} />
+        <StatCard label="Win Rate" value={pct(winRate)} color={C.accent} />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {byOutcome.length > 0 ? (
-          <SectionCard title="Outcomes Breakdown">
+          <SectionCard title="Wheel Results Breakdown">
             <div className="space-y-1">
               {byOutcome.map((o, i) => (
                 <Bar key={o.outcome} label={o.outcome} count={o.count} pct={o.percentage} color={BAR_COLORS[i % BAR_COLORS.length]} />
@@ -358,14 +384,29 @@ const PrizesTab = ({ campaignId }) => {
         <SectionCard title="Per-Prize Breakdown">
           <Table
             size="small"
-            dataSource={prizes.map((p) => ({ ...p, key: p.prizeId }))}
+            dataSource={prizes.map((p) => {
+              // API: won/claimed/forfeited nested under byStatus
+              const byStatus = p.byStatus ?? {};
+              const won = p.won ?? byStatus.won ?? 0;
+              const claimed = p.claimed ?? byStatus.claimed ?? 0;
+              const forfeited = p.forfeited ?? byStatus.forfeited ?? 0;
+              const claimRate = won > 0 ? Math.round((claimed / won) * 100) : 0;
+              return {
+                ...p,
+                key: p.id ?? p.prizeId,
+                _won: won,
+                _claimed: claimed,
+                _forfeited: forfeited,
+                _claimRate: claimRate,
+              };
+            })}
             pagination={{ pageSize: 10, size: "small" }}
             columns={[
               { title: "Prize", dataIndex: "prizeName", key: "prizeName", render: (v) => <span className="font-semibold text-xs">{v}</span> },
-              { title: "Won", dataIndex: "won", key: "won", align: "right", render: (v) => fmt(v) },
-              { title: "Claimed", dataIndex: "claimed", key: "claimed", align: "right", render: (v) => <span style={{ color: C.success, fontWeight: 700 }}>{fmt(v)}</span> },
-              { title: "Forfeited", dataIndex: "forfeited", key: "forfeited", align: "right", render: (v) => <span style={{ color: v > 0 ? C.danger : C.muted }}>{fmt(v)}</span> },
-              { title: "Claim Rate", dataIndex: "claimRate", key: "claimRate", align: "right", render: (v) => (
+              { title: "Won", dataIndex: "_won", key: "_won", align: "right", render: (v) => fmt(v) },
+              { title: "Claimed", dataIndex: "_claimed", key: "_claimed", align: "right", render: (v) => <span style={{ color: C.success, fontWeight: 700 }}>{fmt(v)}</span> },
+              { title: "Forfeited", dataIndex: "_forfeited", key: "_forfeited", align: "right", render: (v) => <span style={{ color: v > 0 ? C.danger : C.muted }}>{fmt(v)}</span> },
+              { title: "Claim Rate", dataIndex: "_claimRate", key: "_claimRate", align: "right", render: (v) => (
                 <div className="flex items-center gap-2 justify-end">
                   <div className="w-16 h-1.5 rounded-full overflow-hidden" style={{ background: C.border }}>
                     <div className="h-full rounded-full" style={{ width: `${v ?? 0}%`, background: C.success }} />
@@ -417,7 +458,8 @@ const FunnelTab = ({ campaignId }) => {
         <div className="space-y-3">
           {funnel.map((step, i) => {
             const widthPct = Math.round((step.count / top) * 100);
-            const dropOff = step.dropOffRate ?? step.dropoffRate;
+            // API field: dropOffFromPrev
+            const dropOff = step.dropOffFromPrev ?? step.dropOffRate ?? step.dropoffRate;
             return (
               <div key={step.step} className="relative">
                 <div className="flex items-center gap-3 mb-1">
@@ -451,15 +493,7 @@ const FunnelTab = ({ campaignId }) => {
 
 // ─── Tab: Export ─────────────────────────────────────────────────────────────
 
-const fmtDate = (v) => {
-  if (!v) return null;
-  try {
-    return new Date(v).toLocaleString("en-PH", {
-      year: "numeric", month: "short", day: "numeric",
-      hour: "2-digit", minute: "2-digit",
-    });
-  } catch { return v; }
-};
+const fmtDate = (v) => formatUTC(v);
 
 // Fields that are internal IDs — hidden from table display and CSV export
 const HIDDEN_FIELDS = new Set([
@@ -515,8 +549,8 @@ const AnswerValue = ({ answer }) => {
   const type = (answer.questionType ?? "").toLowerCase().replace(/[_\s-]/g, "");
   const { answerText, answerOptionText, answerNumeric, answerDate, answerJson } = answer;
 
-  // Rating / Scale / NPS → number badge + filled dots
-  if (type.includes("rating") || type.includes("scale") || type.includes("nps") || type.includes("likert")) {
+  // Rating / Scale / NPS → number badge + filled dots (only when answerNumeric is present)
+  if (type.includes("rating") || type.includes("scale") || type.includes("nps") || (type.includes("likert") && answerNumeric != null)) {
     if (answerNumeric == null) return <span style={{ color: C.muted }}>—</span>;
     const max = type.includes("nps") ? 10 : type.includes("scale") ? 10 : 5;
     const n = Number(answerNumeric);
@@ -538,14 +572,29 @@ const AnswerValue = ({ answer }) => {
     );
   }
 
+  // Likert (text option, e.g. "Excellent") → single tag
+  if (type.includes("likert")) {
+    return answerOptionText
+      ? <Tag color="blue" className="text-xs">{answerOptionText}</Tag>
+      : answerText
+      ? <Tag color="blue" className="text-xs">{answerText}</Tag>
+      : <span style={{ color: C.muted }}>—</span>;
+  }
+
   // Checkbox / Multi-select → multiple tags from answerJson[]
-  if (type.includes("checkbox") || type.includes("multiselect") || type.includes("multi")) {
-    const options = Array.isArray(answerJson) ? answerJson
+  if (type.includes("checkbox") || type.includes("multiselect") || type.includes("multi") || type.includes("multiple")) {
+    const rawOptions = Array.isArray(answerJson) ? answerJson
       : answerJson ? Object.values(answerJson)
       : answerOptionText ? [answerOptionText]
       : [];
+    // API may return [{ optionId }] objects without text — display as "Option #ID"
+    const options = rawOptions.map((o) => {
+      if (o == null) return "—";
+      if (typeof o !== "object") return String(o);
+      return o.optionText ?? o.text ?? o.label ?? o.value ?? (o.optionId != null ? `Option #${o.optionId}` : JSON.stringify(o));
+    });
     return options.length
-      ? <div className="flex flex-wrap gap-1">{options.map((o, i) => <Tag key={i} color="blue" className="text-xs">{String(o)}</Tag>)}</div>
+      ? <div className="flex flex-wrap gap-1">{options.map((o, i) => <Tag key={i} color="blue" className="text-xs">{o}</Tag>)}</div>
       : <span style={{ color: C.muted }}>—</span>;
   }
 
@@ -687,7 +736,7 @@ const SURVEY_COLS = [
   { title: "Participant Code", dataIndex: "participantCode", key: "participantCode", width: 140, fixed: "left", render: (v) => <span className="font-mono text-xs font-bold">{v ?? "—"}</span> },
   { title: "Full Name", dataIndex: "fullName", key: "fullName", width: 180 },
   { title: "Mobile", dataIndex: "mobileNumber", key: "mobileNumber", width: 140 },
-  { title: "Survey", dataIndex: "surveyTitle", key: "surveyTitle", width: 200, ellipsis: true, render: (v) => v ?? "—" },
+  { title: "Survey", key: "surveyTitle", width: 200, ellipsis: true, render: (_, r) => r.surveyName ?? r.surveyTitle ?? "—" },
   { title: "Answers", dataIndex: "answers", key: "answers", align: "center", width: 90, render: (v) => <Tag color="blue">{v?.length ?? 0}</Tag> },
   { title: "Submitted At", dataIndex: "submittedAt", key: "submittedAt", width: 170, render: (v) => fmtDate(v) ?? "—" },
 ];
@@ -721,7 +770,7 @@ const ExportSection = ({ campaignId, type, label, description, color, mutation, 
           : type === "survey"    ? (d.responses ?? [])
           : (d.participants ?? []);
         setRows(extracted);
-        setLoadedAt(new Date());
+        setLoadedAt(dayjs());
         setSearch("");
       },
       onError: () => notification.error({ message: "Failed to load export data" }),
@@ -775,7 +824,7 @@ const ExportSection = ({ campaignId, type, label, description, color, mutation, 
                     columns={[
                       { title: "Prize", dataIndex: "prizeName", key: "prizeName", render: (v) => v ? <span className="font-semibold">{v}</span> : "—" },
                       { title: "Wheel Result", dataIndex: "wheelResult", key: "wheelResult", render: (v) => v ?? "—" },
-                      { title: "Claim Status", dataIndex: "claimStatus", key: "claimStatus", render: (v) => <ExStatusTag value={v} /> },
+                      { title: "Claim Status", key: "claimStatus", render: (_, c) => <ExStatusTag value={c.claimStatus ?? c.status} /> },
                       { title: "Claimed By", dataIndex: "claimedBy", key: "claimedBy", render: (v) => v ?? "—" },
                       { title: "Date", dataIndex: "dateCreated", key: "dateCreated", render: (v) => fmtDate(v) ?? "—" },
                     ]}
@@ -795,7 +844,7 @@ const ExportSection = ({ campaignId, type, label, description, color, mutation, 
                     {surveys.map((s, si) => (
                       <div key={si} className="rounded-xl overflow-hidden" style={{ border: `1px solid ${C.border}` }}>
                         <div className="flex items-center justify-between px-3 py-2" style={{ background: `${C.purple}0a`, borderBottom: `1px solid ${C.border}` }}>
-                          <span className="text-xs font-semibold" style={{ color: C.purple }}>{s.surveyTitle ?? `Survey ${si + 1}`}</span>
+                          <span className="text-xs font-semibold" style={{ color: C.purple }}>{s.surveyName ?? s.surveyTitle ?? `Survey ${si + 1}`}</span>
                           <span className="text-xs" style={{ color: C.muted }}>{fmtDate(s.submittedAt) ?? ""}</span>
                         </div>
                         <AnswersPanel answers={s.answers} />
@@ -836,7 +885,7 @@ const ExportSection = ({ campaignId, type, label, description, color, mutation, 
           )}
           {loadedAt && (
             <span className="text-xs" style={{ color: C.muted }}>
-              as of {loadedAt.toLocaleTimeString()}
+              as of {loadedAt.format(DATE_FORMATS.TIME_SECONDS)}
             </span>
           )}
           <Button size="small" icon={<ReloadOutlined />} loading={mutation.isPending} onClick={load}>

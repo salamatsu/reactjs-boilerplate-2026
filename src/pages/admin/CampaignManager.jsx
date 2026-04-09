@@ -52,6 +52,7 @@ import {
   Zap,
 } from "lucide-react";
 import dayjs from "dayjs";
+import { formatDateTime, DATE_FORMATS } from "../../utils/formatDate";
 import {
   useListCampaigns,
   useCreateCampaign,
@@ -93,7 +94,7 @@ const STATUS_ACCENT = {
 
 const IMG_BASE = import.meta.env.VITE_BASEURL ?? "";
 
-const fmtDate = (iso) => (iso ? dayjs(iso).format("MMM DD, YYYY") : "—");
+const fmtDate = (iso) => (iso ? formatDateTime(iso, DATE_FORMATS.DATE) : "—");
 const boothQrUrl = (eventTag, boothCode, points) =>
   `${window.location.origin}/${eventTag}?i=${boothCode}&p=${points}`;
 
