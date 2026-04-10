@@ -47,6 +47,10 @@ import {
   ScanLine,
   Download,
   Maximize2,
+  Home,
+  Sun,
+  Moon,
+  Sparkles,
 } from "lucide-react";
 import { APP_BASE_URL } from "../../lib/constants";
 import { logo, dgsiLogo, eventbookLogo } from "../../assets/images/logos";
@@ -262,8 +266,57 @@ const GoalProgress = ({ points, threshold }) => {
 };
 
 /** List of booths with scan status */
-const BoothList = ({ booths, scannedCodes }) => {
+const BoothList = ({ booths, scannedCodes, isQualified }) => {
   const t = useVT();
+
+  if (isQualified) {
+    return (
+      <div className="space-y-2">
+        {/* Qualified banner */}
+        {/* <div
+          className="rounded-2xl px-4 py-4 mb-3 flex flex-col items-center text-center gap-1"
+          style={{
+            background: "linear-gradient(135deg, #00D68F22 0%, #F5A62322 100%)",
+            border: "1px solid #00D68F66",
+          }}
+        >
+          <Trophy size={28} style={{ color: "#00D68F" }} />
+          <p className="text-sm font-black" style={{ color: "#00D68F" }}>
+            You've Qualified!
+          </p>
+          <p className="text-xs" style={{ color: t.muted }}>
+            Threshold reached — your raffle entry is ready.
+          </p>
+        </div> */}
+
+        {booths.map((booth) => {
+          return (
+            <div
+              key={booth.id}
+              className="flex items-center justify-between rounded-xl px-4 py-3 transition-all"
+              style={{
+                background: t.card,
+                border: `1px solid ${t.cardBorder}`,
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium" style={{ color: t.text }}>
+                  {booth.boothName}
+                </span>
+              </div>
+              <span
+                className="text-xs font-bold px-2 py-1 rounded-full shrink-0 whitespace-nowrap"
+                style={{ background: t.primaryBg, color: t.muted }}
+              >
+                +{booth.points} pts
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
       {booths.map((booth) => {
@@ -722,11 +775,13 @@ const downloadImage = async (src, filename) => {
 const ImageMapsView = ({ campaignId }) => {
   const t = useVT();
   const { data, isLoading } = useGetCampaignImagesPublic(campaignId);
-  const sites = (data?.data?.imageSites ?? []).slice().sort(
-    (a, b) =>
-      Math.min(...a.images.map((i) => i.sortOrder ?? 0)) -
-      Math.min(...b.images.map((i) => i.sortOrder ?? 0)),
-  );
+  const sites = (data?.data?.imageSites ?? [])
+    .slice()
+    .sort(
+      (a, b) =>
+        Math.min(...a.images.map((i) => i.sortOrder ?? 0)) -
+        Math.min(...b.images.map((i) => i.sortOrder ?? 0)),
+    );
   const [lightbox, setLightbox] = useState(null); // { src, alt, filename }
 
   if (isLoading)
@@ -767,7 +822,10 @@ const ImageMapsView = ({ campaignId }) => {
         {sites.map((site) => {
           const activeImages = site.images
             .filter(
-              (img) => img.isActive === undefined || img.isActive === 1 || img.isActive === true,
+              (img) =>
+                img.isActive === undefined ||
+                img.isActive === 1 ||
+                img.isActive === true,
             )
             .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
           if (!activeImages.length) return null;
@@ -965,7 +1023,9 @@ const REGISTER_URL = "https://register.worldbexevents.com/";
 
 const EventDetailModal = ({ event, onClose }) => {
   const t = useVT();
-  const from = event.dateFrom ? formatDateTime(event.dateFrom, "MMMM D, YYYY") : null;
+  const from = event.dateFrom
+    ? formatDateTime(event.dateFrom, "MMMM D, YYYY")
+    : null;
   const to = event.dateTo ? formatDateTime(event.dateTo, "MMMM D, YYYY") : null;
 
   return (
@@ -1387,7 +1447,7 @@ const FirstScanModal = ({
                   className="text-xs font-semibold"
                   style={{ color: "#F5A623" }}
                 >
-                  🎁 1st scan bonus
+                  <Gift size={11} className="inline-block align-middle mr-0.5" /> 1st scan bonus
                 </span>
                 <span
                   className="font-bold text-sm"
@@ -1504,10 +1564,10 @@ const GoalModal = ({
           <motion.div
             animate={{ rotate: [0, -10, 10, -10, 10, 0] }}
             transition={{ duration: 0.6 }}
-            className="text-4xl text-center mb-3"
+            className="flex justify-center mb-3"
             aria-hidden
           >
-            🎉
+            <Sparkles size={40} style={{ color: "#F5A623" }} />
           </motion.div>
           <h2
             className="font-black text-xl text-center mb-1"
@@ -1615,10 +1675,10 @@ const GoalModal = ({
         <motion.div
           animate={{ rotate: [0, -10, 10, -10, 10, 0] }}
           transition={{ duration: 0.6, delay: 0.3 }}
-          className="text-5xl mb-3"
+          className="mb-3"
           aria-hidden
         >
-          🎉
+          <Sparkles size={48} style={{ color: "#F5A623" }} />
         </motion.div>
         <h2 className="font-black text-xl mb-1" style={{ color: t.text }}>
           You're In!
@@ -1652,7 +1712,7 @@ const GoalModal = ({
             color: "#92400E",
           }}
         >
-          <span className="font-bold">⚠️ Important:</span> Please claim your
+          <span className="font-bold"><AlertTriangle size={12} className="inline-block align-middle mr-1" />Important:</span> Please claim your
           prize immediately after spinning. If your prize is currently
           unavailable, you may return on the next event day to claim it —
           present this QR code at the prize booth.
@@ -2378,7 +2438,7 @@ const VisitorApp = () => {
                     color: "#92400E",
                   }}
                 >
-                  <span className="font-bold">⚠️ Important:</span> Please claim
+                  <span className="font-bold"><AlertTriangle size={12} className="inline-block align-middle mr-1" />Important:</span> Please claim
                   your prize immediately after spinning. If your prize is
                   currently unavailable, you may return on the next event day to
                   claim it — present your raffle QR code at the prize booth.
@@ -2439,7 +2499,7 @@ const VisitorApp = () => {
                     color: "#92400E",
                   }}
                 >
-                  <span className="font-bold">⚠️ Important:</span> Please claim
+                  <span className="font-bold"><AlertTriangle size={12} className="inline-block align-middle mr-1" />Important:</span> Please claim
                   your prize immediately after spinning. If your prize is
                   currently unavailable, you may return on the next event day to
                   claim it — present your raffle QR code at the prize booth.
@@ -2460,11 +2520,17 @@ const VisitorApp = () => {
 
             {/* Booths list */}
             <div>
-              <h2 className="font-bold text-sm mb-3" style={{ color: t.text }}>
-                Booths ({scannedCodes.length}/{booths.length})
-              </h2>
+              {/* <h2 className="font-bold text-sm mb-3" style={{ color: isQualified ? "#00D68F" : t.text }}>
+                {isQualified
+                  ? `Booths — Qualified! (${scannedCodes.length}/${booths.length})`
+                  : `Booths (${scannedCodes.length}/${booths.length})`}
+              </h2> */}
               {booths.length > 0 && (
-                <BoothList booths={booths} scannedCodes={scannedCodes} />
+                <BoothList
+                  booths={booths}
+                  scannedCodes={scannedCodes}
+                  isQualified={isQualified}
+                />
               )}
             </div>
           </div>
@@ -2538,7 +2604,7 @@ const VisitorApp = () => {
               style={{ background: t.card }}
               aria-label="Toggle theme"
             >
-              {isDark ? "☀️" : "🌙"}
+              {isDark ? <Sun size={14} /> : <Moon size={14} />}
             </button>
             <button
               onClick={() => setShowGuide(true)}
@@ -2592,7 +2658,7 @@ const VisitorApp = () => {
           style={{ background: t.card, borderTop: `1px solid ${t.divider}` }}
         >
           {[
-            { id: "home", icon: <Zap size={18} />, label: "Home" },
+            { id: "home", icon: <Home size={18} />, label: "Home" },
             { id: "scan", icon: <ScanLine size={18} />, label: "Scan" },
             { id: "map", icon: <MapPin size={18} />, label: "Directories" },
             { id: "share", icon: <Share2 size={18} />, label: "Share" },

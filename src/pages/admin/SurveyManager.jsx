@@ -41,6 +41,7 @@ import {
   ToggleLeft,
   ToggleRight,
   RotateCcw,
+  Trophy,
 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -363,9 +364,7 @@ const AnalyticsDrawer = ({ campaignId, surveyId, open, onClose }) => {
                               <div className="flex items-center justify-between mb-1 gap-2">
                                 <div className="flex items-center gap-1.5 min-w-0">
                                   {isTop ? (
-                                    <span className="shrink-0 text-[10px]">
-                                      🏆
-                                    </span>
+                                    <Trophy size={10} className="shrink-0 text-yellow-500" />
                                   ) : null}
                                   <span
                                     className="text-xs truncate"

@@ -5,6 +5,7 @@
 // ============================================
 
 import { useState, useEffect } from "react";
+import { User, Camera, Key, CheckCircle2, RotateCw, Trophy, Package } from "lucide-react";
 import dayjs from "dayjs";
 import { formatUTC, DATE_FORMATS } from "../../utils/formatDate";
 import {
@@ -442,7 +443,15 @@ const PrizesTab = ({ campaignId }) => {
 
 // ─── Tab: Funnel ──────────────────────────────────────────────────────────────
 
-const FUNNEL_ICONS = ["👤", "📷", "🔑", "✅", "🎡", "🏆", "📦"];
+const FUNNEL_ICONS = [
+  <User size={14} />,
+  <Camera size={14} />,
+  <Key size={14} />,
+  <CheckCircle2 size={14} />,
+  <RotateCw size={14} />,
+  <Trophy size={14} />,
+  <Package size={14} />,
+];
 const FUNNEL_COLORS = [C.info, C.teal, C.purple, C.success, C.accent, C.warning, C.danger];
 
 const FunnelTab = ({ campaignId }) => {
@@ -471,7 +480,7 @@ const FunnelTab = ({ campaignId }) => {
             return (
               <div key={step.step} className="relative">
                 <div className="flex items-center gap-3 mb-1">
-                  <span className="text-base w-6 text-center leading-none">{FUNNEL_ICONS[i] ?? "•"}</span>
+                  <span className="w-6 flex items-center justify-center" style={{ color: FUNNEL_COLORS[i] }}>{FUNNEL_ICONS[i] ?? <span>•</span>}</span>
                   <span className="text-sm font-semibold flex-1" style={{ color: C.text }}>{step.label}</span>
                   <span className="text-sm font-black" style={{ color: FUNNEL_COLORS[i] }}>{fmt(step.count)}</span>
                   {dropOff != null && i > 0 ? (

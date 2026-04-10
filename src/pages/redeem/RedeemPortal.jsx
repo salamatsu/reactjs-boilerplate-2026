@@ -27,6 +27,7 @@ import {
   X,
   CheckCircle,
   RotateCcw,
+  RotateCw,
   Loader2,
   Settings,
   Gift,
@@ -35,6 +36,16 @@ import {
   ChevronUp,
   ChevronDown,
   ClipboardList,
+  Trophy,
+  Shuffle,
+  Ticket,
+  Camera,
+  Package,
+  User,
+  Key,
+  Sun,
+  Moon,
+  Sparkles,
 } from "lucide-react";
 import {
   useGetCampaignByEventTag,
@@ -706,7 +717,7 @@ const PrizeReveal = ({ winner, isWin, recording, spinApiError, onDismiss }) => {
           transition={{ type: "spring", stiffness: 300, delay: 0.25 }}
           className="text-6xl"
         >
-          {isWin ? "🏆" : "🎲"}
+          {isWin ? <Trophy size={56} className="text-yellow-400" /> : <Shuffle size={56} style={{ color: "#818cf8" }} />}
         </motion.div>
 
         {/* Result label */}
@@ -899,7 +910,7 @@ const SpinStep = ({ participant, station, onNext, onReset }) => {
               className="text-xs font-semibold uppercase tracking-widest mb-2"
               style={{ color: t.primary }}
             >
-              🎟 Participant
+              <Ticket size={10} className="inline-block align-middle mr-1" /> Participant
             </p>
             <p
               className="font-black text-2xl leading-tight"
@@ -907,8 +918,8 @@ const SpinStep = ({ participant, station, onNext, onReset }) => {
             >
               {participant.fullName}
             </p>
-            <p className="text-base font-bold mt-1 text-yellow-500">
-              ⭐ {participant.totalPoints} pts
+            <p className="text-base font-bold mt-1 text-yellow-500 flex items-center gap-1">
+              <Star size={14} className="fill-yellow-400 text-yellow-400" /> {participant.totalPoints} pts
             </p>
           </motion.div>
         )}
@@ -919,7 +930,7 @@ const SpinStep = ({ participant, station, onNext, onReset }) => {
           className="text-4xl font-black text-center drop-shadow-lg"
           style={{ color: t.text }}
         >
-          🎡 Spin to Win!
+          <RotateCw size={28} className="inline-block align-middle mr-2" /> Spin to Win!
         </motion.h2>
 
         <p className="text-sm text-center" style={{ color: t.muted }}>
@@ -974,7 +985,7 @@ const SpinStep = ({ participant, station, onNext, onReset }) => {
                 <Loader2 className="animate-spin" size={24} /> Spinning…
               </span>
             ) : (
-              "🎰 SPIN!"
+              <span className="flex items-center justify-center gap-2"><Zap size={22} /> SPIN!</span>
             )}
           </motion.button>
         )}
@@ -1141,7 +1152,7 @@ const DoneStep = ({ outcome, prizeName, onReset }) => {
               WebkitTextFillColor: "transparent",
             }}
           >
-            {isWin ? "🎉 Congratulations!" : "Better Luck Next Time!"}
+            {isWin ? "Congratulations!" : "Better Luck Next Time!"}
           </motion.h2>
 
           {/* Sub-text */}
@@ -1156,7 +1167,7 @@ const DoneStep = ({ outcome, prizeName, onReset }) => {
               <>
                 Hand the visitor their{" "}
                 <span className="text-yellow-400 font-black">{prizeName}</span>.{" "}
-                🎊
+                <Sparkles size={16} className="inline-block align-middle" />
               </>
             ) : (
               "Thank the visitor for participating!"
@@ -1430,10 +1441,10 @@ const SurveyQuestion = ({ question, value, onChange, error }) => {
           <button
             key={n}
             onClick={() => onChange(n)}
-            className="text-2xl transition-transform active:scale-90"
+            className="transition-transform active:scale-90"
             style={{ opacity: value && n > value ? 0.3 : 1 }}
           >
-            ★
+            <Star size={22} className={value && n <= value ? "fill-yellow-400 text-yellow-400" : "text-gray-400"} />
           </button>
         ))}
         {value && (
@@ -1895,7 +1906,12 @@ const SurveyStep = ({ participant, station, onNext }) => {
 const StepIndicator = ({ currentStep }) => {
   const t = useRT();
   const labels = ["Scan", "Survey", "Spin", "Done"];
-  const icons = ["📷", "📋", "🎡", "🏆"];
+  const icons = [
+    <Camera size={16} />,
+    <ClipboardList size={16} />,
+    <RotateCw size={16} />,
+    <Trophy size={16} />,
+  ];
   const currentIndex = STEPS.indexOf(currentStep);
   return (
     <div className="shrink-0 flex items-center justify-center gap-2 py-2 relative z-10">
@@ -2021,7 +2037,7 @@ const RedeemPortal = () => {
               style={{ background: t.pill }}
               aria-label="Toggle theme"
             >
-              {isDark ? "☀️" : "🌙"}
+              {isDark ? <Sun size={14} /> : <Moon size={14} />}
             </button>
           </div>
           <div className="flex-1 overflow-hidden flex items-center justify-center">
@@ -2056,7 +2072,7 @@ const RedeemPortal = () => {
               className="font-black text-lg tracking-wide"
               style={{ color: t.primary }}
             >
-              🎡 Worldbex Scan2Win
+              <RotateCw size={16} className="inline-block align-middle mr-1" /> Worldbex Scan2Win
             </h1>
             <p className="text-xs mt-0.5" style={{ color: t.muted }}>
               {station.campaignName} · {station.eventTag}
@@ -2080,7 +2096,7 @@ const RedeemPortal = () => {
               style={{ background: t.pill }}
               aria-label="Toggle theme"
             >
-              {isDark ? "☀️" : "🌙"}
+              {isDark ? <Sun size={14} /> : <Moon size={14} />}
             </button>
             <button
               onClick={handleChangeStation}
